@@ -1,5 +1,5 @@
 import XCTest
-@testable import xid_swift
+@testable import XDKXID
 
 final class IDTests: XCTestCase {
 	func testIDDecodable() throws {
@@ -23,17 +23,17 @@ final class IDTests: XCTestCase {
 
 	func testIDInitFromDataThrow() {
 		XCTAssertThrowsError(try xid.ID(from: Data([0x78, 0x69, 0x64]))) { error in
-			XCTAssertEqual(XidError.invalidID, error as! XidError)
+			XCTAssertEqual(XIDError.invalidID, error as! XIDError)
 		}
 	}
 
 	func testIDInitFromStringThrow() {
 		XCTAssertThrowsError(try xid.ID(from: "xid")) { error in
-			XCTAssertEqual(XidError.invalidIDStringLength(have: 3, want: 20), error as! XidError)
+			XCTAssertEqual(XIDError.invalidIDStringLength(have: 3, want: 20), error as! XIDError)
 		}
 
 		XCTAssertThrowsError(try xid.ID(from: "caia5ng890f0tr00hgt=")) { error in
-			XCTAssertEqual(XidError.decodeValidationFailure, error as! XidError)
+			XCTAssertEqual(XIDError.decodeValidationFailure, error as! XIDError)
 		}
 	}
 

@@ -1,5 +1,5 @@
 //
-//  StoreKitManager.swift
+//  StoreKit.swift
 //  nugg.xyz
 //
 //  Created by walter on 12/10/22.
@@ -9,7 +9,7 @@
 import Foundation
 import StoreKit
 
-import x_swift
+import XDKX
 
 extension mtx.Client: mtx.storekit.API {
 	public func addToQueue() {

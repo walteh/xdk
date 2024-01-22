@@ -1,16 +1,16 @@
 //
-//  swift_sdkTests.swift
+//  ecdsa.test.swift
 //  swift-sdkTests
 //
 //  Created by walter on 3/3/23.
 //
 
-import hex_swift
-import x_swift
+@testable import XDKECDSA
 import XCTest
-@testable import ecdsa_swift
+import XDKHex
+import XDKX
 
-class swift_sdkTests: XCTestCase {
+class ecdsaTests: XCTestCase {
 	override func setUpWithError() throws {
 		// Put setup code here. This method is called before the invocation of each test method in the class.
 	}

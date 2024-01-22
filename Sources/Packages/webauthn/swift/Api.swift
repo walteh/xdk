@@ -1,5 +1,5 @@
 //
-//  WebAuthnExpApi.swift
+//  Api.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/12/22.
@@ -9,10 +9,10 @@
 import AuthenticationServices
 import Foundation
 
-import hex_swift
-import keychain_swift
-import sdk_session
-import x_swift
+import XDKHex
+import XDKKeychain
+import XDKSession
+import XDKX
 
 public extension webauthn {
 	class Client: NSObject {
@@ -32,7 +32,7 @@ public extension webauthn {
 
 extension webauthn.Client: webauthn.API {
 	public func Init(sessionID: Data, type: webauthn.CeremonyType, credentialID: Data? = nil) async throws -> webauthn.Challenge {
-		var req: URLRequest = .init(url: self.host.appending(path: "/init"))
+		var req: URLRequest = .init(url: host.appending(path: "/init"))
 
 		req.setValue(xhex.ToHexString(sessionID), forHTTPHeaderField: "X-Nugg-Hex-Session-ID")
 		req.setValue(type.rawValue, forHTTPHeaderField: "X-Nugg-Utf-Ceremony-Type")
@@ -52,9 +52,9 @@ extension webauthn.Client: webauthn.API {
 
 	public func remote(authorization: ASAuthorization) async throws -> webauthn.JWT {
 		if let reg1 = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
-			return try await self.remote(credentialRegistration: reg1)
+			return try await remote(credentialRegistration: reg1)
 		} else if let reg2 = authorization.credential as? ASAuthorizationPublicKeyCredentialAssertion {
-			return try await self.remote(credentialAssertion: reg2)
+			return try await remote(credentialAssertion: reg2)
 		}
 
 		throw x.error("invalid authentication type")
@@ -77,7 +77,7 @@ extension webauthn.Client: webauthn.API {
 	}
 
 	public func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async throws -> webauthn.JWT {
-		var req: URLRequest = .init(url: self.host.appending(path: "/ios/register/passkey"))
+		var req: URLRequest = .init(url: host.appending(path: "/ios/register/passkey"))
 
 		req.httpMethod = "POST"
 
@@ -90,7 +90,7 @@ extension webauthn.Client: webauthn.API {
 		req.setValue(xhex.ToHexString(attester), forHTTPHeaderField: "X-Nugg-Hex-Attestation-Object")
 		req.setValue(attest.rawClientDataJSON.string!, forHTTPHeaderField: "X-Nugg-Utf-Client-Data-Json")
 
-		try await self.assert(request: &req, dataToSign: attest.credentialID)
+		try await assert(request: &req, dataToSign: attest.credentialID)
 
 		let (_, response) = try await URLSession.shared.data(for: req)
 
@@ -100,7 +100,7 @@ extension webauthn.Client: webauthn.API {
 	}
 
 	public func remote(credentialAssertion assert: ASAuthorizationPublicKeyCredentialAssertion) async throws -> webauthn.JWT {
-		var req: URLRequest = .init(url: self.host.appending(path: "/passkey/assert"))
+		var req: URLRequest = .init(url: host.appending(path: "/passkey/assert"))
 
 		req.httpMethod = "POST"
 
@@ -119,7 +119,7 @@ extension webauthn.Client: webauthn.API {
 	}
 
 	public func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data, sessionID: Data) async throws -> Bool {
-		var req: URLRequest = .init(url: self.host.appending(path: "/ios/register/device"))
+		var req: URLRequest = .init(url: host.appending(path: "/ios/register/device"))
 
 		req.httpMethod = "POST"
 

@@ -1,5 +1,5 @@
 //
-//  AccountManager.swift
+//  DeviceCheck.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/19/22.
@@ -12,9 +12,9 @@ import DeviceCheck
 import Foundation
 import os
 
-import keychain_swift
-import sdk_session
-import x_swift
+import XDKKeychain
+import XDKSession
+import XDKX
 
 struct AssertionResult {
 	let challenge: String

@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  index.swift
 //
 //
 //  Created by walter on 3/3/23.
@@ -7,8 +7,8 @@
 
 import AuthenticationServices
 import Foundation
-import keychain_swift
-import sdk_session
+import XDKKeychain
+import XDKSession
 
 public protocol WebauthnAPIProtocol {
 	associatedtype SESSION = session.API

@@ -1,10 +1,10 @@
 import XCTest
-@testable import xid_swift
+@testable import XDKXID
 
-final class XidTests: XCTestCase {
-	func testXidNext() {
+final class XIDTests: XCTestCase {
+	func testXIDNext() {
 		let n = 100
-		var xid = Xid()
+		var xid = XID()
 		var ids: [xid.ID] = []
 
 		// Generate n ids

@@ -8,9 +8,9 @@
 
 import Foundation
 
-import ecdsa_swift
-import keychain_swift
-import xid_swift
+import XDKECDSA
+import XDKKeychain
+import XDKXID
 
 // public extension webauthn {
 //	class Session: NSObject {

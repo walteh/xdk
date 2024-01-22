@@ -7,8 +7,9 @@
 //
 
 import XCTest
-@testable import mqtt_swift
-// #if IS_SWIFT_PACKAGE
+@testable import XDKMQTT
+
+// #if IS_PACKAGE
 //	@testable import MQTTWebSocket
 // #endif
 
@@ -24,8 +25,8 @@ class MQTTTests: XCTestCase {
 	var deleQueue: DispatchQueue!
 
 	override func setUp() {
-		self.deleQueue = DispatchQueue(label: "cttest")
-		self.deleQueue.setSpecific(key: delegate_queue_key, value: delegate_queue_val)
+		deleQueue = DispatchQueue(label: "cttest")
+		deleQueue.setSpecific(key: delegate_queue_key, value: delegate_queue_val)
 		super.setUp()
 	}
 
@@ -36,7 +37,7 @@ class MQTTTests: XCTestCase {
 	func testConnect() {
 		let caller = Caller()
 		let mqtt = MQTT5(clientID: clientID, host: host, port: port)
-		mqtt.delegateQueue = self.deleQueue
+		mqtt.delegateQueue = deleQueue
 		mqtt.delegate = caller
 		mqtt.logLevel = .error
 		mqtt.autoReconnect = false
@@ -47,16 +48,16 @@ class MQTTTests: XCTestCase {
 
 		let topics = ["t/0", "t/1", "t/2"]
 
-		mqtt.subscribe(topics[0])
-		mqtt.subscribe(topics[1])
-		mqtt.subscribe(topics[2])
+		mqtt.subscribe(topic: topics[0])
+		mqtt.subscribe(topic: topics[1])
+		mqtt.subscribe(topic: topics[2])
 		wait_for {
 			caller.subs == topics
 		}
 
-		mqtt.publish(topics[0], withString: "0", qos: .qos0, retained: false, properties: .init())
-		mqtt.publish(topics[1], withString: "1", qos: .qos1, retained: false, properties: .init())
-		mqtt.publish(topics[2], withString: "2", qos: .qos2, retained: false, properties: .init())
+		mqtt.publish(topic: topics[0], withString: "0", qos: .qos0, retained: false, properties: .init())
+		mqtt.publish(topic: topics[1], withString: "1", qos: .qos1, retained: false, properties: .init())
+		mqtt.publish(topic: topics[2], withString: "2", qos: .qos2, retained: false, properties: .init())
 		wait_for {
 			if caller.recvs.count >= 3 {
 				let f0 = caller.recvs[0]
@@ -70,9 +71,9 @@ class MQTTTests: XCTestCase {
 			return false
 		}
 
-		mqtt.unsubscribe(topics[0])
-		mqtt.unsubscribe(topics[1])
-		mqtt.unsubscribe(topics[2])
+		mqtt.unsubscribe(topic: topics[0])
+		mqtt.unsubscribe(topic: topics[1])
+		mqtt.unsubscribe(topic: topics[2])
 		wait_for {
 			caller.subs == []
 		}
@@ -92,7 +93,7 @@ class MQTTTests: XCTestCase {
 
 		websocket.enableSSL = true
 		let mqtt = MQTT5(clientID: clientID, host: "iot.nugg.xyz", port: 443, socket: websocket)
-		mqtt.delegateQueue = self.deleQueue
+		mqtt.delegateQueue = deleQueue
 		mqtt.delegate = caller
 		mqtt.logLevel = .error
 		mqtt.autoReconnect = false
@@ -101,7 +102,7 @@ class MQTTTests: XCTestCase {
 		wait_for { caller.isConnected }
 		XCTAssertEqual(mqtt.connState, .connected)
 		let topic = "d/AADDS"
-		mqtt.subscribe(topic)
+		mqtt.subscribe(topic: topic)
 		wait_for {
 			if caller.subs.count >= 1 {
 				if caller.subs[0] == topic {
@@ -110,7 +111,7 @@ class MQTTTests: XCTestCase {
 			}
 			return false
 		}
-		mqtt.publish(topic, withString: "0", qos: .qos0, retained: false, properties: .init())
+		mqtt.publish(topic: topic, withString: "0", qos: .qos0, retained: false, properties: .init())
 		wait_for {
 			if caller.recvs.count >= 1 {
 				let f = caller.recvs[0]
@@ -125,7 +126,7 @@ class MQTTTests: XCTestCase {
 		let caller = Caller()
 		let websocket = MQTTWebSocket(uri: "/mqtt")
 		let mqtt = MQTT5(clientID: clientID, host: host, port: 8083, socket: websocket)
-		mqtt.delegateQueue = self.deleQueue
+		mqtt.delegateQueue = deleQueue
 		mqtt.delegate = caller
 		mqtt.logLevel = .error
 		mqtt.autoReconnect = false
@@ -137,16 +138,16 @@ class MQTTTests: XCTestCase {
 
 		let topics = ["t/0", "t/1", "t/2"]
 
-		mqtt.subscribe(topics[0])
-		mqtt.subscribe(topics[1])
-		mqtt.subscribe(topics[2])
+		mqtt.subscribe(topic: topics[0])
+		mqtt.subscribe(topic: topics[1])
+		mqtt.subscribe(topic: topics[2])
 		wait_for {
 			caller.subs == topics
 		}
 
-		mqtt.publish(topics[0], withString: "0", qos: .qos0, retained: false, properties: .init())
-		mqtt.publish(topics[1], withString: "1", qos: .qos1, retained: false, properties: .init())
-		mqtt.publish(topics[2], withString: "2", qos: .qos2, retained: false, properties: .init())
+		mqtt.publish(topic: topics[0], withString: "0", qos: .qos0, retained: false, properties: .init())
+		mqtt.publish(topic: topics[1], withString: "1", qos: .qos1, retained: false, properties: .init())
+		mqtt.publish(topic: topics[2], withString: "2", qos: .qos2, retained: false, properties: .init())
 		wait_for {
 			if caller.recvs.count >= 3 {
 				let f0 = caller.recvs[0]
@@ -160,9 +161,9 @@ class MQTTTests: XCTestCase {
 			return false
 		}
 
-		mqtt.unsubscribe(topics[0])
-		mqtt.unsubscribe(topics[1])
-		mqtt.unsubscribe(topics[2])
+		mqtt.unsubscribe(topic: topics[0])
+		mqtt.unsubscribe(topic: topics[1])
+		mqtt.unsubscribe(topic: topics[2])
 		wait_for {
 			caller.subs == []
 		}
@@ -177,7 +178,7 @@ class MQTTTests: XCTestCase {
 	func testAutoReconnect() {
 		let caller = Caller()
 		let mqtt = MQTT5(clientID: clientID, host: host, port: port)
-		mqtt.delegateQueue = self.deleQueue
+		mqtt.delegateQueue = deleQueue
 		mqtt.delegate = caller
 		mqtt.logLevel = .error
 		mqtt.autoReconnect = true
@@ -205,7 +206,7 @@ class MQTTTests: XCTestCase {
 	func testLongString() {
 		let caller = Caller()
 		let mqtt = MQTT5(clientID: clientID, host: host, port: port)
-		mqtt.delegateQueue = self.deleQueue
+		mqtt.delegateQueue = deleQueue
 		mqtt.delegate = caller
 		mqtt.logLevel = .error
 		mqtt.autoReconnect = false
@@ -214,12 +215,12 @@ class MQTTTests: XCTestCase {
 		wait_for { caller.isConnected }
 		XCTAssertEqual(mqtt.connState, .connected)
 
-		mqtt.subscribe("t/#", qos: .qos2)
+		mqtt.subscribe(topic: "t/#", qos: .qos2)
 		wait_for {
 			caller.subs == ["t/#"]
 		}
 
-		mqtt.publish("t/1", withString: longStringGen(), qos: .qos2, properties: .init())
+		mqtt.publish(topic: "t/1", withString: longStringGen(), qos: .qos2, properties: .init())
 		wait_for {
 			guard caller.recvs.count > 0 else {
 				return false
@@ -236,7 +237,7 @@ class MQTTTests: XCTestCase {
 	func testProcessSafePub() {
 		let caller = Caller()
 		let mqtt = MQTT5(clientID: clientID, host: host, port: port)
-		mqtt.delegateQueue = self.deleQueue
+		mqtt.delegateQueue = deleQueue
 		mqtt.delegate = caller
 		mqtt.logLevel = .error
 		mqtt.autoReconnect = false
@@ -245,7 +246,7 @@ class MQTTTests: XCTestCase {
 		wait_for { caller.isConnected }
 		XCTAssertEqual(mqtt.connState, .connected)
 
-		mqtt.subscribe("t/#", qos: .qos1)
+		mqtt.subscribe(topic: "t/#", qos: .qos1)
 		wait_for {
 			caller.subs == ["t/#"]
 		}
@@ -256,7 +257,7 @@ class MQTTTests: XCTestCase {
 		let concurrentQueue = DispatchQueue(label: "tests.mqtt.emqx", qos: .default, attributes: .concurrent)
 		for i in 0 ..< 100 {
 			concurrentQueue.async {
-				mqtt.publish("t/\(i)", withString: "m\(i)", qos: .qos1, properties: .init())
+				mqtt.publish(topic: "t/\(i)", withString: "m\(i)", qos: .qos1, properties: .init())
 			}
 		}
 		wait_for {
@@ -271,7 +272,7 @@ class MQTTTests: XCTestCase {
 	func testOnyWaySSL() {
 		let caller = Caller()
 		let mqtt = MQTT5(clientID: clientID, host: host, port: sslport)
-		mqtt.delegateQueue = self.deleQueue
+		mqtt.delegateQueue = deleQueue
 		mqtt.delegate = caller
 		mqtt.logLevel = .error
 		mqtt.enableSSL = true
@@ -290,7 +291,7 @@ class MQTTTests: XCTestCase {
 	func testTwoWaySLL() {
 		let caller = Caller()
 		let mqtt = MQTT5(clientID: clientID, host: host, port: sslport)
-		mqtt.delegateQueue = self.deleQueue
+		mqtt.delegateQueue = deleQueue
 		mqtt.delegate = caller
 		mqtt.logLevel = .error
 		mqtt.enableSSL = true
@@ -378,6 +379,7 @@ extension MQTTTests {
 }
 
 private class Caller: MQTT5Delegate {
+
 	var recvs = [FramePublish]()
 
 	var sents = [UInt16]()
@@ -390,91 +392,91 @@ private class Caller: MQTT5Delegate {
 
 	var isSSL = false
 
-	func mqtt5(_: mqtt_swift.MQTT5, didConnectAck ack: mqtt_swift.MQTTCONNACKReasonCode, connAckData _: mqtt_swift.MQTTDecodeConnAck?) {
-		self.assert_in_del_queue()
-		if ack == .success { self.isConnected = true }
+	func didConnect(_: mqtt.API, ack: MQTTCONNACKReasonCode, data _: MQTTDecodeConnAck?) {
+		assert_in_del_queue()
+		if ack == .success { isConnected = true }
 	}
 
-	func mqtt5(_: mqtt_swift.MQTT5, didPublishMessage _: mqtt_swift.MQTT5Message, id: UInt16) {
-		self.assert_in_del_queue()
-		self.sents.append(id)
+	func didPublish(_: mqtt.API, message _: MQTT5Message, id: UInt16) {
+		assert_in_del_queue()
+		sents.append(id)
 	}
 
-	func mqtt5(_: mqtt_swift.MQTT5, didPublishAck id: UInt16, pubAckData _: mqtt_swift.MQTTDecodePubAck?) {
-		self.assert_in_del_queue()
-		self.acks.append(id)
+	func didPublish(_: mqtt.API, ack: UInt16, data _: MQTTDecodePubAck?) {
+		assert_in_del_queue()
+		acks.append(ack)
 	}
 
-	func mqtt5(_: mqtt_swift.MQTT5, didReceiveMessage message: mqtt_swift.MQTT5Message, id: UInt16, publishData _: mqtt_swift.MQTTDecodePublish?) {
-		self.assert_in_del_queue()
+	func didReceive(_: mqtt.API, message: MQTT5Message, id: UInt16, data _: MQTTDecodePublish?) {
+		assert_in_del_queue()
 
 		var frame = message.t_pub_frame
 		frame.msgid = id
-		self.recvs.append(frame)
+		recvs.append(frame)
 	}
 
-	func mqtt5(_: mqtt_swift.MQTT5, didSubscribeTopics success: NSDictionary, failed _: [String], subAckData _: mqtt_swift.MQTTDecodeSubAck?) {
-		self.assert_in_del_queue()
+	func didSubscribe(_: mqtt.API, topics: NSDictionary, failed _: [String], data _: MQTTDecodeSubAck?) {
+		assert_in_del_queue()
 
-		self.subs = self.subs + (success.allKeys as! [String])
+		subs = subs + (topics.allKeys as! [String])
 	}
 
-	func mqtt5(_: mqtt_swift.MQTT5, didUnsubscribeTopics topics: [String], UnsubAckData _: mqtt_swift.MQTTDecodeUnsubAck?) {
-		self.assert_in_del_queue()
+	func didUnsubscribe(_: mqtt.API, topics: [String], data _: MQTTDecodeUnsubAck?) {
+		assert_in_del_queue()
 
-		self.subs = self.subs.filter { e -> Bool in
+		subs = subs.filter { e -> Bool in
 			!topics.contains(e)
 		}
 	}
 
-	func mqtt5DidPing(_: MQTT5) {
-		self.assert_in_del_queue()
+	func didPing(_: MQTTAPI) {
+		assert_in_del_queue()
 	}
 
-	func mqtt5DidReceivePong(_: MQTT5) {
-		self.assert_in_del_queue()
+	func didReceivePong(_: MQTTAPI) {
+		assert_in_del_queue()
 	}
 
-	func mqtt5DidDisconnect(_: MQTT5, withError _: Error?) {
-		self.assert_in_del_queue()
+	func didDisconnect(_: MQTTAPI, withError _: Error?) {
+		assert_in_del_queue()
 
-		self.isConnected = false
+		isConnected = false
 	}
 
-	func mqtt5(_: MQTT5, didStateChangeTo _: MQTTConnState) {
-		self.assert_in_del_queue()
+	func didStateChange(_: mqtt.API, to _: MQTTConnState) {
+		assert_in_del_queue()
 	}
 
-	func mqtt5(_: MQTT5, didPublishComplete _: UInt16) {
-		self.assert_in_del_queue()
+	func didPublish(_: mqtt.API, complete _: UInt16, data: XDKMQTT.MQTTDecodePubComp?) {
+		assert_in_del_queue()
 	}
 
-	func mqtt5(_: MQTT5, didReceive _: SecTrust, completionHandler: @escaping (Bool) -> Void) {
-		self.assert_in_del_queue()
+	func didReceive(_: mqtt.API, trust _: SecTrust, completionHandler: @escaping (Bool) -> Void) {
+		assert_in_del_queue()
 
-		self.isSSL = true
+		isSSL = true
 
 		completionHandler(true)
 	}
 
-	var disconnectCodes = [mqtt_swift.MQTTDISCONNECTReasonCode]()
-	var authCodes = [mqtt_swift.MQTTAUTHReasonCode]()
+	var disconnectCodes = [MQTTDISCONNECTReasonCode]()
+	var authCodes = [MQTTAUTHReasonCode]()
 
 	var recs = [UInt16]()
 
-	func mqtt5(_: mqtt_swift.MQTT5, didReceiveDisconnectReasonCode reasonCode: mqtt_swift.MQTTDISCONNECTReasonCode) {
-		self.assert_in_del_queue()
-		self.disconnectCodes.append(reasonCode)
+	func didReceiveDisconnect(_: mqtt.API, reasonCode: MQTTDISCONNECTReasonCode) {
+		assert_in_del_queue()
+		disconnectCodes.append(reasonCode)
 	}
 
-	func mqtt5(_: mqtt_swift.MQTT5, didReceiveAuthReasonCode reasonCode: mqtt_swift.MQTTAUTHReasonCode) {
-		self.assert_in_del_queue()
-		self.authCodes.append(reasonCode)
+	func didReceiveAuth(_: mqtt.API, reasonCode: MQTTAUTHReasonCode) {
+		assert_in_del_queue()
+		authCodes.append(reasonCode)
 	}
 
-	func mqtt5(_: mqtt_swift.MQTT5, didPublishRec id: UInt16, pubRecData _: mqtt_swift.MQTTDecodePubRec?) {
-		self.assert_in_del_queue()
-		self.recs.append(id)
+	func didPublish(_: mqtt.API, rec: UInt16, data _: MQTTDecodePubRec?) {
+		assert_in_del_queue()
+		recs.append(rec)
 	}
 
 	func assert_in_del_queue() {

@@ -8,7 +8,7 @@
 
 import Foundation
 
-import byte_swift
+import XDKByte
 
 public enum RLP {
 	public enum Error: Swift.Error {
@@ -29,7 +29,7 @@ public enum RLP {
 
 // MARK: Internal helpers
 
-internal extension RLP {
+extension RLP {
 	static func binaryLength(of n: UInt32) -> UInt8 {
 		return UInt8(ceil(log10(Double(n)) / log10(Double(UInt8.max))))
 	}
@@ -39,7 +39,7 @@ internal extension RLP {
 			let lengthByte = offset + UInt8(length)
 			return Data([lengthByte])
 		} else {
-			let firstByte = offset + 55 + self.binaryLength(of: length)
+			let firstByte = offset + 55 + binaryLength(of: length)
 			var bytes = [firstByte]
 			bytes.append(contentsOf: length.byteArrayLittleEndian)
 			return Data(bytes)
@@ -56,7 +56,7 @@ public extension RLP {
 		{
 			return data
 		} else {
-			var result = self.encodeLength(UInt32(data.count), offset: 0x80)
+			var result = encodeLength(UInt32(data.count), offset: 0x80)
 			result.append(contentsOf: data)
 			return result
 		}
@@ -67,14 +67,14 @@ public extension RLP {
 
 		for item in array {
 			if let data = item as? Data {
-				output.append(self.encode(data))
+				output.append(encode(data))
 			} else if let array = item as? [Any] {
-				try output.append(self.encode(nestedArrayOfData: array))
+				try output.append(encode(nestedArrayOfData: array))
 			} else {
 				throw Error.invalidObject(ofType: Mirror(reflecting: item).subjectType, expected: Data.self)
 			}
 		}
-		let encodedLength = self.encodeLength(UInt32(output.count), offset: 0xC0)
+		let encodedLength = encodeLength(UInt32(output.count), offset: 0xC0)
 		output.insert(contentsOf: encodedLength, at: 0)
 		return output
 	}
@@ -88,7 +88,7 @@ public extension RLP {
 			throw Error.stringToData
 		}
 
-		let bytes = self.encode(data)
+		let bytes = encode(data)
 
 		return bytes
 	}
@@ -98,9 +98,9 @@ public extension RLP {
 
 		for item in array {
 			if let string = item as? String {
-				try output.append(self.encode(string, with: .ascii))
+				try output.append(encode(string, with: .ascii))
 			} else if let array = item as? [Any] {
-				try output.append(self.encode(nestedArrayOfString: array, encodeStringsWith: encoding))
+				try output.append(encode(nestedArrayOfString: array, encodeStringsWith: encoding))
 			} else {
 				throw Error.invalidObject(ofType: Mirror(reflecting: item).subjectType, expected: String.self)
 			}

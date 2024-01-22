@@ -8,16 +8,16 @@
 
 import Foundation
 
-import big_swift
-import byte_swift
-import ecdsa_swift
-import x_swift
+import XDKBig
+import XDKByte
+import XDKECDSA
+import XDKX
 
 extension big.UInt {
 	func asChecksumAddress(chainID _: EthereumChain) -> Data {
 		var dat: [UInt8] = .init(repeating: 0, count: 20)
 
-		let stripAddress = self.serialize().reversed()
+		let stripAddress = serialize().reversed()
 
 		for (i, u) in stripAddress.enumerated() {
 			if i >= 20 { break }

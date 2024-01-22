@@ -1,5 +1,5 @@
 //
-//  PassKeyManager.swift
+//  Passkey.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/19/22.
@@ -10,8 +10,8 @@ import AuthenticationServices
 import Foundation
 import os
 
-import keychain_swift
-import x_swift
+import XDKKeychain
+import XDKX
 
 public extension NSNotification.Name {
 	static let UserSignedIn = Notification.Name("UserSignedInNotification")
@@ -88,13 +88,13 @@ extension webauthn.Client: webauthn.passkey.API {
 	}
 
 	public func assertPasskey() async throws {
-		guard let credid = self.keychainAPI.read(insecurly: .PasskeyCredentialID) else {
+		guard let credid = keychainAPI.read(insecurly: .PasskeyCredentialID) else {
 			throw x.Error.Wrap(webauthn.devicecheck.Error.invalidKey("credentialId"))
 		}
 
 		let challenge = try await Init(sessionID: sessionAPI.ID().data, type: .Get, credentialID: credid)
 
-		let req = self.publicKeyProvider.createCredentialAssertionRequest(challenge: challenge)
+		let req = publicKeyProvider.createCredentialAssertionRequest(challenge: challenge)
 
 		req.allowedCredentials = [.init(credentialID: credid)]
 
@@ -102,13 +102,13 @@ extension webauthn.Client: webauthn.passkey.API {
 		authController.delegate = self
 		authController.presentationContextProvider = self
 		authController.performRequests(options: .preferImmediatelyAvailableCredentials)
-		self.isPerformingModalRequest = true
+		isPerformingModalRequest = true
 	}
 
 	public func attestPasskey() async throws {
 		let challenge = try await Init(sessionID: sessionAPI.ID().data, type: .Create)
 
-		let registrationRequest = self.publicKeyProvider.createCredentialRegistrationRequest(
+		let registrationRequest = publicKeyProvider.createCredentialRegistrationRequest(
 			challenge: challenge,
 			name: "nugg.xyz",
 			userID: sessionAPI.ID().data
@@ -118,7 +118,7 @@ extension webauthn.Client: webauthn.passkey.API {
 		authController.delegate = self
 		authController.presentationContextProvider = self
 		authController.performRequests(options: .preferImmediatelyAvailableCredentials)
-		self.isPerformingModalRequest = true
+		isPerformingModalRequest = true
 	}
 
 	public func authorizationController(
@@ -138,7 +138,7 @@ extension webauthn.Client: webauthn.passkey.API {
 
 	public func authorizationController(controller _: ASAuthorizationController, didCompleteWithError error: Error) {
 		guard let authorizationError = error as? ASAuthorizationError else {
-			self.isPerformingModalRequest = false
+			isPerformingModalRequest = false
 			return
 		}
 
@@ -156,7 +156,7 @@ extension webauthn.Client: webauthn.passkey.API {
 			}
 		}
 
-		self.isPerformingModalRequest = false
+		isPerformingModalRequest = false
 	}
 
 	func didFinishSignIn() {

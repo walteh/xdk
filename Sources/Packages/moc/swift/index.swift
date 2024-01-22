@@ -1,8 +1,8 @@
 
 import Foundation
 
-import keychain_swift
-import x_swift
+import XDKKeychain
+import XDKX
 
 public enum moc {
 	public typealias API = MOCAPI

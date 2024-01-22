@@ -7,7 +7,7 @@
 //
 
 import XCTest
-@testable import mqtt_swift
+@testable import XDKMQTT
 
 class FrameTests: XCTestCase {
 	func testFrameConnect() {

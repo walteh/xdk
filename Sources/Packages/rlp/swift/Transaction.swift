@@ -1,5 +1,5 @@
 //
-//  Signer.swift
+//  Transaction.swift
 //  nugg.xyz
 //
 //  Created by walter on 12/6/22.
@@ -8,9 +8,9 @@
 
 import Foundation
 
-import big_swift
-import ecdsa_swift
-import hex_swift
+import XDKBig
+import XDKECDSA
+import XDKHex
 
 struct EthereumTransaction {
 	let to: big.UInt
@@ -27,26 +27,26 @@ struct EthereumTransaction {
 extension EthereumTransaction {
 	private var rlpPrefix: [Any] {
 		[
-			Data([self.chainID.rawValue]),
-			self.nonce.serialize(),
-			self.maxPriorityFeePerGas.serialize(),
-			self.maxFeePerGas.serialize(),
-			self.gasLimit.serialize(),
-			self.to.asChecksumAddress(chainID: self.chainID),
-			self.value.serializeToNil() as Any,
-			self.data,
+			Data([chainID.rawValue]),
+			nonce.serialize(),
+			maxPriorityFeePerGas.serialize(),
+			maxFeePerGas.serialize(),
+			gasLimit.serialize(),
+			to.asChecksumAddress(chainID: chainID),
+			value.serializeToNil() as Any,
+			data,
 			[], // access list
 		]
 	}
 
 	func rlp() throws -> Data {
-		var res = try RLP.encode(nestedArrayOfData: self.rlpPrefix)
+		var res = try RLP.encode(nestedArrayOfData: rlpPrefix)
 		res.insert(0x02, at: 0)
 		return res
 	}
 
 	private func rlp(signature: ecdsa.Signature) throws -> Data {
-		var start = self.rlpPrefix
+		var start = rlpPrefix
 		start.append(signature.v == 0 ? Data() : Data([signature.v]))
 		start.append(signature.r)
 		start.append(signature.s)
@@ -57,13 +57,13 @@ extension EthereumTransaction {
 
 	// jack-o-lanturn nugg
 	private func sign(privateKey: Data) throws -> ecdsa.Signature {
-		return try sign_raw(.secp256k1, .recoverable, message: self.rlp(), privateKey: privateKey)
+		return try sign_raw(.secp256k1, .recoverable, message: rlp(), privateKey: privateKey)
 	}
 
 	public func sign(privateKey: Data) throws -> Data {
-		let sig: ecdsa.Signature = try self.sign(privateKey: privateKey)
-		
+		let sig: ecdsa.Signature = try sign(privateKey: privateKey)
+
 		print(sig.serialize().hexEncodedString())
-		return try RLP.encode(self.rlp(signature: sig))
+		return try RLP.encode(rlp(signature: sig))
 	}
 }

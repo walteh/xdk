@@ -15,6 +15,6 @@ public enum big {
 }
 
 public extension String {
-	func hexToBigUInt() -> big.UInt { big.UInt(self.replacingOccurrences(of: "0x", with: ""), radix: 16) ?? big.UInt(0) }
-	func hexToBigInt() -> big.Int { big.Int(self.replacingOccurrences(of: "0x", with: ""), radix: 16) ?? big.Int(0) }
+	func hexToBigUInt() -> big.UInt { big.UInt(replacingOccurrences(of: "0x", with: ""), radix: 16) ?? big.UInt(0) }
+	func hexToBigInt() -> big.Int { big.Int(replacingOccurrences(of: "0x", with: ""), radix: 16) ?? big.Int(0) }
 }

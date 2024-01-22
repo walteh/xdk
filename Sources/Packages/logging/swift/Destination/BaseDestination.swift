@@ -35,25 +35,25 @@ import Logging
 extension String {
 	/// cross-Swift compatible characters count
 	var length: Int {
-		return self.count
+		return count
 	}
 
 	/// cross-Swift-compatible first character
 	var firstChar: Character? {
-		return self.first
+		return first
 	}
 
 	/// cross-Swift-compatible last character
 	var lastChar: Character? {
-		return self.last
+		return last
 	}
 
 	/// cross-Swift-compatible index
 	func find(_ char: Character) -> Index? {
 		#if swift(>=5)
-			return self.firstIndex(of: char)
+			return firstIndex(of: char)
 		#else
-			return self.index(of: char)
+			return index(of: char)
 		#endif
 	}
 }
@@ -105,7 +105,7 @@ open class BaseDestination: Hashable, Equatable {
 	// each destination class must have an own hashValue Int
 	#if swift(>=4.2)
 		public func hash(into hasher: inout Hasher) {
-			hasher.combine(self.defaultHashValue)
+			hasher.combine(defaultHashValue)
 		}
 	#else
 		public lazy var hashValue: Int = self.defaultHashValue
@@ -120,7 +120,7 @@ open class BaseDestination: Hashable, Equatable {
 	public init() {
 		let uuid = NSUUID().uuidString
 		let queueLabel = "swiftybeaver-queue-" + uuid
-		self.queue = DispatchQueue(label: queueLabel, target: self.queue)
+		queue = DispatchQueue(label: queueLabel, target: queue)
 	}
 
 	/// send / store the formatted log message to the destination
@@ -129,13 +129,13 @@ open class BaseDestination: Hashable, Equatable {
 	open func send(_ level: Logging.Logger.Level, msg: String, thread: String, file: String,
 	               function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
 	{
-		if self.format.hasPrefix("$J") {
-			return self.messageToJSON(level, msg: msg, thread: thread,
-			                          file: file, function: function, line: line, context: context)
+		if format.hasPrefix("$J") {
+			return messageToJSON(level, msg: msg, thread: thread,
+			                     file: file, function: function, line: line, context: context)
 
 		} else {
-			return self.formatMessage(self.format, level: level, msg: msg, thread: thread,
-			                          file: file, function: function, line: line, context: context)
+			return formatMessage(format, level: level, msg: msg, thread: thread,
+			                     file: file, function: function, line: line, context: context)
 		}
 	}
 
@@ -166,7 +166,7 @@ open class BaseDestination: Hashable, Equatable {
 	private func parsePadding(_ text: String) -> (Int, Int) {
 		// look for digits followed by a alpha character
 		var s: String!
-		var sign: Int = 1
+		var sign = 1
 		if text.firstChar == "-" {
 			sign = -1
 			s = String(text.suffix(from: text.index(text.startIndex, offsetBy: 1)))
@@ -293,7 +293,7 @@ open class BaseDestination: Hashable, Equatable {
 		if let cx = context {
 			dict["metadata"] = cx
 		}
-		return self.jsonStringFromDict(dict)
+		return jsonStringFromDict(dict)
 	}
 
 	/// returns the string of a level
@@ -302,20 +302,20 @@ open class BaseDestination: Hashable, Equatable {
 
 		switch level {
 		case .debug:
-			str = self.levelString.debug
+			str = levelString.debug
 
 		case .info:
-			str = self.levelString.info
+			str = levelString.info
 
 		case .warning:
-			str = self.levelString.warning
+			str = levelString.warning
 
 		case .error:
-			str = self.levelString.error
+			str = levelString.error
 
 		default:
 			// Verbose is default
-			str = self.levelString.verbose
+			str = levelString.verbose
 		}
 		return str
 	}
@@ -326,19 +326,19 @@ open class BaseDestination: Hashable, Equatable {
 
 		switch level {
 		case .debug:
-			color = self.levelColor.debug
+			color = levelColor.debug
 
 		case .info:
-			color = self.levelColor.info
+			color = levelColor.info
 
 		case .warning:
-			color = self.levelColor.warning
+			color = levelColor.warning
 
 		case .error:
-			color = self.levelColor.error
+			color = levelColor.error
 
 		default:
-			color = self.levelColor.verbose
+			color = levelColor.verbose
 		}
 		return color
 	}
@@ -354,7 +354,7 @@ open class BaseDestination: Hashable, Equatable {
 
 	/// returns the filename without suffix (= file ending) of a path
 	func fileNameWithoutSuffix(_ file: String) -> String {
-		let fileName = self.fileNameOfFile(file)
+		let fileName = fileNameOfFile(file)
 
 		if !fileName.isEmpty {
 			let fileNameParts = fileName.components(separatedBy: ".")
@@ -369,18 +369,18 @@ open class BaseDestination: Hashable, Equatable {
 	/// optionally in a given abbreviated timezone like "UTC"
 	func formatDate(_ dateFormat: String, timeZone: String = "") -> String {
 		if !timeZone.isEmpty {
-			self.formatter.timeZone = TimeZone(abbreviation: timeZone)
+			formatter.timeZone = TimeZone(abbreviation: timeZone)
 		}
-		self.formatter.calendar = self.calendar
-		self.formatter.dateFormat = dateFormat
+		formatter.calendar = calendar
+		formatter.dateFormat = dateFormat
 		// let dateStr = formatter.string(from: NSDate() as Date)
-		let dateStr = self.formatter.string(from: Date())
+		let dateStr = formatter.string(from: Date())
 		return dateStr
 	}
 
 	/// returns a uptime string
 	func uptime() -> String {
-		let interval = Date().timeIntervalSince(self.startDate)
+		let interval = Date().timeIntervalSince(startDate)
 
 		let hours = Int(interval) / 3600
 		let minutes = Int(interval / 60) - Int(hours * 60)
@@ -433,13 +433,13 @@ open class BaseDestination: Hashable, Equatable {
 	/// checks if level is at least minLevel or if a minLevel filter for that path does exist
 	/// returns boolean and can be used to decide if a message should be logged or not
 	func shouldLevelBeLogged(_ level: Logging.Logger.Level, path _: String, function _: String, message _: String? = nil) -> Bool {
-		if level.rawValue >= self.minLevel.rawValue {
-			if self.debugPrint {
+		if level.rawValue >= minLevel.rawValue {
+			if debugPrint {
 				print("filters are empty and level >= minLevel")
 			}
 			return true
 		} else {
-			if self.debugPrint {
+			if debugPrint {
 				print("filters are empty and level < minLevel")
 			}
 			return false

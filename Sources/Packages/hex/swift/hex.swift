@@ -8,7 +8,7 @@
 
 import Foundation
 
-import byte_swift
+import XDKByte
 
 public enum xhex {
 	public static func ToHexString(_ data: Data, prefixed: Bool = true, uppercase: Bool = false) -> String {
@@ -21,12 +21,12 @@ public enum xhex {
 }
 
 /// Uppercase radix16 table.
-private let radix16table_uppercase: byte_swift.Bytes = [
+private let radix16table_uppercase: XDKByte.Bytes = [
 	.zero, .one, .two, .three, .four, .five, .six, .seven, .eight, .nine, .A, .B, .C, .D, .E, .F,
 ]
 
 /// Lowercase radix16 table.
-private let radix16table_lowercase: byte_swift.Bytes = [
+private let radix16table_lowercase: XDKByte.Bytes = [
 	.zero, .one, .two, .three, .four, .five, .six, .seven, .eight, .nine, .a, .b, .c, .d, .e, .f,
 ]
 
@@ -52,7 +52,7 @@ func toHexData(_ data: Data, uppercase: Bool = false) -> Data {
 	var bytes = Data()
 	bytes.reserveCapacity(data.count * 2)
 
-	let table: byte_swift.Bytes
+	let table: XDKByte.Bytes
 	if uppercase {
 		table = radix16table_uppercase
 	} else {

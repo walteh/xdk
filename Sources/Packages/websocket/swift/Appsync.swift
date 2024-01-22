@@ -8,7 +8,7 @@
 
 import Foundation
 
-import x_swift
+import XDKX
 
 public protocol AppsyncSubscriptionDelegate: NSObject {
 	func onIncoming(payload: Data)
@@ -33,12 +33,12 @@ public class WSAppsyncProvider: WSAsyncProvider {
 		self.host = host
 		self.token = token
 		self.useAPIKey = useAPIKey
-		self.appsyncDelegate = NoopListenDelegate()
+		appsyncDelegate = NoopListenDelegate()
 	}
 
 	public func connectToAppsync(delegate: AppsyncSubscriptionDelegate) {
-		self.appsyncDelegate = delegate
-		connect(url: self.appsyncRealtimeEndpoint, protocols: ["graphql-ws"])
+		appsyncDelegate = delegate
+		connect(url: appsyncRealtimeEndpoint, protocols: ["graphql-ws"])
 	}
 
 	// generateWebSocketKey 16 random characters between a-z and return them as a base64 string
@@ -47,19 +47,19 @@ public class WSAppsyncProvider: WSAsyncProvider {
 	}
 
 	private var authHeaderKey: String {
-		self.useAPIKey ? "x-api-key" : "Authorization"
+		useAPIKey ? "x-api-key" : "Authorization"
 	}
 
 	private var authHeaderValue: String {
-		self.useAPIKey ? self.token : self.token
+		useAPIKey ? token : token
 	}
 
 	private var authHeaderObject: String {
-		"{\"\(self.authHeaderKey)\":\"\(self.authHeaderValue)\",\"host\":\"\(self.host)\"}"
+		"{\"\(authHeaderKey)\":\"\(authHeaderValue)\",\"host\":\"\(host)\"}"
 	}
 
 	private var appsyncRealtimeEndpoint: URL {
-		var base = self.host
+		var base = host
 
 		if base.contains("amazonaws.com") {
 			base = base.replacingOccurrences(of: ".appsync-api.", with: ".appsync-api-realtime.")
@@ -69,7 +69,7 @@ public class WSAppsyncProvider: WSAsyncProvider {
 
 		return url.appending(
 			queryItems: [
-				.init(name: "header", value: self.authHeaderObject.base64Encoded.string),
+				.init(name: "header", value: authHeaderObject.base64Encoded.string),
 				.init(name: "payload", value: "{}".base64Encoded.string),
 			])
 	}
@@ -80,7 +80,7 @@ public class WSAppsyncProvider: WSAsyncProvider {
 		      "id": "\(WSAppsyncProvider.generateWebSocketKey())",
 		      "payload": {
 		           "data": "{\\"query\\":\\"subscription Listen { listen {  ksuid entity payload sent pushed } }\\",\\"variables\\":{}}",
-		           "extensions": {"authorization": \(self.authHeaderObject)}
+		           "extensions": {"authorization": \(authHeaderObject)}
 		      },
 		      "type": "start"
 		  }
@@ -88,7 +88,7 @@ public class WSAppsyncProvider: WSAsyncProvider {
 	}
 
 	override public func websocketDidConnectCallback() {
-		self.write(message: self.listenSubscriptionPayload())
+		write(message: listenSubscriptionPayload())
 	}
 
 	override public func websocketDidReceiveDataCallback(data: Data) {
@@ -96,7 +96,7 @@ public class WSAppsyncProvider: WSAsyncProvider {
 			let r = try data.toJSON(like: Dat.self)
 
 			if r.type == "data" {
-				self.appsyncDelegate.onIncoming(payload: data)
+				appsyncDelegate.onIncoming(payload: data)
 			}
 		} catch let error as NSError {
 			x.error(error)
@@ -105,6 +105,6 @@ public class WSAppsyncProvider: WSAsyncProvider {
 
 	override public func websocketDidDisconnectCallback(error _: Error?) {
 		x.log(.warning).msg("[ WebSocketDelegate : websocketDidDisconnect ]")
-		self.connectToAppsync(delegate: self.appsyncDelegate)
+		connectToAppsync(delegate: appsyncDelegate)
 	}
 }

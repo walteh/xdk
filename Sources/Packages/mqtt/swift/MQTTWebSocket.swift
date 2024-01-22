@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import x_swift
+import XDKX
 
 // MARK: - Interfaces
 
@@ -45,7 +45,7 @@ struct WriteItem: Hashable {
 	let tag: Int
 	let timeout: DispatchWallTime
 	func hash(into hasher: inout Hasher) {
-		hasher.combine(self.uuid)
+		hasher.combine(uuid)
 	}
 }
 
@@ -54,25 +54,25 @@ class ScheduledWriteController {
 	private(set) var scheduledWrites = Set<WriteItem>()
 
 	func insert(_ item: WriteItem) {
-		self.queue.sync {
+		queue.sync {
 			_ = self.scheduledWrites.insert(item)
 		}
 	}
 
 	func remove(_ item: WriteItem) -> WriteItem? {
-		return self.queue.sync {
+		return queue.sync {
 			self.scheduledWrites.remove(item)
 		}
 	}
 
 	func removeAll() {
-		self.queue.sync {
+		queue.sync {
 			self.scheduledWrites.removeAll()
 		}
 	}
 
 	func closestTimeout() -> DispatchWallTime? {
-		return self.queue.sync {
+		return queue.sync {
 			self.scheduledWrites.sorted(by: { a, b in a.timeout < b.timeout }).first?.timeout
 		}
 	}
@@ -90,19 +90,19 @@ class ScheduledReadController {
 	private(set) var scheduledReads: [ReadItem] = []
 
 	func append(_ item: ReadItem) {
-		self.queue.sync {
+		queue.sync {
 			self.scheduledReads.append(item)
 		}
 	}
 
 	func available() -> Bool {
-		return self.queue.sync {
+		return queue.sync {
 			self.scheduledReads.first?.length ?? UInt.max <= self.readBuffer.count
 		}
 	}
 
 	func take() -> (Data, Int) {
-		self.queue.sync {
+		queue.sync {
 			let nextRead = self.scheduledReads.removeFirst()
 			let readRange = self.readBuffer.startIndex ..< Data.Index(nextRead.length)
 			let readData = self.readBuffer.subdata(in: readRange)
@@ -112,20 +112,20 @@ class ScheduledReadController {
 	}
 
 	func removeAll() {
-		self.queue.sync {
+		queue.sync {
 			self.readBuffer.removeAll()
 			self.scheduledReads.removeAll()
 		}
 	}
 
 	func closestTimeout() -> DispatchWallTime? {
-		return self.queue.sync {
+		return queue.sync {
 			self.scheduledReads.sorted(by: { a, b in a.timeout < b.timeout }).first?.timeout
 		}
 	}
 
 	func append(_ data: Data) {
-		self.queue.sync {
+		queue.sync {
 			self.readBuffer.append(data)
 		}
 	}
@@ -151,7 +151,7 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 	}
 
 	public func setDelegate(_ theDelegate: MQTTSocketDelegate?, delegateQueue: DispatchQueue?) {
-		self.internalQueue.async {
+		internalQueue.async {
 			self.delegate = theDelegate
 			self.delegateQueue = delegateQueue
 		}
@@ -165,20 +165,20 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 	}
 
 	public func connect(toHost host: String, onPort port: UInt16) throws {
-		try self.connect(toHost: host, onPort: port, withTimeout: -1)
+		try connect(toHost: host, onPort: port, withTimeout: -1)
 	}
 
 	public func connect(toHost host: String, onPort port: UInt16, withTimeout _: TimeInterval) throws {
 		var urlStr = ""
 
-		if self.shouldConnectWithURIOnly {
-			urlStr = "\(self.uri)"
+		if shouldConnectWithURIOnly {
+			urlStr = "\(uri)"
 		} else {
-			urlStr = "\(self.enableSSL ? "wss" : "ws")://\(host):\(port)\(self.uri)"
+			urlStr = "\(enableSSL ? "wss" : "ws")://\(host):\(port)\(uri)"
 		}
 
 		guard let url = URL(string: urlStr) else { throw MQTTError.invalidURL }
-		self.internalQueue.sync {
+		internalQueue.sync {
 			do {
 				self.connection?.disconnect()
 				self.connection?.delegate = nil
@@ -194,14 +194,14 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 	}
 
 	public func disconnect() {
-		self.internalQueue.async {
+		internalQueue.async {
 			// self.reset()
 			self.closeConnection(withError: nil)
 		}
 	}
 
 	public func readData(toLength length: UInt, withTimeout timeout: TimeInterval, tag: Int) {
-		self.internalQueue.async {
+		internalQueue.async {
 			let newRead = ReadItem(tag: tag, length: length, timeout: (timeout > 0.0) ? .now() + timeout : .distantFuture)
 			self.scheduledReads.append(newRead)
 			self.checkScheduledReads()
@@ -209,7 +209,7 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 	}
 
 	public func write(_ data: Data, withTimeout timeout: TimeInterval, tag: Int) {
-		self.internalQueue.async {
+		internalQueue.async {
 			let newWrite = WriteItem(tag: tag, timeout: (timeout > 0.0) ? .now() + timeout : .distantFuture)
 			self.scheduledWrites.insert(newWrite)
 			self.checkScheduledWrites()
@@ -227,27 +227,27 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 		}
 	}
 
-	internal var delegate: MQTTSocketDelegate?
-	internal var delegateQueue: DispatchQueue?
-	internal var internalQueue = DispatchQueue(label: "MQTTWebSocket")
+	var delegate: MQTTSocketDelegate?
+	var delegateQueue: DispatchQueue?
+	var internalQueue = DispatchQueue(label: "MQTTWebSocket")
 
 	private var connection: MQTTWebSocketConnection?
 
 	private func reset() {
-		self.connection?.delegate = nil
-		self.connection?.disconnect()
-		self.connection = nil
+		connection?.delegate = nil
+		connection?.disconnect()
+		connection = nil
 
-		self.scheduledReads.removeAll()
-		self.readTimeoutTimer.reset()
+		scheduledReads.removeAll()
+		readTimeoutTimer.reset()
 
-		self.scheduledWrites.removeAll()
+		scheduledWrites.removeAll()
 
-		self.writeTimeoutTimer.reset()
+		writeTimeoutTimer.reset()
 	}
 
 	private func closeConnection(withError error: Error?) {
-		self.reset()
+		reset()
 		__delegate_queue {
 			self.delegate?.socketDidDisconnect(self, withError: error)
 		}
@@ -263,22 +263,22 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 		}
 
 		func schedule(wallDeadline: DispatchWallTime, handler: @escaping () -> Void) {
-			self.semaphore.wait()
-			self.timer?.cancel()
-			self.timer = nil
-			let newTimer = DispatchSource.makeTimerSource(flags: .strict, queue: self.queue)
-			self.timer = newTimer
+			semaphore.wait()
+			timer?.cancel()
+			timer = nil
+			let newTimer = DispatchSource.makeTimerSource(flags: .strict, queue: queue)
+			timer = newTimer
 			newTimer.schedule(wallDeadline: wallDeadline)
 			newTimer.setEventHandler(handler: handler)
 			newTimer.resume()
-			self.semaphore.signal()
+			semaphore.signal()
 		}
 
 		func reset() {
-			self.semaphore.wait()
-			self.timer?.cancel()
-			self.timer = nil
-			self.semaphore.signal()
+			semaphore.wait()
+			timer?.cancel()
+			timer = nil
+			semaphore.signal()
 		}
 	}
 
@@ -288,10 +288,10 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 		guard let theDelegate = delegate else { return }
 		guard let delegateQueue else { return }
 
-		self.readTimeoutTimer.reset()
+		readTimeoutTimer.reset()
 
-		while self.scheduledReads.available() {
-			let taken = self.scheduledReads.take()
+		while scheduledReads.available() {
+			let taken = scheduledReads.take()
 			delegateQueue.async {
 				theDelegate.socket(self, didRead: taken.0, withTag: taken.1)
 			}
@@ -300,9 +300,9 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 		guard let closestTimeout = scheduledReads.closestTimeout() else { return }
 
 		if closestTimeout < .now() {
-			self.closeConnection(withError: MQTTError.readTimeout)
+			closeConnection(withError: MQTTError.readTimeout)
 		} else {
-			self.readTimeoutTimer.schedule(wallDeadline: closestTimeout) { [weak self] in
+			readTimeoutTimer.schedule(wallDeadline: closestTimeout) { [weak self] in
 				self?.checkScheduledReads()
 			}
 		}
@@ -311,13 +311,13 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 	private var scheduledWrites = ScheduledWriteController()
 	private lazy var writeTimeoutTimer = ReusableTimer(queue: internalQueue)
 	private func checkScheduledWrites() {
-		self.writeTimeoutTimer.reset()
+		writeTimeoutTimer.reset()
 		guard let closestTimeout = scheduledWrites.closestTimeout() else { return }
 
 		if closestTimeout < .now() {
-			self.closeConnection(withError: MQTTError.writeTimeout)
+			closeConnection(withError: MQTTError.writeTimeout)
 		} else {
-			self.writeTimeoutTimer.schedule(wallDeadline: closestTimeout) { [weak self] in
+			writeTimeoutTimer.schedule(wallDeadline: closestTimeout) { [weak self] in
 				self?.checkScheduledWrites()
 			}
 		}
@@ -326,7 +326,7 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 
 extension MQTTWebSocket: MQTTWebSocketConnectionDelegate {
 	public func connection(_ conn: MQTTWebSocketConnection, didReceive trust: SecTrust, completionHandler: @escaping (Bool) -> Swift.Void) {
-		guard conn.isEqual(self.connection) else { return }
+		guard conn.isEqual(connection) else { return }
 		if let del = delegate {
 			__delegate_queue {
 				del.socket(self, didReceive: trust, completionHandler: completionHandler)
@@ -337,7 +337,7 @@ extension MQTTWebSocket: MQTTWebSocketConnectionDelegate {
 	}
 
 	public func connectionOpened(_ conn: MQTTWebSocketConnection) {
-		guard conn.isEqual(self.connection) else { return }
+		guard conn.isEqual(connection) else { return }
 		guard let delegate else { return }
 		guard let delegateQueue else { return }
 		delegateQueue.async {
@@ -346,19 +346,19 @@ extension MQTTWebSocket: MQTTWebSocketConnectionDelegate {
 	}
 
 	public func connectionClosed(_ conn: MQTTWebSocketConnection, withError error: Error?) {
-		guard conn.isEqual(self.connection) else { return }
-		self.closeConnection(withError: error)
+		guard conn.isEqual(connection) else { return }
+		closeConnection(withError: error)
 	}
 
 	public func connection(_ conn: MQTTWebSocketConnection, receivedString string: String) {
 		guard let data = string.data(using: .utf8) else { return }
-		self.connection(conn, receivedData: data)
+		connection(conn, receivedData: data)
 	}
 
 	public func connection(_ conn: MQTTWebSocketConnection, receivedData data: Data) {
-		guard conn.isEqual(self.connection) else { return }
-		self.scheduledReads.append(data)
-		self.checkScheduledReads()
+		guard conn.isEqual(connection) else { return }
+		scheduledReads.append(data)
+		checkScheduledReads()
 	}
 }
 
@@ -376,30 +376,30 @@ public extension MQTTWebSocket {
 			super.init()
 			x.log(.debug).msg("opening url session for \(url.absoluteString)")
 			let theSession = URLSession(configuration: config, delegate: self, delegateQueue: nil)
-			self.session = theSession
-			self.task = theSession.webSocketTask(with: url, protocols: ["mqtt"])
+			session = theSession
+			task = theSession.webSocketTask(with: url, protocols: ["mqtt"])
 		}
 
 		public func connect() {
-			self.task?.resume()
-			self.scheduleRead()
+			task?.resume()
+			scheduleRead()
 		}
 
 		public func disconnect() {
-			self.task?.cancel()
-			self.session = nil
-			self.task = nil
-			self.delegate = nil
+			task?.cancel()
+			session = nil
+			task = nil
+			delegate = nil
 		}
 
 		public func write(data: Data, handler: @escaping (Error?) -> Void) {
-			self.task?.send(.data(data)) { possibleError in
+			task?.send(.data(data)) { possibleError in
 				handler(possibleError)
 			}
 		}
 
 		func scheduleRead() {
-			self.queue.async {
+			queue.async {
 				guard let task = self.task else { return }
 				task.receive { result in
 //					x.log(.debug).msg("result received from websocket \(result)")
@@ -457,7 +457,7 @@ extension MQTTWebSocket.FoundationConnection: URLSessionWebSocketDelegate {
 
 extension MQTTWebSocket {
 	func __delegate_queue(_ fun: @escaping () -> Void) {
-		self.delegateQueue?.async { [weak self] in
+		delegateQueue?.async { [weak self] in
 			guard let _ = self else { return }
 			fun()
 		}

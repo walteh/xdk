@@ -19,7 +19,7 @@ public extension x {
 
 	static func log(_ level: Logging.Logger.Level = .info, _ logger: Logging.Logger? = nil) -> LogEvent {
 		if logger == nil {
-			return LogEvent(self.defaultLogger, level)
+			return LogEvent(defaultLogger, level)
 		} else {
 			return LogEvent(logger!, level)
 		}
@@ -42,10 +42,10 @@ public class LogEvent {
 
 	public subscript(metadataKey key: String) -> Logging.Logger.Metadata.Value? {
 		get {
-			return self.metadata[key]
+			return metadata[key]
 		}
 		set(newValue) {
-			self.metadata[key] = newValue
+			metadata[key] = newValue
 		}
 	}
 
@@ -67,10 +67,10 @@ public class LogEvent {
 	}
 
 	public func msg(_ str: some CustomDebugStringConvertible, file: String = #fileID, function: String = #function, line: Int = #line) {
-		self.metadata["line"] = .stringConvertible(line)
-		self.metadata["function"] = .string(function)
-		self.metadata["file"] = .string(file)
-		self.logger.log(level: self.level, .init(unicodeScalarLiteral: .init(describing: str)), metadata: self.metadata, source: "\(file.split(separator: "/").last!):\(line)")
+		metadata["line"] = .stringConvertible(line)
+		metadata["function"] = .string(function)
+		metadata["file"] = .string(file)
+		logger.log(level: level, .init(unicodeScalarLiteral: .init(describing: str)), metadata: metadata, source: "\(file.split(separator: "/").last!):\(line)")
 	}
 }
 

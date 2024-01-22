@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  IOTCore.swift
 //
 //
 //  Created by walter on 3/8/23.
@@ -7,8 +7,8 @@
 
 import Foundation
 
-import sdk_session
-import x_swift
+import XDKSession
+import XDKX
 
 public extension mqtt {
 	static func NewIOTCoreClient(host: String, session: some session.API, delegate: some mqtt.Delegate) -> MQTT5IOTCore {
@@ -26,13 +26,13 @@ public class MQTT5IOTCore: MQTT5 {
 
 		super.init(clientID: session.ID().description, host: host, port: 443, socket: sock)
 
-		self.delegateQueue = MQTT5IOTCore.queue
-		self.logLevel = .error
-		self.autoReconnect = false
-		self.username = session.ID().description
+		delegateQueue = MQTT5IOTCore.queue
+		logLevel = .error
+		autoReconnect = false
+		username = session.ID().description
 		self.delegate = delegate
 
-		_ = self.connect()
+		_ = connect()
 	}
 }
 

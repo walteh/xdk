@@ -8,7 +8,7 @@
 
 import Foundation
 
-import ecdsa_c
+import XDKECDSAC
 
 public enum Varient {
 	case ethereum

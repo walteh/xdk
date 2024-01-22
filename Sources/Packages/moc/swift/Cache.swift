@@ -1,5 +1,5 @@
 //
-//  CoreDataIDCacher.swift
+//  Cache.swift
 //  app
 //
 //  Created by walter on 10/23/22.
@@ -8,7 +8,7 @@
 import CoreData
 import Foundation
 
-import x_swift
+import XDKX
 
 extension NSManagedObject {
 	func specialID(_ id: String) -> String {
@@ -34,7 +34,7 @@ public class CoreDataIDCacher {
 	}
 
 	public static func scoopLastCache<T: NSManagedObject>(at: String, context: NSManagedObjectContext) -> T? {
-		let id = self.lastCache[T.entity().specialID(at)]
+		let id = lastCache[T.entity().specialID(at)]
 		if id == nil {
 			return nil
 		}
@@ -42,11 +42,11 @@ public class CoreDataIDCacher {
 	}
 
 	public func scoop<T: NSManagedObject>(at: String) -> T {
-		let id = self.cache[T.entity().specialID(at)]
+		let id = cache[T.entity().specialID(at)]
 		if id == nil {
-			return self.poop(at: at)
+			return poop(at: at)
 		}
-		return self.context.pointee.object(with: id!) as! T? ?? self.poop(at: at)
+		return context.pointee.object(with: id!) as! T? ?? poop(at: at)
 	}
 
 	public func poop<T: NSManagedObject>(at: String) -> T {
@@ -55,11 +55,11 @@ public class CoreDataIDCacher {
 		guard let res = cache[id] else {
 			let r = T(context: context.pointee)
 			r.setValue(at, forKey: "external_id")
-			self.cache[id] = r.objectID
+			cache[id] = r.objectID
 			return r
 		}
 
-		return self.context.pointee.object(with: res) as! T
+		return context.pointee.object(with: res) as! T
 	}
 
 //	func fillCacheJustForBlock() throws {

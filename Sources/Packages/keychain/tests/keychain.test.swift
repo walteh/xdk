@@ -1,12 +1,12 @@
 //
-//  swift_sdkTests.swift
+//  keychain.test.swift
 //  swift-sdkTests
 //
 //  Created by walter on 3/3/23.
 //
 
 import XCTest
-@testable import keychain_swift
+@testable import XDKKeychain
 
 class swift_sdkTests: XCTestCase {
 	override func setUpWithError() throws {
@@ -18,13 +18,13 @@ class swift_sdkTests: XCTestCase {
 	}
 
 	func testExample() throws {
-		let ok = KeychainManager(group: "abc").authenticationAvailable()
+		let ok = keychain.Client(group: "abc").authenticationAvailable()
 		XCTAssertTrue(ok)
 	}
 
 	func testPerformanceExample() throws {
 		// This is an example of a performance test case.
-		self.measure {
+		measure {
 			// Put the code you want to measure the time of here.
 		}
 	}

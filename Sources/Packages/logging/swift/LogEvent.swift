@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  LogEvent.swift
 //
 //
 //  Created by walter on 3/7/23.

@@ -1,5 +1,5 @@
 //
-//  MtxExpApi.swift
+//  Client.swift
 //  nugg.xyz
 //
 //  Created by walter on 12/14/22.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-import x_swift
+import XDKX
 
 public extension mtx {
 	class Client: NSObject {
@@ -22,7 +22,7 @@ public extension mtx {
 
 extension mtx.Client: mtx.API {
 	public func Purchase(transaction id: String) async throws -> Bool {
-		var req: URLRequest = .init(url: self.host.appending(path: "/purchase"))
+		var req: URLRequest = .init(url: host.appending(path: "/purchase"))
 
 		req.setValue(id, forHTTPHeaderField: "X-Nugg-Utf8-Transaction-ID")
 

@@ -1,5 +1,5 @@
 //
-//  Adapter.swift
+//  Async.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/24/22.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-import x_swift
+import XDKX
 
 /// Protocol to be implemented by different websocket providers
 public protocol WSProvider: ObservableObject {
@@ -37,25 +37,25 @@ public class WSAsyncProvider: WSProvider {
 	fileprivate var _socket: WS?
 
 	var socket: WS {
-		if self._socket == nil {
+		if _socket == nil {
 			fatalError("WebSocket not initialized")
 		}
-		return self._socket!
+		return _socket!
 	}
 
 	var _isConnected: Bool
 	public var isConnected: Bool {
-		self.serialq.sync { self._isConnected }
+		serialq.sync { self._isConnected }
 	}
 
 	public init() {
 		let serialq = DispatchQueue(label: "WSAdapter.serialq")
-		self._isConnected = false
+		_isConnected = false
 		self.serialq = serialq
 	}
 
 	public func connect(url: URL, protocols: [String]) {
-		self.serialq.async {
+		serialq.async {
 			x.log(.debug).msg("[ws] connect. Connecting to url")
 
 			self._socket = WS(url: url, protocols: protocols, serialq: self.serialq, delegate: self)
@@ -64,7 +64,7 @@ public class WSAsyncProvider: WSProvider {
 	}
 
 	public func disconnect() {
-		self.serialq.async {
+		serialq.async {
 			x.log(.debug).msg("[ws] socket.disconnect")
 			self._socket?.disconnect()
 			self._socket = nil
@@ -72,7 +72,7 @@ public class WSAsyncProvider: WSProvider {
 	}
 
 	public func write(message: String) {
-		self.serialq.async {
+		serialq.async {
 			x.log(.debug).msg("[ws] socket.write - \(message)")
 			self._socket?.write(string: message)
 		}
@@ -90,22 +90,22 @@ extension WSAsyncProvider: WSDelegate {
 		x.log(.trace).msg("[ws] \(event)")
 		switch event {
 		case .connected:
-			self.websocketDidConnect(socket: client)
+			websocketDidConnect(socket: client)
 		case let .text(string):
-			self.websocketDidReceiveMessage(socket: client, text: string)
+			websocketDidReceiveMessage(socket: client, text: string)
 		case let .binary(data):
-			self.websocketDidReceiveData(socket: client, data: data)
+			websocketDidReceiveData(socket: client, data: data)
 		case let .viabilityChanged(viability):
 			x.log(.debug).msg("[ws] viabilityChanged: \(viability)")
 		case let .reconnectSuggested(suggestion):
 			x.log(.debug).msg("[ws] reconnectSuggested: \(suggestion)")
 		case let .disconnected(reason, code):
-			self.websocketDidDisconnect(socket: client, error: x.error("websocket disconnected").with(key: "reason", reason).with(key: "code", "\(code)"))
+			websocketDidDisconnect(socket: client, error: x.error("websocket disconnected").with(key: "reason", reason).with(key: "code", "\(code)"))
 		case .cancelled:
-			self.websocketDidDisconnect(socket: client, error: x.error("websocket cancelled"))
+			websocketDidDisconnect(socket: client, error: x.error("websocket cancelled"))
 		case let .error(error):
 
-			self.websocketDidDisconnect(socket: client, error: error != nil ? x.error(error!, "websocket error") : x.error("unknown websocket error"))
+			websocketDidDisconnect(socket: client, error: error != nil ? x.error(error!, "websocket error") : x.error("unknown websocket error"))
 
 //			case .ping:
 //			case .pong:
@@ -116,7 +116,7 @@ extension WSAsyncProvider: WSDelegate {
 
 	private func websocketDidConnect(socket _: WSClient) {
 		x.log(.debug).msg("[ws] websocketDidConnect: websocket has been connected.")
-		self.serialq.async {
+		serialq.async {
 			self._isConnected = true
 			self.websocketDidConnectCallback()
 		}
@@ -129,7 +129,7 @@ extension WSAsyncProvider: WSDelegate {
 			x.log(.warning).msg("websocket disconnected without an error")
 		}
 
-		self.serialq.async {
+		serialq.async {
 			self._isConnected = false
 			self.websocketDidDisconnectCallback(error: error)
 		}
@@ -137,10 +137,10 @@ extension WSAsyncProvider: WSDelegate {
 
 	private func websocketDidReceiveMessage(socket _: WSClient, text: String) {
 		let data = text.data(using: .utf8) ?? Data()
-		self.websocketDidReceiveDataCallback(data: data)
+		websocketDidReceiveDataCallback(data: data)
 	}
 
 	private func websocketDidReceiveData(socket _: WSClient, data: Data) {
-		self.websocketDidReceiveDataCallback(data: data)
+		websocketDidReceiveDataCallback(data: data)
 	}
 }

@@ -1,14 +1,14 @@
 //
-//  swift_sdkTests.swift
+//  byte.test.swift
 //  swift-sdkTests
 //
 //  Created by walter on 3/3/23.
 //
 
+@testable import XDKByte
 import XCTest
-@testable import byte_swift
 
-class swift_sdkTests: XCTestCase {
+class byteTests: XCTestCase {
 	override func setUpWithError() throws {
 		// Put setup code here. This method is called before the invocation of each test method in the class.
 	}

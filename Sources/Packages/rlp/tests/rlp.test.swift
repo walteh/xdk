@@ -1,12 +1,12 @@
 //
-//  swift_sdkTests.swift
+//  rlp.test.swift
 //  swift-sdkTests
 //
 //  Created by walter on 3/3/23.
 //
 
 import XCTest
-@testable import hex_swift
+@testable import XDKHex
 
 class swift_sdkTests: XCTestCase {
 	override func setUpWithError() throws {
@@ -27,7 +27,7 @@ class swift_sdkTests: XCTestCase {
 
 	func testPerformanceExample() throws {
 		// This is an example of a performance test case.
-		self.measure {
+		measure {
 			// Put the code you want to measure the time of here.
 		}
 	}

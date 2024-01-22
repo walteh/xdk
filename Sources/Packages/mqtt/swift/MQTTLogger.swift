@@ -9,7 +9,7 @@
 import Foundation
 import os
 
-import x_swift
+import XDKX
 
 // Convenience functions
 func printDebug(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
@@ -43,23 +43,23 @@ open class MQTTLogger: NSObject {
 
 	// logs
 	open func log(level: MQTTLoggerLevel, message: String) {
-		guard level.rawValue >= self.minLevel.rawValue else { return }
+		guard level.rawValue >= minLevel.rawValue else { return }
 		print("MQTT(\(level)): \(message)")
 	}
 
 	func debug(_ message: String) {
-		self.log(level: .debug, message: message)
+		log(level: .debug, message: message)
 	}
 
 	func info(_ message: String) {
-		self.log(level: .info, message: message)
+		log(level: .info, message: message)
 	}
 
 	func warning(_ message: String) {
-		self.log(level: .warning, message: message)
+		log(level: .warning, message: message)
 	}
 
 	func error(_ message: String) {
-		self.log(level: .error, message: message)
+		log(level: .error, message: message)
 	}
 }

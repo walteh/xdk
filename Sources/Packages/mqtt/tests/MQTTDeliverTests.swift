@@ -7,7 +7,7 @@
 //
 
 import XCTest
-@testable import mqtt_swift
+@testable import XDKMQTT
 
 class MQTTDeliverTests: XCTestCase {
 	override func setUp() {
@@ -30,11 +30,11 @@ class MQTTDeliverTests: XCTestCase {
 		for f in frames {
 			_ = deliver.add(f)
 		}
-		self.ms_sleep(100)
+		ms_sleep(100)
 
 		XCTAssertEqual(frames.count, caller.frames.count)
 		for i in 0 ..< frames.count {
-			self.assertEqual(frames[i], caller.frames[i])
+			assertEqual(frames[i], caller.frames[i])
 		}
 	}
 
@@ -51,37 +51,37 @@ class MQTTDeliverTests: XCTestCase {
 			_ = deliver.add(f)
 		}
 
-		self.ms_sleep(100)
+		ms_sleep(100)
 
 		XCTAssertEqual(frames.count, caller.frames.count)
 		for i in 0 ..< frames.count {
-			self.assertEqual(frames[i], caller.frames[i])
+			assertEqual(frames[i], caller.frames[i])
 		}
 
 		var inflights = deliver.t_inflightFrames()
 		XCTAssertEqual(inflights.count, 2)
 		XCTAssertEqual(deliver.t_queuedFrames().count, 0)
 		for i in 0 ..< inflights.count {
-			self.assertEqual(inflights[i], frames[i + 1])
+			assertEqual(inflights[i], frames[i + 1])
 		}
 
 		deliver.ack(by: FramePubAck(msgid: 1))
 		deliver.ack(by: FramePubRec(msgid: 2))
-		self.ms_sleep(100)
+		ms_sleep(100)
 
 		inflights = deliver.t_inflightFrames()
 		XCTAssertEqual(inflights.count, 1)
 		XCTAssertEqual(deliver.t_queuedFrames().count, 0)
-		self.assertEqual(inflights[0], FramePubRel(msgid: 2))
+		assertEqual(inflights[0], FramePubRel(msgid: 2))
 
 		deliver.ack(by: FramePubComp(msgid: 2))
-		self.ms_sleep(100)
+		ms_sleep(100)
 
 		inflights = deliver.t_inflightFrames()
 		XCTAssertEqual(inflights.count, 0)
 
 		// Assert sent
-		self.assertEqual(caller.frames[3], FramePubRel(msgid: 2))
+		assertEqual(caller.frames[3], FramePubRel(msgid: 2))
 	}
 
 	func testQueueAndInflightReDeliver() {
@@ -98,26 +98,26 @@ class MQTTDeliverTests: XCTestCase {
 		deliver.delegate = caller
 
 		XCTAssertEqual(true, deliver.add(frames[1]))
-		self.ms_sleep(100) // Wait the message transfer to inflight-window
+		ms_sleep(100) // Wait the message transfer to inflight-window
 		XCTAssertEqual(true, deliver.add(frames[2]))
 		XCTAssertEqual(false, deliver.add(frames[0]))
 
-		self.ms_sleep(1100) // Wait for re-delivering timeout
+		ms_sleep(1100) // Wait for re-delivering timeout
 		XCTAssertEqual(caller.frames.count, 2)
-		self.assertEqual(caller.frames[0], frames[1])
-		self.assertEqual(caller.frames[1], frames[1])
+		assertEqual(caller.frames[0], frames[1])
+		assertEqual(caller.frames[1], frames[1])
 
 		deliver.ack(by: FramePubAck(msgid: 1))
-		self.ms_sleep(100) // Waiting for the frame in the mqueue transfer to inflight window
+		ms_sleep(100) // Waiting for the frame in the mqueue transfer to inflight window
 
 		var inflights = deliver.t_inflightFrames()
 		XCTAssertEqual(inflights.count, 1)
-		self.assertEqual(inflights[0], frames[2])
+		assertEqual(inflights[0], frames[2])
 
 		deliver.ack(by: FramePubRec(msgid: 2))
-		self.ms_sleep(2000) // Waiting for re-delivering timeout
+		ms_sleep(2000) // Waiting for re-delivering timeout
 		deliver.ack(by: FramePubComp(msgid: 2))
-		self.ms_sleep(100)
+		ms_sleep(100)
 
 		inflights = deliver.t_inflightFrames()
 		XCTAssertEqual(inflights.count, 0)
@@ -125,7 +125,7 @@ class MQTTDeliverTests: XCTestCase {
 		let sents: [Frame] = [frames[1], frames[1], frames[2], FramePubRel(msgid: 2), FramePubRel(msgid: 2)]
 		XCTAssertEqual(caller.frames.count, sents.count)
 		for i in 0 ..< sents.count {
-			self.assertEqual(caller.frames[i], sents[i])
+			assertEqual(caller.frames[i], sents[i])
 		}
 	}
 
@@ -154,30 +154,30 @@ class MQTTDeliverTests: XCTestCase {
 		XCTAssertEqual(saved.count, 2)
 
 		deliver.ack(by: FramePubAck(msgid: 1))
-		self.ms_sleep(100)
+		ms_sleep(100)
 		saved = storage.readAll()
 		XCTAssertEqual(saved.count, 1)
 
 		deliver.ack(by: FramePubRec(msgid: 2))
-		self.ms_sleep(100)
+		ms_sleep(100)
 		saved = storage.readAll()
 		XCTAssertEqual(saved.count, 1)
-		self.assertEqual(saved[0], FramePubRel(msgid: 2))
+		assertEqual(saved[0], FramePubRel(msgid: 2))
 
 		deliver.ack(by: FramePubComp(msgid: 2))
-		self.ms_sleep(100)
+		ms_sleep(100)
 		saved = storage.readAll()
 		XCTAssertEqual(saved.count, 0)
 
 		caller.reset()
 		_ = storage.write(frames[1])
 		deliver.recoverSessionBy(storage)
-		self.ms_sleep(100)
+		ms_sleep(100)
 		XCTAssertEqual(caller.frames.count, 1)
-		self.assertEqual(caller.frames[0], frames[1])
+		assertEqual(caller.frames[0], frames[1])
 
 		deliver.ack(by: FramePubAck(msgid: 1))
-		self.ms_sleep(100)
+		ms_sleep(100)
 		XCTAssertEqual(storage.readAll().count, 0)
 	}
 
@@ -217,21 +217,21 @@ private class Caller: MQTTDeliverProtocol {
 	var frames = [Frame]()
 
 	init() {
-		self.delegateQueue = DispatchQueue(label: "caller.deliver.test")
-		self.delegateQueue.setSpecific(key: self.delegate_queue_key, value: self.delegate_queue_val)
+		delegateQueue = DispatchQueue(label: "caller.deliver.test")
+		delegateQueue.setSpecific(key: delegate_queue_key, value: delegate_queue_val)
 	}
 
 	func reset() {
-		self.frames = []
+		frames = []
 	}
 
 	func deliver(_: MQTTDeliver, wantToSend frame: Frame) {
-		self.assert_in_del_queue()
+		assert_in_del_queue()
 
-		self.frames.append(frame)
+		frames.append(frame)
 	}
 
 	private func assert_in_del_queue() {
-		XCTAssertEqual(self.delegate_queue_val, DispatchQueue.getSpecific(key: self.delegate_queue_key))
+		XCTAssertEqual(delegate_queue_val, DispatchQueue.getSpecific(key: delegate_queue_key))
 	}
 }

@@ -1,12 +1,12 @@
 //
-//  swift_sdkTests.swift
+//  big.test.swift
 //  swift-sdkTests
 //
 //  Created by walter on 3/3/23.
 //
 
+@testable import XDKBig
 import XCTest
-@testable import big_swift
 
 class big_tests: XCTestCase {
 	override func setUpWithError() throws {
@@ -27,7 +27,7 @@ class big_tests: XCTestCase {
 
 	func testPerformanceExample() throws {
 		// This is an example of a performance test case.
-		self.measure {
+		measure {
 			// Put the code you want to measure the time of here.
 		}
 	}

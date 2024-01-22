@@ -7,7 +7,7 @@
 //
 
 import XCTest
-@testable import mqtt_swift
+@testable import XDKMQTT
 
 class MQTTStorageTests: XCTestCase {
 	var clientID = "c1"
@@ -34,18 +34,18 @@ class MQTTStorageTests: XCTestCase {
 		storage?.remove(frames[1])
 		storage = nil
 
-		storage = MQTTStorage(by: self.clientID)
+		storage = MQTTStorage(by: clientID)
 		let should = [frames[0], frames[2]]
 		let saved = storage?.readAll()
 		XCTAssertEqual(should.count, saved?.count)
 		for i in 0 ..< should.count {
-			self.assertEqual(should[i], saved?[i])
+			assertEqual(should[i], saved?[i])
 		}
 
 		let taken = storage?.takeAll()
 		XCTAssertEqual(should.count, taken?.count)
 		for i in 0 ..< should.count {
-			self.assertEqual(should[i], taken?[i])
+			assertEqual(should[i], taken?[i])
 		}
 
 		XCTAssertEqual(storage?.readAll().count, 0)

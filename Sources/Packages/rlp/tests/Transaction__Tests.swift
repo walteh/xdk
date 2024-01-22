@@ -6,9 +6,9 @@
 //  Copyright © 2022 nugg.xyz LLC. All rights reserved.
 //
 
-import big_swift
+import XDKBig
 import XCTest
-@testable import rlp_swift
+@testable import XDKRLP
 
 private struct TestCase {
 	let transaction: EthereumTransaction
@@ -37,27 +37,21 @@ extension Transaction__Tests {
 	}
 
 	func testA() throws {
+		let tx = EthereumTransaction(
+			to: .init(hex: "aaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbb")!,
+			nonce: .init(88),
+			gasLimit: .init(77),
+			gasPrice: nil,
+			maxFeePerGas: .init(66),
+			maxPriorityFeePerGas: .init(33),
+			data: "abcd".data,
+			chainID: .goerli,
+			value: .init(stringLiteral: "100000000000000001")
+		)
 
-let tx = EthereumTransaction(
-				to: .init(hex: "aaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbb")!,
-				nonce: .init(88),
-				gasLimit: .init(77),
-				gasPrice: nil,
-				maxFeePerGas: .init(66),
-				maxPriorityFeePerGas: .init(33),
-				data: "abcd".data,
-				chainID: .goerli,
-				value: .init(stringLiteral: "100000000000000001")
-			);
+		print(try! tx.rlp().hexEncodedString())
 
-			print(try! tx.rlp().hexEncodedString())
-
-
-
-
-
-
-		try self._test(args: .init(
+		try _test(args: .init(
 			transaction: EthereumTransaction(
 				to: .init(hex: "aaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbb")!,
 				nonce: .init(88),

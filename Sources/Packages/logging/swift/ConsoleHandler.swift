@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  ConsoleHandler.swift
 //
 //
 //  Created by walter on 3/7/23.
@@ -9,7 +9,7 @@ import Foundation
 
 import Logging
 
-import x
+import XDKX
 
 /// Outputs logs to a `Console`.
 public struct ConsoleLogger: LogHandler {
@@ -40,11 +40,11 @@ public struct ConsoleLogger: LogHandler {
 	public init(label: String, level: Logger.Level = .debug, metadata: Logger.Metadata = [:], metadataProvider: Logger.MetadataProvider? = nil) {
 		self.label = label
 		self.metadata = metadata
-		self.logLevel = level
+		logLevel = level
 		self.metadataProvider = metadataProvider
 		let url: URL = .cachesDirectory.appending(component: "\(Bundle.main.bundleIdentifier ?? "unknown").logs.log")
 		self.url = url
-		self.fileLogger = .init(logFileURL: url)
+		fileLogger = .init(logFileURL: url)
 
 		print("")
 		print("=====================================")
@@ -58,8 +58,8 @@ public struct ConsoleLogger: LogHandler {
 	///
 	/// This just acts as a getter/setter for the `.metadata` property.
 	public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
-		get { return self.metadata[key] }
-		set { self.metadata[key] = newValue }
+		get { return metadata[key] }
+		set { metadata[key] = newValue }
 	}
 
 	/// See `LogHandler.log(level:message:metadata:file:function:line:)`.
@@ -110,14 +110,14 @@ public struct ConsoleLogger: LogHandler {
 
 		let allMetadata = (metadata ?? [:])
 			.merging(self.metadata, uniquingKeysWith: { a, _ in a })
-			.merging(self.metadataProvider?.get() ?? [:], uniquingKeysWith: { a, _ in a })
+			.merging(metadataProvider?.get() ?? [:], uniquingKeysWith: { a, _ in a })
 
 		if !allMetadata.isEmpty {
 			// only log metadata if not empty
 			text += " " + allMetadata.sortedDescriptionWithoutQuotes.consoleText()
 		}
 
-		_ = self.fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
+		_ = fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
 	}
 }
 
@@ -172,7 +172,7 @@ func fileNameOfFile(_ file: String) -> String {
 func targetOfFile(_ file: String) -> String {
 	let fileParts = file.components(separatedBy: "/")
 	if var firstPart = fileParts.first {
-		firstPart = firstPart.replacingOccurrences(of: "_swift", with: "").replacingOccurrences(of: "_", with: "/")
+		firstPart = firstPart.replacingOccurrences(of: "", with: "").replacingOccurrences(of: "_", with: "/")
 		return firstPart
 	}
 	return ""

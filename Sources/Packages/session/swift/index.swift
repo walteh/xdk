@@ -1,9 +1,9 @@
 
 import Foundation
 
-import keychain_swift
-import x_swift
-import xid_swift
+import XDKKeychain
+import XDKX
+import XDKXID
 
 public enum session {
 	public typealias API = SessionAPI
@@ -56,7 +56,7 @@ class KeychainSession: NSObject {
 
 		x.log(.info).add("sessionID", id).msg("idk")
 
-		self.sessionID = id!
+		sessionID = id!
 
 		super.init()
 	}
@@ -64,6 +64,6 @@ class KeychainSession: NSObject {
 
 extension KeychainSession: SessionAPI {
 	func ID() -> xid.ID {
-		return self.sessionID
+		return sessionID
 	}
 }

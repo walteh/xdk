@@ -1,5 +1,5 @@
 //
-//  RlpTest.swift
+//  RLPTests.swift
 //  Tests
 //
 //  Created by walter on 12/6/22.
@@ -9,7 +9,7 @@
 import Foundation
 
 import XCTest
-@testable import rlp_swift
+@testable import XDKRLP
 
 class RLPTests: XCTestCase {}
 
