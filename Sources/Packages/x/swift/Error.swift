@@ -16,6 +16,12 @@ public extension x {
 	static func error(_ str: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
 		return x.Error(nil, message: str, __file: __file, __line: __line, __function: __function)
 	}
+	
+	@discardableResult
+	static func error(_ stat: OSStatus, __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
+		return x.Error(nil, message: "OSStatus[\(stat)]", __file: __file, __line: __line, __function: __function)
+	}
+
 
 	@discardableResult
 	static func error<A: Swift.Error>(custom _: A? = nil, _ err: A, _ message: String = "wrapped", __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
@@ -25,6 +31,8 @@ public extension x {
 		}
 		return x.Error(err, message: message, __file: __file, __line: __line, __function: __function)
 	}
+
+	
 
 	class Error {
 		public var rawValue: String
@@ -50,6 +58,7 @@ public extension x {
 			let me = x.Error.wrap(error, message: message)
 			print(me.localizedDescription)
 		}
+		
 
 		public static func Wrap(_ error: Swift.Error, _ message: String? = nil) -> Swift.Error {
 			return x.Error.wrap(error, message: message == nil ? "wrapped" : message!)
@@ -82,11 +91,11 @@ public extension x {
 //			self.stack = Thread.callStackSymbols.prefix(upTo: .init(11)).dropLast()
 			self.stack = []
 			self.withCaller(__file: __file, __line: __line, __function: __function)
-
-//			x.log(.error, self,__file: __file, __line: __line, __function: __function)
 		}
 	}
 }
+
+
 
 extension x.Error: Error, Encodable, RawRepresentable {
 	public typealias RawValue = String
@@ -129,38 +138,36 @@ extension x.Error: Error, Encodable, RawRepresentable {
 	@discardableResult
 	public func log() -> x.Error {
 		if !dumped {
-			print("‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️ ERROR ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️")
-//			print("caller: \(error.caller)")
-			print()
-			dump(self)
-			print()
-			// print(String(format: "%@ | %@ | %@", "ERR", Thread.current.queueName, self.code))
-			// print(Data().sha3(.ethereum).x.hexEncodedString())
-			// print()
-			print("‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️")
+			var stream = LogStream()
+
+			// Start with the initial log message
+			stream.write("‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️ ERROR ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n\n")
+
+			// Dump 'self' to the stream
+			dump(self, to: &stream)
+
+			// Append any additional custom logs
+			// For example:
+			// stream.write("\nExtra Info: \(additionalInfo)\n")
+			
+			// Finish with the closing log message
+			stream.write("\n‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n")
+
+			// Print the entire accumulated log
+			print(stream.log)
+
 			dumped = true
 		}
 		return self
 	}
 
-//	func getRoots() -> [x.Error] {
-//		let ok = true
-//		var s: [x.Error] = []
-//		var wrk = self
-//		while ok {
-//			s.append(wrk)
-//			if let r = wrk.root {
-//				if let z = r as? x.Error {
-//					wrk = z
-//				} else {
-//					wrk = x.Error(r, message: "wrapped")
-//				}
-//				continue
-//			} else {
-//				break
-//			}
-//		}
-//
-//		return s.reversed()
-//	}
 }
+
+struct LogStream: TextOutputStream {
+	var log: String = ""
+
+	mutating func write(_ string: String) {
+		log += string
+	}
+}
+

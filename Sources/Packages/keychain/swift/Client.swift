@@ -1,5 +1,5 @@
 //
-//  hex.swift
+//  Client.swift
 //  nugg.xyz
 //
 //  Created by walter on 02/28/2023.
@@ -23,7 +23,7 @@ public extension LAContext {
 
 public extension keychain {
 	class Client: NSObject, ObservableObject {
-		internal var authenticationContext = LAContext()
+		var authenticationContext = LAContext()
 
 		let group: String
 
@@ -33,22 +33,58 @@ public extension keychain {
 	}
 }
 
+func convertFromBytes<T>(bytes: [UInt8], type _: T.Type) -> T {
+	let pointer = UnsafeMutablePointer<T>.allocate(capacity: 1)
+	_ = pointer.withMemoryRebound(to: UInt8.self, capacity: bytes.count) {
+		ptr in memcpy(ptr, bytes, bytes.count)
+	}
+	let structValue = pointer.pointee
+	pointer.deallocate()
+	return structValue
+}
+
+func convertToBytes<T>(struct: T) -> [UInt8] {
+	var myStruct = `struct`
+	return withUnsafeBytes(of: &myStruct) { Array($0) }
+}
+
 extension keychain.Client: keychain.API {
 	/// Keychain errors we might encounter.
 	public func authenticationAvailable() -> Bool {
-		return self.authenticationContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: nil)
+		return authenticationContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: nil)
 	}
 
-	public func withAuthentication() async throws -> Bool {
-		guard self.authenticationAvailable() else {
-			throw keychain.Error.auth_failed
+	public func withAuthentication() async -> Result<Bool, Error> {
+		guard authenticationAvailable() else {
+			return .failure(x.error(keychain.Error.auth_failed))
 		}
 
-		return try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: "Wanna Touch my ID?")
+		return await Result.X { try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: "Wanna Touch my ID?") }
+	}
+
+	public func write<T: NSSecureCoding & NSObject>(object: T, overwriting: Bool, id: String) -> Error? {
+		let _data = Result.X { try NSKeyedArchiver.archivedData(withRootObject: object, requiringSecureCoding: true) }
+		guard let data = _data.value else { return _data.error! }
+
+		return write(insecurly: String(describing: T.self) + "_" + id, overwriting: overwriting, as: Data(data))
+	}
+
+	public func read<T: NSSecureCoding & NSObject>(objectType _: T.Type, id: String) -> Result<T?, Error> {
+		let _data = read(insecurly: String(describing: T.self) + "_" + id)
+		guard let data = _data.value else { return .failure(_data.error!) }
+
+		if data == nil {
+			return .success(nil)
+		}
+
+		let _from = Result.X { try NSKeyedUnarchiver.unarchivedObject(ofClass: T.self, from: data!) }
+		guard let from = _from.value else { return .failure(_from.error!) }
+
+		return .success(from)
 	}
 
 	/// Stores credentials for the given server.
-	public func write(insecurly key: keychain.Key, overwriting: Bool = false, as value: Data) throws {
+	public func write(insecurly key: String, overwriting: Bool = false, as value: Data) -> Error? {
 		var query: [String: Any] = [:]
 		query[kSecClass as String] = kSecClassGenericPassword
 		query[kSecAttrSynchronizable as String] = true
@@ -56,9 +92,9 @@ extension keychain.Client: keychain.API {
 		query[kSecAttrAccessGroup as String] = group
 		query[kSecValueData as String] = NSData(data: value)
 		query[kSecUseDataProtectionKeychain as String] = true
-		query[kSecAttrAccount as String] = key.rawValue
+		query[kSecAttrAccount as String] = key
 		query[kSecAttrIsInvisible as String] = true
-		query[kSecUseAuthenticationContext as String] = self.authenticationContext
+		query[kSecUseAuthenticationContext as String] = authenticationContext
 
 		print(query.debugDescription)
 
@@ -70,41 +106,43 @@ extension keychain.Client: keychain.API {
 				SecItemDelete(query as CFDictionary)
 				status = SecItemAdd(query as CFDictionary, nil)
 				if status == errSecSuccess {
-					return
+					return nil
 				}
 			}
 
 			if status == errSecParam {
-				throw keychain.Error.errSecParam
+				return x.error(keychain.Error.errSecParam)
 			}
 
-			throw keychain.Error.unhandled(status: status)
+			return x.error(status)
 		}
+
+		return nil
 	}
 
 	/// Reads the stored credentials for the given server.
-	public func read(insecurly key: keychain.Key) -> Data? {
+	public func read(insecurly key: String) -> Result<Data?, Error> {
 		var query: [String: Any] = [:]
 		query[kSecClass as String] = kSecClassGenericPassword
 		query[kSecAttrSynchronizable as String] = true
 		query[kSecAttrAccessGroup as String] = group
 		query[kSecMatchLimit as String] = kSecMatchLimitOne
 		query[kSecReturnData as String] = true
-		query[kSecUseAuthenticationContext as String] = self.authenticationContext
-		query[kSecAttrAccount as String] = key.rawValue
+		query[kSecUseAuthenticationContext as String] = authenticationContext
+		query[kSecAttrAccount as String] = key
 
 		var item: CFTypeRef?
 		let status = SecItemCopyMatching(query as CFDictionary, &item)
 
-		guard status == errSecSuccess
-		else {
-			return nil
+		switch status {
+		case errSecSuccess:
+			guard let passwordData = item as? Data else { return .success(nil) }
+			if passwordData.isEmpty { return .success(nil) }
+			return .success(passwordData)
+		case errSecItemNotFound:
+			return .success(nil)
+		default:
+			return .failure(x.error(status))
 		}
-
-		guard let passwordData = item as? Data else { return nil }
-
-		if passwordData.isEmpty { return nil }
-
-		return passwordData
 	}
 }

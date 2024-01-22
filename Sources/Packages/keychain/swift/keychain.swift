@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  keychain.swift
 //
 //
 //  Created by walter on 3/2/23.
@@ -7,10 +7,12 @@
 
 import Foundation
 
-public protocol KeychainAPIProtocol: NSObject, ObservableObject {
-	func read(insecurly key: keychain.Key) -> Data?
-	func write(insecurly key: keychain.Key, overwriting: Bool, as value: Data) throws
-	func withAuthentication() async throws -> Bool
+public protocol KeychainAPIProtocol {
+	func read(insecurly key: String) -> Result<Data?, Error>
+	func write(insecurly key: String, overwriting: Bool, as value: Data) -> Error?
+	func read<T: NSSecureCoding & NSObject>(objectType: T.Type, id: String) -> Result<T?, Error>
+	func write<T: NSSecureCoding & NSObject>(object: T, overwriting: Bool, id: String) -> Error?
+	func withAuthentication() async -> Result<Bool, Error>
 	func authenticationAvailable() -> Bool
 }
 
@@ -22,11 +24,6 @@ public enum keychain {
 		public init(rawValue: String) {
 			self.rawValue = rawValue
 		}
-
-		static let PasskeySessionID = keychain.Key(rawValue: "PasskeySessionID")
-		static let AppAttestKey = keychain.Key(rawValue: "AppAttestKey")
-		static let PasskeyCredentialID = keychain.Key(rawValue: "PasskeyCredentialID")
-		static let WebauthnSessionID = keychain.Key(rawValue: "WebauthnSessionID")
 	}
 
 	public enum Error: Swift.Error {

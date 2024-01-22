@@ -9,17 +9,12 @@ import Foundation
 import Logging
 
 public extension x {
-//	typealias Logger = XLogger
-
-//	static func log<A: Any>(_ level: LogLevel = .info, _ obj: A, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
-//		XLogger.log(level, obj, __file: __file, __line: __line, __function: __function)
-//	}
 
 	private static let defaultLogger = Logging.Logger(label: "default")
 
 	static func log(_ level: Logging.Logger.Level = .info, _ logger: Logging.Logger? = nil) -> LogEvent {
 		if logger == nil {
-			return LogEvent(defaultLogger, level)
+			return LogEvent(self.defaultLogger, level)
 		} else {
 			return LogEvent(logger!, level)
 		}
@@ -42,10 +37,10 @@ public class LogEvent {
 
 	public subscript(metadataKey key: String) -> Logging.Logger.Metadata.Value? {
 		get {
-			return metadata[key]
+			return self.metadata[key]
 		}
 		set(newValue) {
-			metadata[key] = newValue
+			self.metadata[key] = newValue
 		}
 	}
 
@@ -67,10 +62,10 @@ public class LogEvent {
 	}
 
 	public func msg(_ str: some CustomDebugStringConvertible, file: String = #fileID, function: String = #function, line: Int = #line) {
-		metadata["line"] = .stringConvertible(line)
-		metadata["function"] = .string(function)
-		metadata["file"] = .string(file)
-		logger.log(level: level, .init(unicodeScalarLiteral: .init(describing: str)), metadata: metadata, source: "\(file.split(separator: "/").last!):\(line)")
+		self.metadata["line"] = .stringConvertible(line)
+		self.metadata["function"] = .string(function)
+		self.metadata["file"] = .string(file)
+		self.logger.log(level: self.level, .init(unicodeScalarLiteral: .init(describing: str)), metadata: self.metadata, source: "\(file.split(separator: "/").last!):\(line)")
 	}
 }
 
@@ -79,6 +74,8 @@ public extension Logging.Logger.Metadata {
 		return (self["function"]?.description ?? "", self["file"]?.description ?? "", (try? Int(self["line"]?.description ?? "", format: .number)) ?? 0)
 	}
 }
+
+
 
 // class ConsoleHandler: Logging.LogHandler {
 //	public subscript(metadataKey key: String) -> Logging.Logger.Metadata.Value? {
