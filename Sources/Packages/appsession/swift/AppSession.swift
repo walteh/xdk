@@ -15,11 +15,11 @@ public protocol AppSessionAPI {
 
 public class NoopAppSession: AppSessionAPI {
 	let base = XID.build()
-	
+
 	public func ID() -> XDKXID.XID {
-		return base
+		return self.base
 	}
-	
+
 	public init() {}
 }
 
@@ -47,4 +47,3 @@ public class AppSessionID: NSObject, NSSecureCoding {
 		self.id = try! XID.rebuild(string: dat)
 	}
 }
-

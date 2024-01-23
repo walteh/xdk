@@ -92,7 +92,7 @@ public struct ConsoleLogger: LogHandler {
 			}
 		}
 
-		var text: ConsoleText = ""
+		var text: ConsoleText = "[\(label)] "
 
 		text += "\(level.name)".consoleText(level.style) + " "
 
