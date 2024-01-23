@@ -18,6 +18,9 @@ class swift_sdkTests: XCTestCase {
 	}
 
 	func testExample() throws {
+		
+		let err = x.error("hello")
+		x.log(.error).err(err).send("test")
 		// This is an example of a functional test case.
 		// Use XCTAssert and related functions to verify your tests produce the correct results.
 		// Any test you write for XCTest can be annotated as throws and async.

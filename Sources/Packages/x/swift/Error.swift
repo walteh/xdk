@@ -28,7 +28,6 @@ public extension x {
 		private var dumped = false
 
 		var message: String = ""
-		let stack: [String]
 		var root: (any Swift.Error)?
 
 		public required convenience init(rawValue: String) {
@@ -45,7 +44,7 @@ public extension x {
 
 			self.message = message
 //			self.stack = Thread.callStackSymbols.prefix(upTo: .init(11)).dropLast()
-			self.stack = []
+//			self.stack = []
 			self._event = LogEvent(.error, __file: __file, __function: __function, __line: __line)
 		}
 	}
@@ -59,12 +58,14 @@ extension x.Error: Error, Encodable, RawRepresentable {
 	public typealias RawValue = String
 
 	private enum CodingKeys: String, CodingKey {
-		case message, caller, root
+		case message, root
 	}
+	
 
 	private func rootList() -> [Swift.Error] {
 		// loop through the roots, and append each to a string backwards
 		var strs = [Swift.Error]()
+		strs += [self]
 		var root = self.root
 		while root != nil {
 			strs += [root!]
@@ -79,7 +80,14 @@ extension x.Error: Error, Encodable, RawRepresentable {
 	}
 
 	var localizedDescription: String {
-		let strs = self.rootList().map(\.localizedDescription)
+		let strs = self.rootList().map {
+			if let errd = $0 as? Self {
+				return errd.message
+			} else {
+				return $0.localizedDescription
+			}
+		}
+		Swift.print("HI1", strs)
 		var result = ""
 		for i in 0 ..< strs.count {
 			if i == strs.count - 1 {
@@ -100,31 +108,33 @@ extension x.Error: Error, Encodable, RawRepresentable {
 		let list = self.rootList()
 
 		// Start with the initial log message
-		stream += "‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️ ERROR ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n\n"
+		stream += "\n\n‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️ ERROR ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n\n"
 
 		for i in 0 ..< list.count {
-			stream += "⬇️ "
 
 			if i == list.count - 1 {
 				stream += "❌ "
+			} else {
+				stream += "⬇️ "
 			}
 
 			if let r = list[i] as? x.Error {
-				stream += "(\(r._event.caller)) "
+				stream += "ERROR[ \(r._event.caller) - \(r.localizedDescription) ]"
+			} else {
+				stream += list[i].localizedDescription
 			}
 
-			stream += list[i].localizedDescription
 			stream += "\n"
 			if let r = list[i] as? x.Error {
 				for i in r._event.metadata {
 					stream += "\t\t\(i.key) = \(i.value)\n"
 				}
 			}
-			if i == list.count - 1 {
-				// Dump 'self' to the stream
-				Swift.dump(list[i], to: &stream)
-				stream += "\n"
-			}
+//			if i == list.count - 1 {
+//				// Dump 'self' to the stream
+//				Swift.dump(list[i], to: &stream)
+//				stream += "\n"
+//			}
 		}
 
 //
