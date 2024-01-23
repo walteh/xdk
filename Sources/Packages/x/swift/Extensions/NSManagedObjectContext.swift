@@ -9,13 +9,8 @@ import CoreData
 import Foundation
 
 extension NSManagedObjectContext {
-	func saveRecordingError() throws {
-		do {
-			print("Need to update \(self.updatedObjects.count) Objects in CoreData")
-			try self.save()
-		} catch let error as NSError {
-			x.error(error)
-			throw error
-		}
+	func saveRecordingError() -> Result<Void, Error> {
+		x.log(.info).send("Need to update \(self.updatedObjects.count) Objects in CoreData")
+		return Result.X { try self.save() }
 	}
 }

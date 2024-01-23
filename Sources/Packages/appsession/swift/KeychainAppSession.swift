@@ -27,7 +27,7 @@ class KeychainAppSession: NSObject {
 			id = tmpid
 		}
 
-		x.log(.info).add("sessionID", id!.description).msg("idk")
+		x.log(.info).add("sessionID", id!.description).send("idk")
 
 		self.appSessionID = id!
 

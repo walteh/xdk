@@ -13,19 +13,19 @@ import XDKX
 
 // Convenience functions
 func printDebug(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
-	x.log(.debug).msg(message, file: __file, function: __function, line: __line)
+	x.log(.debug, __file: __file, __function: __function, __line: __line).send(message)
 }
 
 func printInfo(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
-	x.log(.info).msg(message, file: __file, function: __function, line: __line)
+	x.log(.info, __file: __file, __function: __function, __line: __line).send(message)
 }
 
 func printWarning(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
-	x.log(.warning).msg(message, file: __file, function: __function, line: __line)
+	x.log(.warning, __file: __file, __function: __function, __line: __line).send(message)
 }
 
 func printError(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
-	x.log(.error).msg(message, file: __file, function: __function, line: __line)
+	x.log(.error, __file: __file, __function: __function, __line: __line).send(message)
 }
 
 // Enum log levels

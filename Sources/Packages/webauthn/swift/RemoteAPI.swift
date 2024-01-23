@@ -51,8 +51,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		req.httpMethod = "POST"
 
 		guard let attester = attest.rawAttestationObject else {
-			throw x.error("unexpected nil")
-				.with(key: "variable", "attest.rawAttestationObject")
+			throw x.error("unexpected nil").event { $0.add("variable", "attest.rawAttestationObject") }
 		}
 
 		req.setValue(xhex.ToHexString(attest.credentialID), forHTTPHeaderField: "X-Nugg-Hex-Credential-Id")
@@ -121,23 +120,24 @@ func checkFor(header: String = "", in response: URLResponse, with _: Int) throws
 	let httpResponse = try format(ashttp: response)
 
 	if httpResponse.statusCode != 204 {
-		throw x.error("status code not 204")
-			.with(key: "statusCode", "\(httpResponse.statusCode)")
-			.with(key: "lookingForHeader", header)
-			.with(key: "response:debugDescription", response.debugDescription)
+		throw x.error("status code not 204").event {
+			$0.add("statusCode", "\(httpResponse.statusCode)")
+				.add("lookingForHeader", header)
+				.add("response:debugDescription", response.debugDescription)
+		}
 	}
 
 	if header == "" { return "" }
 
 	guard let xNuggChallenge = httpResponse.allHeaderFields[header.lowercased()] as? String else {
-		throw x.error("invalid http response")
-			.with(key: "header_name", header.lowercased())
-			.with(key: "headers", httpResponse.allHeaderFields.debugDescription)
+		throw x.error("invalid http response").event {
+			$0.add("header_name", header.lowercased())
+				.add("headers", httpResponse.allHeaderFields.debugDescription)
+		}
 	}
 
 	if xNuggChallenge == "" {
-		throw x.error("invalid http response")
-			.with(message: "value of \(header.lowercased()) header is empty string")
+		throw x.error("invalid http response: value of \(header.lowercased()) header is empty string")
 	}
 
 	return xNuggChallenge

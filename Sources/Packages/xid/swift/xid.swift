@@ -36,7 +36,7 @@ public extension XID {
 public extension XID {
 	private init(raw: Data) throws {
 		if raw.count != 12 {
-			throw x.error(XIDError.InvalidRawDataLength(have: raw.count, want: 12))
+			throw x.error("invalid length", root: XIDError.InvalidRawDataLength(have: raw.count, want: 12))
 		}
 
 		self._bytes = (
@@ -47,11 +47,11 @@ public extension XID {
 
 	private init(string: String) throws {
 		if string.count != 20 {
-			throw x.error(XIDError.InvalidStringLength(have: string.count, want: 20))
+			throw x.error("invalid length", root: XIDError.InvalidStringLength(have: string.count, want: 20))
 		}
 
 		guard let data = string.data(using: .utf8) else {
-			throw x.error(XIDError.invalidID)
+			throw x.error("invalid length", root: XIDError.invalidID)
 		}
 
 		try self.init(utf8: data)
@@ -86,7 +86,9 @@ public extension XID {
 		check[0] = base32Alphabet[Data.Index(self._bytes.10 >> 3)]
 
 		if check != from[16 ... 19] {
-			throw x.error(XIDError.decodeValidationFailure)
+			throw x.error("check failed...", root: XIDError.decodeValidationFailure).event {
+				$0.add("expected", from[16 ... 19]).add("found", check)
+			}
 		}
 	}
 }

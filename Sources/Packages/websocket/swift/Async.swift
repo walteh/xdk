@@ -56,7 +56,7 @@ public class WSAsyncProvider: WSProvider {
 
 	public func connect(url: URL, protocols: [String]) {
 		self.serialq.async {
-			x.log(.debug).msg("[ws] connect. Connecting to url")
+			x.log(.debug).send("[ws] connect. Connecting to url")
 
 			self._socket = WS(url: url, protocols: protocols, serialq: self.serialq, delegate: self)
 			self._socket?.connect()
@@ -65,7 +65,7 @@ public class WSAsyncProvider: WSProvider {
 
 	public func disconnect() {
 		self.serialq.async {
-			x.log(.debug).msg("[ws] socket.disconnect")
+			x.log(.debug).send("[ws] socket.disconnect")
 			self._socket?.disconnect()
 			self._socket = nil
 		}
@@ -73,7 +73,7 @@ public class WSAsyncProvider: WSProvider {
 
 	public func write(message: String) {
 		self.serialq.async {
-			x.log(.debug).msg("[ws] socket.write - \(message)")
+			x.log(.debug).send("[ws] socket.write - \(message)")
 			self._socket?.write(string: message)
 		}
 	}
@@ -87,7 +87,7 @@ public class WSAsyncProvider: WSProvider {
 
 extension WSAsyncProvider: WSDelegate {
 	public func didReceive(event: WSEvent, client: WSClient) {
-		x.log(.trace).msg("[ws] \(event)")
+		x.log(.trace).send("[ws] \(event)")
 		switch event {
 		case .connected:
 			self.websocketDidConnect(socket: client)
@@ -96,16 +96,16 @@ extension WSAsyncProvider: WSDelegate {
 		case let .binary(data):
 			self.websocketDidReceiveData(socket: client, data: data)
 		case let .viabilityChanged(viability):
-			x.log(.debug).msg("[ws] viabilityChanged: \(viability)")
+			x.log(.debug).send("[ws] viabilityChanged: \(viability)")
 		case let .reconnectSuggested(suggestion):
-			x.log(.debug).msg("[ws] reconnectSuggested: \(suggestion)")
+			x.log(.debug).send("[ws] reconnectSuggested: \(suggestion)")
 		case let .disconnected(reason, code):
-			self.websocketDidDisconnect(socket: client, error: x.error("websocket disconnected").with(key: "reason", reason).with(key: "code", "\(code)"))
+			self.websocketDidDisconnect(socket: client, error: x.error("websocket disconnected").event { $0.add("reason", reason).add("code", "\(code)") })
 		case .cancelled:
 			self.websocketDidDisconnect(socket: client, error: x.error("websocket cancelled"))
 		case let .error(error):
 
-			self.websocketDidDisconnect(socket: client, error: error != nil ? x.error(error!, "websocket error") : x.error("unknown websocket error"))
+			self.websocketDidDisconnect(socket: client, error: error != nil ? x.error("websocket error", root: error!) : x.error("unknown websocket error"))
 
 //			case .ping:
 //			case .pong:
@@ -115,7 +115,7 @@ extension WSAsyncProvider: WSDelegate {
 	}
 
 	private func websocketDidConnect(socket _: WSClient) {
-		x.log(.debug).msg("[ws] websocketDidConnect: websocket has been connected.")
+		x.log(.debug).send("[ws] websocketDidConnect: websocket has been connected.")
 		self.serialq.async {
 			self._isConnected = true
 			self.websocketDidConnectCallback()
@@ -124,9 +124,9 @@ extension WSAsyncProvider: WSDelegate {
 
 	private func websocketDidDisconnect(socket _: WSClient, error: Error?) {
 		if error != nil {
-			x.Error(error, message: "websocket error").log()
+			x.log(.error).err(error).send("websocket error")
 		} else {
-			x.log(.warning).msg("websocket disconnected without an error")
+			x.log(.warning).send("websocket disconnected without an error")
 		}
 
 		self.serialq.async {

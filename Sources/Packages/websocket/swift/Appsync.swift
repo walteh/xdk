@@ -99,12 +99,12 @@ public class WSAppsyncProvider: WSAsyncProvider {
 				self.appsyncDelegate.onIncoming(payload: data)
 			}
 		} catch let error as NSError {
-			x.error(error)
+			x.error("problem receiving data", root: error)
 		}
 	}
 
 	override public func websocketDidDisconnectCallback(error _: Error?) {
-		x.log(.warning).msg("[ WebSocketDelegate : websocketDidDisconnect ]")
+		x.log(.warning).send("[ WebSocketDelegate : websocketDidDisconnect ]")
 		self.connectToAppsync(delegate: self.appsyncDelegate)
 	}
 }

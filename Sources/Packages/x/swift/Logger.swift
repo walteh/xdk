@@ -8,30 +8,23 @@
 import Foundation
 import Logging
 
+let xlogger = Logging.Logger(label: "XDK")
+
 public extension x {
-	private static let defaultLogger = Logging.Logger(label: "default")
-
-	static func log(_ level: Logging.Logger.Level = .info, _ logger: Logging.Logger? = nil) -> LogEvent {
-		if logger == nil {
-			return LogEvent(self.defaultLogger, level)
-		} else {
-			return LogEvent(logger!, level)
-		}
-	}
-
-//
-	static func buildLogger(_ label: String) -> Logging.Logger {
-		return Logging.Logger(label: label)
+	static func log(_ level: Logging.Logger.Level = .info, __file: String = #fileID, __function: String = #function, __line: Int = #line) -> LogEvent {
+		return LogEvent(level, __file: __file, __function: __function, __line: __line)
 	}
 }
 
 public class LogEvent {
-	public let logger: Logging.Logger
 	public let level: Logging.Logger.Level
+	public let caller: String
+	public var error: Swift.Error?
 
-	public init(_ logger: Logging.Logger, _ level: Logging.Logger.Level) {
-		self.logger = logger
+	public init(_ level: Logging.Logger.Level, __file: String = #fileID, __function: String = #function, __line: Int = #line) {
 		self.level = level
+		self.metadata["function"] = .string(__function)
+		self.caller = "\(__file.split(separator: "/").last!):\(__line)"
 	}
 
 	public subscript(metadataKey key: String) -> Logging.Logger.Metadata.Value? {
@@ -50,6 +43,11 @@ public class LogEvent {
 		return self
 	}
 
+	public func err(_ err: Swift.Error?) -> LogEvent {
+		self.error = err
+		return self
+	}
+
 	public func add(_ key: String, any: Any) -> LogEvent {
 		self[metadataKey: key] = .string(String(reflecting: any))
 		return self
@@ -60,11 +58,17 @@ public class LogEvent {
 		return self
 	}
 
-	public func msg(_ str: some CustomDebugStringConvertible, file: String = #fileID, function: String = #function, line: Int = #line) {
-		self.metadata["line"] = .stringConvertible(line)
-		self.metadata["function"] = .string(function)
-		self.metadata["file"] = .string(file)
-		self.logger.log(level: self.level, .init(unicodeScalarLiteral: .init(describing: str)), metadata: self.metadata, source: "\(file.split(separator: "/").last!):\(line)")
+	public func send(_ str: some CustomDebugStringConvertible) {
+//		self.metadata["line"] = .stringConvertible(line)
+//		self.metadata["function"] = .string(function)
+//		self.metadata["file"] = .string(file)
+		xlogger.log(level: self.level, .init(unicodeScalarLiteral: .init(describing: str)), metadata: self.metadata, source: self.caller)
+
+		if let err = self.error as? x.Error {
+			xlogger.error(.init(stringLiteral: err.dump()))
+		} else if let err = self.error {
+			xlogger.error(.init(stringLiteral: err.localizedDescription))
+		}
 	}
 }
 

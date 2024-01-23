@@ -46,7 +46,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 			Task.detached(priority: .userInitiated) {
 				let _read = self.keychainAPI.read(objectType: PasskeyCredentialID.self, id: "default")
 				guard let read = _read.value else {
-					x.Error.Log(_read.error!, "")
+					x.log(.critical).err(_read.error).send("webauthn error")
 					return
 				}
 				do {
@@ -56,7 +56,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 						try await self.assertPasskey()
 					}
 				} catch {
-					x.Error.Log(error, "")
+					x.log(.critical).err(_read.error).send("webauthn error")
 				}
 			}
 		}
@@ -66,7 +66,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 
 	public func assertPasskey() async throws {
 		guard let credid = try self.keychainAPI.read(objectType: PasskeyCredentialID.self, id: "default").get() else {
-			throw x.Error.Wrap(DeviceCheckError.invalidKey("credentialId"))
+			throw x.error("cound not assert", root: DeviceCheckError.invalidKey("credentialId"))
 		}
 
 		let challenge = try await remote(init: .Get, credentialID: credid.credentialID)
@@ -109,7 +109,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 					throw err
 				}
 			} catch {
-				x.Error.Log(error, "failed to successfully handle auth")
+				x.log(.error).err(error).send("failed to successfully handle auth")
 			}
 		}
 	}
@@ -120,7 +120,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 			return
 		}
 
-		x.error(error, "webauthn error").log()
+		x.log(.error).err(error).send("webauthn error")
 
 		if authorizationError.code == .canceled {
 			if authorizationError.errorUserInfo["NSLocalizedFailureReason"] as? String == "No credentials available for login." {
@@ -131,7 +131,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 						throw err
 					}
 				} catch {
-					x.error(error).log()
+					x.log(.error).err(error).send("webauthn error")
 				}
 			}
 		}

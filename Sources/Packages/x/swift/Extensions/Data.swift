@@ -16,7 +16,7 @@ public extension Data {
 		do {
 			return try JSONDecoder().decode(T.self, from: self)
 		} catch {
-			throw x.Error(error, message: "problem decoding")
+			throw x.error("problem decoding", root: error)
 		}
 
 		// catch let DecodingError.keyNotFound(key, context) {

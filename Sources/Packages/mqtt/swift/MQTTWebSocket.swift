@@ -188,7 +188,7 @@ public class MQTTWebSocket: MQTTSocketProtocol {
 				newConnection.queue = self.internalQueue
 				newConnection.connect()
 			} catch {
-				x.error(error)
+				x.log(.critical).err(error).send("failed to connect")
 			}
 		}
 	}
@@ -374,7 +374,7 @@ public extension MQTTWebSocket {
 
 		public init(url: URL, config: URLSessionConfiguration) {
 			super.init()
-			x.log(.debug).msg("opening url session for \(url.absoluteString)")
+			x.log(.debug).send("opening url session for \(url.absoluteString)")
 			let theSession = URLSession(configuration: config, delegate: self, delegateQueue: nil)
 			self.session = theSession
 			self.task = theSession.webSocketTask(with: url, protocols: ["mqtt"])
@@ -402,9 +402,9 @@ public extension MQTTWebSocket {
 			self.queue.async {
 				guard let task = self.task else { return }
 				task.receive { result in
-//					x.log(.debug).msg("result received from websocket \(result)")
+//					x.log(.debug).send("result received from websocket \(result)")
 					self.queue.async {
-//						x.log(.debug).msg("result from websocket being processed \(self.delegate.debugDescription)")
+//						x.log(.debug).send("result from websocket being processed \(self.delegate.debugDescription)")
 						guard let delegate = self.delegate else { return }
 						switch result {
 						case let .success(message):

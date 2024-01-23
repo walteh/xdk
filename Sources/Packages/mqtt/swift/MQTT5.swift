@@ -550,7 +550,7 @@ extension MQTT5: MQTTSocketDelegate {
 	}
 
 	public func socketDidDisconnect(_ socket: MQTTSocketProtocol, withError err: Error?) {
-		if err != nil { x.error(err.unsafelyUnwrapped) }
+		if err != nil { x.log(.error).err(err.unsafelyUnwrapped).send("some error") }
 		// Clean up
 		socket.setDelegate(nil, delegateQueue: nil)
 		self.connState = .disconnected

@@ -83,7 +83,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 				request.setValue(value, forHTTPHeaderField: key)
 			}
 		} catch {
-			throw x.Error.Wrap(error, "DCAppAttestService.shared.generateAssertion failed")
+			throw x.error("DCAppAttestService.shared.generateAssertion failed", root: error)
 		}
 	}
 
@@ -95,9 +95,9 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 		let key = try await DCAppAttestService.shared.generateKey()
 
 		guard let datakey = key.base64Decoded else {
-			throw x.error("DCAppAttestSerivice.shared.generateKey() returned a non base64 value")
-				.with(key: "value", key)
-				.log()
+			throw x.error("DCAppAttestSerivice.shared.generateKey() returned a non base64 value").event {
+				$0.add("value", key)
+			}
 		}
 
 		let clientDataJSON = #"{"challenge":""# + challenge.data().base64URLEncodedString() + #"","origin":"https://nugg.xyz","type":""# + ceremony.rawValue + #""}"#
@@ -111,7 +111,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 				throw err
 			}
 		} else {
-			throw x.error("deviceAttestation was not successful").log()
+			throw x.error("deviceAttestation was not successful")
 		}
 	}
 }

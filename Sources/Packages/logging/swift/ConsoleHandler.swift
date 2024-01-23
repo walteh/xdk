@@ -46,12 +46,16 @@ public struct ConsoleLogger: LogHandler {
 		self.url = url
 		self.fileLogger = .init(logFileURL: url)
 
-		print("")
-		print("=====================================")
-		print("to view logs:")
-		print("tail -f -n100 \(url.relativeString.replacingOccurrences(of: "file://", with: ""))")
-		print("=====================================")
-		print("")
+		var stream = ""
+
+		stream += "\n"
+		stream += "=====================================\n"
+		stream += "to view logs:"
+		stream += "tail -f -n100 \(url.relativeString.replacingOccurrences(of: "file://", with: ""))\n"
+		stream += "=====================================\n"
+		stream += "\n"
+
+		print(stream)
 	}
 
 	/// See `LogHandler[metadataKey:]`.

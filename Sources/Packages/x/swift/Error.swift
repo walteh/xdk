@@ -13,153 +13,134 @@ public extension x {
 	}
 
 	@discardableResult
-	static func error(_ str: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
-		return x.Error(nil, message: str, __file: __file, __line: __line, __function: __function)
+	static func error(_ str: String, root: (any Swift.Error)? = nil, __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
+		return x.Error(str, root: root, __file: __file, __line: __line, __function: __function)
 	}
 
 	@discardableResult
-	static func error(_ stat: OSStatus, __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
-		return x.Error(nil, message: "OSStatus[\(stat)]", __file: __file, __line: __line, __function: __function)
-	}
-
-	@discardableResult
-	static func error<A: Swift.Error>(custom _: A? = nil, _ err: A, _ message: String = "wrapped", __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
-		if let err = err as? x.Error {
-			err.appendRoot(x.Error(nil, custom: err, message: message, __file: __file, __line: __line, __function: __function))
-			return err
-		}
-		return x.Error(err, message: message, __file: __file, __line: __line, __function: __function)
+	static func error(status: OSStatus, __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
+		return x.Error("OSStatus[\(status)]", __file: __file, __line: __line, __function: __function)
 	}
 
 	class Error {
-		public var rawValue: String
-
-		var kv: [String: String] = [:]
+		var _event: LogEvent
 
 		private var dumped = false
 
-		let code: Int
 		var message: String = ""
-		var caller: String = "unknown.swift:0"
 		let stack: [String]
 		var root: (any Swift.Error)?
-		var roots: [Swift.Error] = []
-		var lastAppend: (any Swift.Error)?
-
-		public func appendRoot(_ err: some Swift.Error) {
-			self.lastAppend = err
-			self.roots.append(err)
-		}
-
-		public static func Log(_ error: Swift.Error, _ message: String) {
-			let me = x.Error.wrap(error, message: message)
-			print(me.localizedDescription)
-		}
-
-		public static func Wrap(_ error: Swift.Error, _ message: String? = nil) -> Swift.Error {
-			return x.Error.wrap(error, message: message == nil ? "wrapped" : message!)
-		}
 
 		public required convenience init(rawValue: String) {
-			self.init(nil, message: rawValue)
-			self.withCaller(__file: #fileID, __line: #line, __function: #function)
+			self.init(rawValue)
 		}
 
-		public init(_ root: (any Swift.Error)?, custom: Swift.Error? = nil, message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
-			if let custom {
-				self.rawValue = (custom.localizedDescription)
-				self.code = (custom as NSError).code
-				self.root = custom
-				if let root {
-					self.roots.append(root)
-				}
-			} else if let root {
-				self.rawValue = (root as NSError).debugDescription
-				self.code = (root as NSError).code
-				self.root = root
-			} else {
-				self.rawValue = message
-				self.code = 0
-				self.root = nil
-			}
+		public func event(_ manip: (LogEvent) -> LogEvent) -> Self {
+			self._event = manip(self._event)
+			return self
+		}
+
+		public init(_ message: String, root: (any Swift.Error)? = nil, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
+			self.root = root
 
 			self.message = message
 //			self.stack = Thread.callStackSymbols.prefix(upTo: .init(11)).dropLast()
 			self.stack = []
-			self.withCaller(__file: __file, __line: __line, __function: __function)
+			self._event = LogEvent(.error, __file: __file, __function: __function, __line: __line)
 		}
 	}
 }
 
 extension x.Error: Error, Encodable, RawRepresentable {
+	public var rawValue: String {
+		return message
+	}
+
 	public typealias RawValue = String
 
 	private enum CodingKeys: String, CodingKey {
-		case kv, code, message, caller, roots
+		case message, caller, root
 	}
 
-	@discardableResult
-	public static func wrap(_ root: any Error, message: String = "wrapped") -> x.Error {
-		return x.Error(root, message: message, __file: #fileID, __line: #line, __function: #function)
-	}
-
-	@discardableResult
-	public func with(message str: String) -> x.Error {
-		self.message = str
-		return self
-	}
-
-	@discardableResult
-	public func with(key: String, _ value: String) -> x.Error {
-		self.kv.updateValue(value, forKey: key)
-		return self
-	}
-
-	@discardableResult
-	public func withCaller(__file: String = #fileID, __line: Int = #line, __function _: String = #function) -> x.Error {
-		self.caller = "\(__file):\(__line)"
-		return self
+	private func rootList() -> [Swift.Error] {
+		// loop through the roots, and append each to a string backwards
+		var strs = [Swift.Error]()
+		var root = self.root
+		while root != nil {
+			strs += [root!]
+			if let r = root as? x.Error {
+				root = r.root
+			} else {
+				root = nil
+			}
+		}
+		strs.reverse()
+		return strs
 	}
 
 	var localizedDescription: String {
-//		var real = self.getRoots()
-//		let me = real.removeFirst()
-//		me.roots = real
-		let enc = try! JSONEncoder().encode(self)
-		return String(data: enc, encoding: .utf8) ?? ""
+		let strs = self.rootList().map(\.localizedDescription)
+		var result = ""
+		for i in 0 ..< strs.count {
+			if i == strs.count - 1 {
+				result += strs[i]
+			} else if i == strs.count - 2 {
+				result += strs[i] + " ➡️ ❌ "
+			} else {
+				result += strs[i] + " ➡️ "
+			}
+		}
+
+		return result
+	}
+
+	public func dump() -> String {
+		var stream = ""
+
+		let list = self.rootList()
+
+		// Start with the initial log message
+		stream += "‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️ ERROR ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n\n"
+
+		for i in 0 ..< list.count {
+			stream += "⬇️ "
+
+			if i == list.count - 1 {
+				stream += "❌ "
+			}
+
+			if let r = list[i] as? x.Error {
+				stream += "(\(r._event.caller)) "
+			}
+
+			stream += list[i].localizedDescription
+			stream += "\n"
+			if let r = list[i] as? x.Error {
+				for i in r._event.metadata {
+					stream += "\t\t\(i.key) = \(i.value)\n"
+				}
+			}
+			if i == list.count - 1 {
+				// Dump 'self' to the stream
+				Swift.dump(list[i], to: &stream)
+				stream += "\n"
+			}
+		}
+
+//
+//		// Dump 'self' to the stream
+//		Swift.dump(self, to: &stream)
+
+		// Finish with the closing log message
+		stream += "\n‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n"
+
+		// Print the entire accumulated log
+		return stream
 	}
 
 	@discardableResult
-	public func log() -> x.Error {
-		if !dumped {
-			var stream = LogStream()
-
-			// Start with the initial log message
-			stream.write("‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️ ERROR ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n\n")
-
-			// Dump 'self' to the stream
-			dump(self, to: &stream)
-
-			// Append any additional custom logs
-			// For example:
-			// stream.write("\nExtra Info: \(additionalInfo)\n")
-
-			// Finish with the closing log message
-			stream.write("\n‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n")
-
-			// Print the entire accumulated log
-			print(stream.log)
-
-			dumped = true
-		}
+	public func print() -> x.Error {
+		Swift.print(self.dump())
 		return self
-	}
-}
-
-struct LogStream: TextOutputStream {
-	var log: String = ""
-
-	mutating func write(_ string: String) {
-		self.log += string
 	}
 }

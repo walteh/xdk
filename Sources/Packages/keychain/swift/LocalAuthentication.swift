@@ -55,7 +55,7 @@ extension LocalAuthenticationClient: KeychainAPI {
 
 	public func withAuthentication() async -> Result<Bool, Error> {
 		guard self.authenticationAvailable() else {
-			return .failure(x.error(KeychainError.auth_failed))
+			return .failure(x.error("unable to authenticate", root: KeychainError.auth_failed))
 		}
 
 		return await Result.X { try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: "Wanna Touch my ID?") }
@@ -89,10 +89,10 @@ extension LocalAuthenticationClient: KeychainAPI {
 			}
 
 			if status == errSecParam {
-				return x.error(KeychainError.errSecParam)
+				return x.error("unable to write", root: KeychainError.errSecParam)
 			}
 
-			return x.error(status)
+			return x.error(status: status)
 		}
 
 		return nil
@@ -120,7 +120,7 @@ extension LocalAuthenticationClient: KeychainAPI {
 		case errSecItemNotFound:
 			return .success(nil)
 		default:
-			return .failure(x.error(status))
+			return .failure(x.error(status: status))
 		}
 	}
 }

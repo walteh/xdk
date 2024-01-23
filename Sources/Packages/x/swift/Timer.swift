@@ -23,6 +23,6 @@ public class XTimer {
 
 	public func end() {
 		let timeElapsed = DateInterval(start: start, end: Date()).duration
-		x.log(.info).add("time_elapsed", string: "\(timeElapsed) s.").msg("end timer \(self.name)")
+		x.log(.info).add("time_elapsed", string: "\(timeElapsed) s.").send("end timer \(self.name)")
 	}
 }

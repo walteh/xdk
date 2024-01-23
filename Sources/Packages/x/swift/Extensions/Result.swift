@@ -8,34 +8,40 @@
 import Foundation
 
 public extension Result where Failure == Error {
-	static func X(formatError: (x.Error) -> x.Error = { $0 }, __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping () throws -> Success) -> Result<Success, Failure> {
-		return Result { try body() }.mapError { err in return formatError(x.error(err, __file: __file, __line: __line, __function: __function)) }
+	static func X(addContext: (XDKX.LogEvent) -> XDKX.LogEvent = { $0 }, message: String = "caught", __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping () throws -> Success) -> Result<Success, Failure> {
+		return Result { try body() }.mapError { err in
+			let err = x.error(message, root: err, __file: __file, __line: __line, __function: __function).event(addContext)
+			return err
+		}
 	}
 
-	static func X(formatError: (x.Error) -> x.Error = { $0 }, __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping @Sendable () async throws -> Success) async -> Result<Success, Failure> {
+	static func X(addContext: (XDKX.LogEvent) -> XDKX.LogEvent = { $0 }, message: String = "caught", __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping @Sendable () async throws -> Success) async -> Result<Success, Failure> {
 		do {
 			let result = try await body()
 			return .success(result)
 		} catch {
-			return .failure(formatError(x.error(error, __file: __file, __line: __line, __function: __function)))
+			let err = x.error(message, root: error, __file: __file, __line: __line, __function: __function).event(addContext)
+			return .failure(err)
 		}
 	}
 
-	static func X(formatError: (x.Error) -> x.Error = { $0 }, __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping () throws -> Void) -> Result<Void, Failure> {
+	static func X(addContext: (XDKX.LogEvent) -> XDKX.LogEvent = { $0 }, message: String = "caught", __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping () throws -> Void) -> Result<Void, Failure> {
 		do {
 			try body()
 			return .success(())
 		} catch {
-			return .failure(formatError(x.error(error, __file: __file, __line: __line, __function: __function)))
+			let err = x.error(message, root: error, __file: __file, __line: __line, __function: __function).event(addContext)
+			return .failure(err)
 		}
 	}
 
-	static func X(formatError: (x.Error) -> x.Error = { $0 }, __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping @Sendable () async throws -> Void) async -> Result<Void, Failure> {
+	static func X(addContext: (XDKX.LogEvent) -> XDKX.LogEvent = { $0 }, message: String = "caught", __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping @Sendable () async throws -> Void) async -> Result<Void, Failure> {
 		do {
 			try await body()
 			return .success(())
 		} catch {
-			return .failure(formatError(x.error(error, __file: __file, __line: __line, __function: __function)))
+			let err = x.error(message, root: error, __file: __file, __line: __line, __function: __function).event(addContext)
+			return .failure(err)
 		}
 	}
 }
