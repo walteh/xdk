@@ -29,8 +29,8 @@ public extension AppSessionAPI {
 	}
 }
 
-class AppSessionID: NSObject, NSSecureCoding {
-	static var supportsSecureCoding = true
+public class AppSessionID: NSObject, NSSecureCoding {
+	public static var supportsSecureCoding = true
 
 	let id: XDKXID.XID
 

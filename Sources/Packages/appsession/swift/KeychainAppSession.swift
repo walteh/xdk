@@ -9,7 +9,7 @@ import XDKKeychain
 import XDKX
 import XDKXID
 
-class KeychainAppSession: NSObject {
+public class KeychainAppSession: NSObject {
 	public let appSessionID: AppSessionID
 
 	public let keychainAPI: any KeychainAPI
@@ -36,7 +36,7 @@ class KeychainAppSession: NSObject {
 }
 
 extension KeychainAppSession: AppSessionAPI {
-	func ID() -> XDKXID.XID {
+	public func ID() -> XDKXID.XID {
 		return self.appSessionID.id
 	}
 }
