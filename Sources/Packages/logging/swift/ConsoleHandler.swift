@@ -40,11 +40,11 @@ public struct ConsoleLogger: LogHandler {
 	public init(label: String, level: Logger.Level = .debug, metadata: Logger.Metadata = [:], metadataProvider: Logger.MetadataProvider? = nil) {
 		self.label = label
 		self.metadata = metadata
-		logLevel = level
+		self.logLevel = level
 		self.metadataProvider = metadataProvider
 		let url: URL = .cachesDirectory.appending(component: "\(Bundle.main.bundleIdentifier ?? "unknown").logs.log")
 		self.url = url
-		fileLogger = .init(logFileURL: url)
+		self.fileLogger = .init(logFileURL: url)
 
 		print("")
 		print("=====================================")
@@ -58,8 +58,8 @@ public struct ConsoleLogger: LogHandler {
 	///
 	/// This just acts as a getter/setter for the `.metadata` property.
 	public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
-		get { return metadata[key] }
-		set { metadata[key] = newValue }
+		get { return self.metadata[key] }
+		set { self.metadata[key] = newValue }
 	}
 
 	/// See `LogHandler.log(level:message:metadata:file:function:line:)`.
@@ -110,14 +110,14 @@ public struct ConsoleLogger: LogHandler {
 
 		let allMetadata = (metadata ?? [:])
 			.merging(self.metadata, uniquingKeysWith: { a, _ in a })
-			.merging(metadataProvider?.get() ?? [:], uniquingKeysWith: { a, _ in a })
+			.merging(self.metadataProvider?.get() ?? [:], uniquingKeysWith: { a, _ in a })
 
 		if !allMetadata.isEmpty {
 			// only log metadata if not empty
 			text += " " + allMetadata.sortedDescriptionWithoutQuotes.consoleText()
 		}
 
-		_ = fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
+		_ = self.fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
 	}
 }
 

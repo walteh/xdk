@@ -29,7 +29,7 @@ class KeychainAppSession: NSObject {
 
 		x.log(.info).add("sessionID", id!.description).msg("idk")
 
-		appSessionID = id!
+		self.appSessionID = id!
 
 		super.init()
 	}
@@ -37,6 +37,6 @@ class KeychainAppSession: NSObject {
 
 extension KeychainAppSession: AppSessionAPI {
 	func ID() -> XDKXID.XID {
-		return appSessionID.id
+		return self.appSessionID.id
 	}
 }

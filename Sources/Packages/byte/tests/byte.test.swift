@@ -5,8 +5,8 @@
 //  Created by walter on 3/3/23.
 //
 
-@testable import XDKByte
 import XCTest
+@testable import XDKByte
 
 class byteTests: XCTestCase {
 	override func setUpWithError() throws {

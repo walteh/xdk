@@ -29,11 +29,11 @@ class AppSessionID: NSObject, NSSecureCoding {
 	}
 
 	public func encode(with coder: NSCoder) {
-		coder.encode(id.string(), forKey: "id")
+		coder.encode(self.id.string(), forKey: "id")
 	}
 
 	public required init?(coder: NSCoder) {
 		let dat = coder.decodeObject(of: NSString.self, forKey: "id")! as String
-		id = try! XID.rebuild(string: dat)
+		self.id = try! XID.rebuild(string: dat)
 	}
 }

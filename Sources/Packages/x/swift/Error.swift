@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Error.swift
 //
 //
 //  Created by walter on 3/2/23.
@@ -16,12 +16,11 @@ public extension x {
 	static func error(_ str: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
 		return x.Error(nil, message: str, __file: __file, __line: __line, __function: __function)
 	}
-	
+
 	@discardableResult
 	static func error(_ stat: OSStatus, __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
 		return x.Error(nil, message: "OSStatus[\(stat)]", __file: __file, __line: __line, __function: __function)
 	}
-
 
 	@discardableResult
 	static func error<A: Swift.Error>(custom _: A? = nil, _ err: A, _ message: String = "wrapped", __file: String = #fileID, __line: Int = #line, __function: String = #function) -> x.Error {
@@ -31,8 +30,6 @@ public extension x {
 		}
 		return x.Error(err, message: message, __file: __file, __line: __line, __function: __function)
 	}
-
-	
 
 	class Error {
 		public var rawValue: String
@@ -58,7 +55,6 @@ public extension x {
 			let me = x.Error.wrap(error, message: message)
 			print(me.localizedDescription)
 		}
-		
 
 		public static func Wrap(_ error: Swift.Error, _ message: String? = nil) -> Swift.Error {
 			return x.Error.wrap(error, message: message == nil ? "wrapped" : message!)
@@ -94,8 +90,6 @@ public extension x {
 		}
 	}
 }
-
-
 
 extension x.Error: Error, Encodable, RawRepresentable {
 	public typealias RawValue = String
@@ -149,7 +143,7 @@ extension x.Error: Error, Encodable, RawRepresentable {
 			// Append any additional custom logs
 			// For example:
 			// stream.write("\nExtra Info: \(additionalInfo)\n")
-			
+
 			// Finish with the closing log message
 			stream.write("\n‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️\n")
 
@@ -160,14 +154,12 @@ extension x.Error: Error, Encodable, RawRepresentable {
 		}
 		return self
 	}
-
 }
 
 struct LogStream: TextOutputStream {
 	var log: String = ""
 
 	mutating func write(_ string: String) {
-		log += string
+		self.log += string
 	}
 }
-

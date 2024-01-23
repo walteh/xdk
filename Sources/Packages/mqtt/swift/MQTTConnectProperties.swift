@@ -35,31 +35,31 @@ public class MQTTConnectProperties: NSObject {
 		var properties = [UInt8]()
 
 		// 3.1.2.11.2 Session Expiry Interval
-		if let sessionExpiryInterval = sessionExpiryInterval {
+		if let sessionExpiryInterval {
 			properties += getMQTTPropertyData(type: MQTTPropertyName.sessionExpiryInterval.rawValue, value: sessionExpiryInterval.byteArrayLittleEndian)
 		}
 
 		// 3.1.2.11.3 Receive Maximum
-		if let receiveMaximum = receiveMaximum {
+		if let receiveMaximum {
 			properties += getMQTTPropertyData(type: MQTTPropertyName.receiveMaximum.rawValue, value: receiveMaximum.hlBytes)
 		}
 
 		// 3.1.2.11.4 Maximum Packet Size
-		if let maximumPacketSize = maximumPacketSize {
+		if let maximumPacketSize {
 			properties += getMQTTPropertyData(type: MQTTPropertyName.maximumPacketSize.rawValue, value: maximumPacketSize.byteArrayLittleEndian)
 		}
 
 		// 3.1.2.11.5 Topic Alias Maximum
-		if let topicAliasMaximum = topicAliasMaximum {
+		if let topicAliasMaximum {
 			properties += getMQTTPropertyData(type: MQTTPropertyName.topicAliasMaximum.rawValue, value: topicAliasMaximum.hlBytes)
 		}
 
 		// 3.1.2.11.6 Request Response Information
-		if let requestResponseInformation = requestResponseInformation {
+		if let requestResponseInformation {
 			properties += getMQTTPropertyData(type: MQTTPropertyName.requestResponseInformation.rawValue, value: [requestResponseInformation])
 		}
 		// 3.1.2.11.7 Request Problem Information
-		if let requestProblemInfomation = requestProblemInfomation {
+		if let requestProblemInfomation {
 			properties += getMQTTPropertyData(type: MQTTPropertyName.requestProblemInformation.rawValue, value: [requestProblemInfomation])
 		}
 		// 3.1.2.11.8 User Property
@@ -70,11 +70,11 @@ public class MQTTConnectProperties: NSObject {
 			}
 		}
 		// 3.1.2.11.9 Authentication Method
-		if let authenticationMethod = authenticationMethod {
+		if let authenticationMethod {
 			properties += getMQTTPropertyData(type: MQTTPropertyName.authenticationMethod.rawValue, value: authenticationMethod.bytesWithLength)
 		}
 		// 3.1.2.11.10 Authentication Data
-		if let authenticationData = authenticationData {
+		if let authenticationData {
 			properties += authenticationData
 		}
 

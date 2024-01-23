@@ -15,7 +15,7 @@ extension big.UInt {
 	/// `word` is shifted `shift` words to the left before being added.
 	///
 	/// - Complexity: O(max(count, shift))
-	internal mutating func addWord(_ word: Word, shiftedBy shift: Int = 0) {
+	mutating func addWord(_ word: Word, shiftedBy shift: Int = 0) {
 		precondition(shift >= 0)
 		var carry = word
 		var i = shift
@@ -31,7 +31,7 @@ extension big.UInt {
 	/// `d` is shifted `shift` words to the left before being added.
 	///
 	/// - Complexity: O(max(count, shift))
-	internal func addingWord(_ word: Word, shiftedBy shift: Int = 0) -> big.UInt {
+	func addingWord(_ word: Word, shiftedBy shift: Int = 0) -> big.UInt {
 		var r = self
 		r.addWord(word, shiftedBy: shift)
 		return r
@@ -41,7 +41,7 @@ extension big.UInt {
 	/// `b` is shifted `shift` words to the left before being added.
 	///
 	/// - Complexity: O(max(count, b.count + shift))
-	internal mutating func add(_ b: big.UInt, shiftedBy shift: Int = 0) {
+	mutating func add(_ b: big.UInt, shiftedBy shift: Int = 0) {
 		precondition(shift >= 0)
 		var carry = false
 		var bi = 0
@@ -65,7 +65,7 @@ extension big.UInt {
 	/// `b` is shifted `shift` words to the left before being added.
 	///
 	/// - Complexity: O(max(count, b.count + shift))
-	internal func adding(_ b: big.UInt, shiftedBy shift: Int = 0) -> big.UInt {
+	func adding(_ b: big.UInt, shiftedBy shift: Int = 0) -> big.UInt {
 		var r = self
 		r.add(b, shiftedBy: shift)
 		return r
@@ -75,7 +75,7 @@ extension big.UInt {
 	/// the word that is to be incremented.
 	///
 	/// - Complexity: O(count + shift)
-	internal mutating func increment(shiftedBy shift: Int = 0) {
+	mutating func increment(shiftedBy shift: Int = 0) {
 		self.addWord(1, shiftedBy: shift)
 	}
 

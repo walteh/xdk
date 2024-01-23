@@ -11,7 +11,7 @@ import Foundation
 extension big.UInt {
 	// MARK: Shift Operators
 
-	internal func shiftedLeft(by amount: Word) -> big.UInt {
+	func shiftedLeft(by amount: Word) -> big.UInt {
 		guard amount > 0 else { return self }
 
 		let ext = Int(amount / Word(Word.bitWidth)) // External shift amount (new words)
@@ -36,7 +36,7 @@ extension big.UInt {
 		return result
 	}
 
-	internal mutating func shiftLeft(by amount: Word) {
+	mutating func shiftLeft(by amount: Word) {
 		guard amount > 0 else { return }
 
 		let ext = Int(amount / Word(Word.bitWidth)) // External shift amount (new words)
@@ -58,7 +58,7 @@ extension big.UInt {
 		}
 	}
 
-	internal func shiftedRight(by amount: Word) -> big.UInt {
+	func shiftedRight(by amount: Word) -> big.UInt {
 		guard amount > 0 else { return self }
 		guard amount < self.bitWidth else { return 0 }
 
@@ -82,7 +82,7 @@ extension big.UInt {
 		return result
 	}
 
-	internal mutating func shiftRight(by amount: Word) {
+	mutating func shiftRight(by amount: Word) {
 		guard amount > 0 else { return }
 		guard amount < self.bitWidth else { self.clear(); return }
 

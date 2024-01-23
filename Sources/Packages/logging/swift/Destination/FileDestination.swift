@@ -15,7 +15,7 @@ open class FileDestination: BaseDestination {
 	public var syncAfterEachWrite: Bool = false
 	public var colored: Bool = false {
 		didSet {
-			if colored {
+			if self.colored {
 				// bash font color, first value is intensity, second is color
 				// see http://bit.ly/1Otu3Zr & for syntax http://bit.ly/1Tp6Fw9
 				// uses the 256-color table from http://bit.ly/1W1qJuH
@@ -64,8 +64,8 @@ open class FileDestination: BaseDestination {
 				if let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String {
 					do {
 						if let appURL = baseURL?.appendingPathComponent(appName, isDirectory: true) {
-							try fileManager.createDirectory(at: appURL,
-							                                withIntermediateDirectories: true, attributes: nil)
+							try self.fileManager.createDirectory(at: appURL,
+							                                     withIntermediateDirectories: true, attributes: nil)
 							baseURL = appURL
 						}
 					} catch {
@@ -97,14 +97,14 @@ open class FileDestination: BaseDestination {
 		let formattedString = super.send(level, msg: msg, thread: thread, file: file, function: function, line: line, context: context)
 
 		if let str = formattedString {
-			_ = validateSaveFile(str: str)
+			_ = self.validateSaveFile(str: str)
 		}
 		return formattedString
 	}
 
 	// check if filesize is bigger than wanted and if yes then rotate them
 	func validateSaveFile(str: String) -> Bool {
-		if logFileAmount > 1 {
+		if self.logFileAmount > 1 {
 			guard let url = logFileURL else { return false }
 			let filePath = url.path
 			if FileManager.default.fileExists(atPath: filePath) == true {
@@ -113,15 +113,15 @@ open class FileDestination: BaseDestination {
 					let attr = try FileManager.default.attributesOfItem(atPath: filePath)
 					let fileSize = attr[FileAttributeKey.size] as! UInt64
 					// Do file rotation
-					if fileSize > logFileMaxSize {
-						rotateFile(filePath)
+					if fileSize > self.logFileMaxSize {
+						self.rotateFile(filePath)
 					}
 				} catch {
 					print("validateSaveFile error: \(error)")
 				}
 			}
 		}
-		return saveToFile(str: str)
+		return self.saveToFile(str: str)
 	}
 
 	private func rotateFile(_ filePath: String) {
@@ -159,7 +159,7 @@ open class FileDestination: BaseDestination {
 		let line = str + "\n"
 		guard let data = line.data(using: String.Encoding.utf8) else { return false }
 
-		return write(data: data, to: url)
+		return self.write(data: data, to: url)
 	}
 
 	private func write(data: Data, to url: URL) -> Bool {
@@ -221,7 +221,7 @@ open class FileDestination: BaseDestination {
 	public func deleteLogFile() -> Bool {
 		guard let url = logFileURL, fileManager.fileExists(atPath: url.path) == true else { return true }
 		do {
-			try fileManager.removeItem(at: url)
+			try self.fileManager.removeItem(at: url)
 			return true
 		} catch {
 			print("SwiftyBeaver File Destination could not remove file \(url).")

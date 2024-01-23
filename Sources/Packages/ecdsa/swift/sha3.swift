@@ -1,5 +1,5 @@
 //
-//  KeccakTiny.swift
+//  sha3.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/23/22.

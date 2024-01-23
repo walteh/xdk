@@ -3,49 +3,48 @@ import Foundation
 
 import XDKX
 
-internal var buf = XIDManager()
+var buf = XIDManager()
 
 public struct XID {
-  internal var _bytes: (
-	UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-	UInt8, UInt8, UInt8, UInt8
-  )
-	
+	var _bytes: (
+		UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+		UInt8, UInt8, UInt8, UInt8
+	)
+
 	public static func build() -> XID {
 		return buf.next()
 	}
-	
-	internal static func rebuild(raw: Data) throws -> XID {
-		return try XID.init(raw: raw)
+
+	static func rebuild(raw: Data) throws -> XID {
+		return try XID(raw: raw)
 	}
-	
+
 	public static func rebuild(string: String) throws -> XID {
-		return try XID.init(string: string)
+		return try XID(string: string)
 	}
-	
+
 	public static func rebuild(utf8: Data) throws -> XID {
-		return try XID.init(utf8: utf8)
+		return try XID(utf8: utf8)
 	}
 }
 
-extension XID {
-	public func data() -> Data { return self.string().data(using: .utf8) ?? Data() }
-	public func string() -> String { return self.description }
+public extension XID {
+	func data() -> Data { return self.string().data(using: .utf8) ?? Data() }
+	func string() -> String { return self.description }
 }
-
 
 public extension XID {
 	private init(raw: Data) throws {
 		if raw.count != 12 {
 			throw x.error(XIDError.InvalidRawDataLength(have: raw.count, want: 12))
 		}
-		
+
 		self._bytes = (
 			raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7],
 			raw[8], raw[9], raw[10], raw[11]
 		)
 	}
-	
+
 	private init(string: String) throws {
 		if string.count != 20 {
 			throw x.error(XIDError.InvalidStringLength(have: string.count, want: 20))
@@ -62,7 +61,7 @@ public extension XID {
 		if utf8.count != 20 {
 			throw XIDError.invalidID
 		}
-		
+
 		let from = utf8
 
 //		self._bytes = Data(repeating: 0x00, count: 12)
@@ -122,7 +121,7 @@ public extension XID {
 	}
 }
 
- extension XID: CustomStringConvertible {
+extension XID: CustomStringConvertible {
 	public var description: String {
 //		if self._bytes.count != 12 {
 //			return ""
@@ -155,26 +154,25 @@ public extension XID {
 	}
 }
 
-  extension XID: Decodable {
+extension XID: Decodable {
 	public init(from decoder: Decoder) throws {
 		let container = try decoder.singleValueContainer()
 		try self.init(string: container.decode(String.self))
 	}
 }
 
-  extension XID: Encodable {
+extension XID: Encodable {
 	public func encode(to encoder: Encoder) throws {
 		var container = encoder.singleValueContainer()
 		try container.encode(String(describing: self))
 	}
 }
 
-  extension XID: Equatable {
+extension XID: Equatable {
 	public static func == (lhs: XID, rhs: XID) -> Bool {
 		return lhs.string() == rhs.string()
 	}
 }
-
 
 private let base32Alphabet = Data("0123456789abcdefghijklmnopqrstuv".utf8)
 
@@ -187,8 +185,7 @@ private let base32DecodeMap: Data = {
 	return map
 }()
 
-
-//extension XID: NSSecureCoding {
+// extension XID: NSSecureCoding {
 //	static var supportsSecureCoding = true
 //
 //	func encode(with coder: NSCoder) {
@@ -199,4 +196,4 @@ private let base32DecodeMap: Data = {
 //		let id = coder.decodeObject(of: NSData.self, forKey: "id") as Data
 //		try? self.init(raw: id)
 //	}
-//}
+// }

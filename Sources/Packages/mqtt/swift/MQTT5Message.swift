@@ -90,7 +90,7 @@ public class MQTT5Message: NSObject {
 
 		/// 3.1.3.2.8 User Property
 		if let willUserProperty = self.willUserProperty {
-			willUserProperty.forEach { element in
+			for element in willUserProperty {
 				properties.append(UInt8(MQTTPropertyName.userProperty.rawValue))
 				if self.isUTF8EncodedData {
 					let key = element.key.stringUTF8

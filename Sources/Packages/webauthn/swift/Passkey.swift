@@ -40,9 +40,7 @@ class PasskeyCredentialID: NSObject, NSSecureCoding {
 	}
 }
 
-
 extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
-
 	public func startSignInObserver() -> NSObjectProtocol {
 		let signInObserver = NotificationCenter.default.addObserver(forName: .UserSignInRequest, object: nil, queue: nil) { _ in
 			Task.detached(priority: .userInitiated) {

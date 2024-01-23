@@ -55,61 +55,61 @@ class Folder {
 	var subfolders: [Folder] = []
 
 	func name() -> String {
-		return "XDK\(camel())"
+		return "XDK\(self.camel())"
 	}
 
 	func camel() -> String {
-		return "\(rawName.prefix(1).uppercased() + rawName.dropFirst())"
+		return "\(self.rawName.prefix(1).uppercased() + self.rawName.dropFirst())"
 	}
 
 	init(local: String, hasC: Bool = false, deps: [Folder] = []) {
-		rawName = local
+		self.rawName = local
 		self.hasC = hasC
-		subfolders = deps
+		self.subfolders = deps
 	}
 
 	convenience init(product: Package.Dependency, name: String, packageName: String) {
 		self.init(local: name, hasC: false, deps: [])
-		dummy = product
+		self.dummy = product
 		self.packageName = packageName
 	}
 
 	func apply() -> Self {
-		if dummy != nil {
-			package.dependencies.append(dummy!)
+		if self.dummy != nil {
+			package.dependencies.append(self.dummy!)
 			return self
 		}
 
 		package.products += [
-			.library(name: name(), targets: [name()]),
+			.library(name: self.name(), targets: [self.name()]),
 		]
 
-		if hasC {
+		if self.hasC {
 			package.targets += [
 				.target(
-					name: "\(name())C",
-					path: "\(PACKAGE_ROOT)\(rawName.lowercased())/c"
+					name: "\(self.name())C",
+					path: "\(self.PACKAGE_ROOT)\(self.rawName.lowercased())/c"
 				),
 			]
-			subfolders += [Folder(local: "\(camel())C", hasC: false, deps: [])]
+			self.subfolders += [Folder(local: "\(self.camel())C", hasC: false, deps: [])]
 		}
-		let fulldeps: [Target.Dependency] = subfolders.map { $0.dummy != nil ? .product(name: $0.rawName, package: $0.packageName) : .byName(name: $0.name()) }
+		let fulldeps: [Target.Dependency] = self.subfolders.map { $0.dummy != nil ? .product(name: $0.rawName, package: $0.packageName) : .byName(name: $0.name()) }
 		package.targets += [
 			.target(
-				name: name(),
+				name: self.name(),
 				dependencies: fulldeps,
-				path: "\(PACKAGE_ROOT)\(rawName.lowercased())/swift"
+				path: "\(self.PACKAGE_ROOT)\(self.rawName.lowercased())/swift"
 			),
 		]
 
 		package.targets += [
 			.testTarget(
-				name: "\(name())Tests",
-				dependencies: [.byName(name: name())],
-				path: "\(PACKAGE_ROOT)\(rawName.lowercased())/tests"
+				name: "\(self.name())Tests",
+				dependencies: [.byName(name: self.name())],
+				path: "\(self.PACKAGE_ROOT)\(self.rawName.lowercased())/tests"
 			),
 		]
-		mainTarget.dependencies.append(.byName(name: name()))
+		mainTarget.dependencies.append(.byName(name: self.name()))
 
 		return self
 	}

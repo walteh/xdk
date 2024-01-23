@@ -1,5 +1,5 @@
 //
-//  Big+Bitwise.swift
+//  Big+Bit.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/28/22.

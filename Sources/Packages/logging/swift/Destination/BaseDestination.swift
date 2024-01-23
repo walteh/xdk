@@ -111,7 +111,7 @@ open class BaseDestination: Hashable, Equatable {
 	// each destination class must have an own hashValue Int
 	#if swift(>=4.2)
 		public func hash(into hasher: inout Hasher) {
-			hasher.combine(defaultHashValue)
+			hasher.combine(self.defaultHashValue)
 		}
 	#else
 		public lazy var hashValue: Int = self.defaultHashValue
@@ -126,22 +126,22 @@ open class BaseDestination: Hashable, Equatable {
 	public init() {
 		let uuid = NSUUID().uuidString
 		let queueLabel = "swiftybeaver-queue-" + uuid
-		queue = DispatchQueue(label: queueLabel, target: queue)
+		self.queue = DispatchQueue(label: queueLabel, target: self.queue)
 	}
 
 	/// send / store the formatted log message to the destination
 	/// returns the formatted log message for processing by inheriting method
 	/// and for unit tests (nil if error)
 	open func send(_ level: Logging.Logger.Level, msg: String, thread: String, file: String,
-				   function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
+	               function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
 	{
-		if format.hasPrefix("$J") {
-			return messageToJSON(level, msg: msg, thread: thread,
-								 file: file, function: function, line: line, context: context)
+		if self.format.hasPrefix("$J") {
+			return self.messageToJSON(level, msg: msg, thread: thread,
+			                          file: file, function: function, line: line, context: context)
 
 		} else {
-			return formatMessage(format, level: level, msg: msg, thread: thread,
-								 file: file, function: function, line: line, context: context)
+			return self.formatMessage(self.format, level: level, msg: msg, thread: thread,
+			                          file: file, function: function, line: line, context: context)
 		}
 	}
 
@@ -207,7 +207,7 @@ open class BaseDestination: Hashable, Equatable {
 
 	/// returns the log message based on the format pattern
 	func formatMessage(_ format: String, level: Logging.Logger.Level, msg: String, thread: String,
-					   file: String, function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String
+	                   file: String, function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String
 	{
 		if format != "abc" {
 			return msg
@@ -285,7 +285,7 @@ open class BaseDestination: Hashable, Equatable {
 
 	/// returns the log payload as optional JSON string
 	func messageToJSON(_ level: Logging.Logger.Level, msg: String,
-					   thread: String, file: String, function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
+	                   thread: String, file: String, function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
 	{
 		var dict: [String: Any] = [
 			"timestamp": Date().timeIntervalSince1970,
@@ -299,7 +299,7 @@ open class BaseDestination: Hashable, Equatable {
 		if let cx = context {
 			dict["metadata"] = cx
 		}
-		return jsonStringFromDict(dict)
+		return self.jsonStringFromDict(dict)
 	}
 
 	/// returns the string of a level
@@ -308,20 +308,20 @@ open class BaseDestination: Hashable, Equatable {
 
 		switch level {
 		case .debug:
-			str = levelString.debug
+			str = self.levelString.debug
 
 		case .info:
-			str = levelString.info
+			str = self.levelString.info
 
 		case .warning:
-			str = levelString.warning
+			str = self.levelString.warning
 
 		case .error:
-			str = levelString.error
+			str = self.levelString.error
 
 		default:
 			// Verbose is default
-			str = levelString.verbose
+			str = self.levelString.verbose
 		}
 		return str
 	}
@@ -332,19 +332,19 @@ open class BaseDestination: Hashable, Equatable {
 
 		switch level {
 		case .debug:
-			color = levelColor.debug
+			color = self.levelColor.debug
 
 		case .info:
-			color = levelColor.info
+			color = self.levelColor.info
 
 		case .warning:
-			color = levelColor.warning
+			color = self.levelColor.warning
 
 		case .error:
-			color = levelColor.error
+			color = self.levelColor.error
 
 		default:
-			color = levelColor.verbose
+			color = self.levelColor.verbose
 		}
 		return color
 	}
@@ -360,7 +360,7 @@ open class BaseDestination: Hashable, Equatable {
 
 	/// returns the filename without suffix (= file ending) of a path
 	func fileNameWithoutSuffix(_ file: String) -> String {
-		let fileName = fileNameOfFile(file)
+		let fileName = self.fileNameOfFile(file)
 
 		if !fileName.isEmpty {
 			let fileNameParts = fileName.components(separatedBy: ".")
@@ -375,18 +375,18 @@ open class BaseDestination: Hashable, Equatable {
 	/// optionally in a given abbreviated timezone like "UTC"
 	func formatDate(_ dateFormat: String, timeZone: String = "") -> String {
 		if !timeZone.isEmpty {
-			formatter.timeZone = TimeZone(abbreviation: timeZone)
+			self.formatter.timeZone = TimeZone(abbreviation: timeZone)
 		}
-		formatter.calendar = calendar
-		formatter.dateFormat = dateFormat
+		self.formatter.calendar = self.calendar
+		self.formatter.dateFormat = dateFormat
 		// let dateStr = formatter.string(from: NSDate() as Date)
-		let dateStr = formatter.string(from: Date())
+		let dateStr = self.formatter.string(from: Date())
 		return dateStr
 	}
 
 	/// returns a uptime string
 	func uptime() -> String {
-		let interval = Date().timeIntervalSince(startDate)
+		let interval = Date().timeIntervalSince(self.startDate)
 
 		let hours = Int(interval) / 3600
 		let minutes = Int(interval / 60) - Int(hours * 60)
@@ -406,7 +406,7 @@ open class BaseDestination: Hashable, Equatable {
 		// remove the leading {"key":" from the json string and the final }
 		let offset = key.length + 5
 		let endIndex = str.index(str.startIndex,
-								 offsetBy: str.length - 2)
+		                         offsetBy: str.length - 2)
 		let range = str.index(str.startIndex, offsetBy: offset) ..< endIndex
 		#if swift(>=3.2)
 			return String(str[range])
@@ -439,13 +439,13 @@ open class BaseDestination: Hashable, Equatable {
 	/// checks if level is at least minLevel or if a minLevel filter for that path does exist
 	/// returns boolean and can be used to decide if a message should be logged or not
 	func shouldLevelBeLogged(_ level: Logging.Logger.Level, path _: String, function _: String, message _: String? = nil) -> Bool {
-		if level.rawValue >= minLevel.rawValue {
-			if debugPrint {
+		if level.rawValue >= self.minLevel.rawValue {
+			if self.debugPrint {
 				print("filters are empty and level >= minLevel")
 			}
 			return true
 		} else {
-			if debugPrint {
+			if self.debugPrint {
 				print("filters are empty and level < minLevel")
 			}
 			return false

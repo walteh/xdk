@@ -1,5 +1,5 @@
 //
-//  Client.swift
+//  LocalAuthentication.swift
 //  nugg.xyz
 //
 //  Created by walter on 02/28/2023.
@@ -42,7 +42,7 @@ func convertFromBytes<T>(bytes: [UInt8], type _: T.Type) -> T {
 	return structValue
 }
 
-func convertToBytes<T>(struct: T) -> [UInt8] {
+func convertToBytes(struct: some Any) -> [UInt8] {
 	var myStruct = `struct`
 	return withUnsafeBytes(of: &myStruct) { Array($0) }
 }
@@ -50,11 +50,11 @@ func convertToBytes<T>(struct: T) -> [UInt8] {
 extension LocalAuthenticationClient: KeychainAPI {
 	/// Keychain errors we might encounter.
 	public func authenticationAvailable() -> Bool {
-		return authenticationContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: nil)
+		return self.authenticationContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: nil)
 	}
 
 	public func withAuthentication() async -> Result<Bool, Error> {
-		guard authenticationAvailable() else {
+		guard self.authenticationAvailable() else {
 			return .failure(x.error(KeychainError.auth_failed))
 		}
 
@@ -67,12 +67,12 @@ extension LocalAuthenticationClient: KeychainAPI {
 		query[kSecClass as String] = kSecClassGenericPassword
 		query[kSecAttrSynchronizable as String] = true
 		query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
-		query[kSecAttrAccessGroup as String] = group
+		query[kSecAttrAccessGroup as String] = self.group
 		query[kSecValueData as String] = NSData(data: value)
 		query[kSecUseDataProtectionKeychain as String] = true
 		query[kSecAttrAccount as String] = key
 		query[kSecAttrIsInvisible as String] = true
-		query[kSecUseAuthenticationContext as String] = authenticationContext
+		query[kSecUseAuthenticationContext as String] = self.authenticationContext
 
 		print(query.debugDescription)
 
@@ -103,10 +103,10 @@ extension LocalAuthenticationClient: KeychainAPI {
 		var query: [String: Any] = [:]
 		query[kSecClass as String] = kSecClassGenericPassword
 		query[kSecAttrSynchronizable as String] = true
-		query[kSecAttrAccessGroup as String] = group
+		query[kSecAttrAccessGroup as String] = self.group
 		query[kSecMatchLimit as String] = kSecMatchLimitOne
 		query[kSecReturnData as String] = true
-		query[kSecUseAuthenticationContext as String] = authenticationContext
+		query[kSecUseAuthenticationContext as String] = self.authenticationContext
 		query[kSecAttrAccount as String] = key
 
 		var item: CFTypeRef?

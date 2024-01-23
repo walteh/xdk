@@ -43,23 +43,23 @@ open class MQTTLogger: NSObject {
 
 	// logs
 	open func log(level: MQTTLoggerLevel, message: String) {
-		guard level.rawValue >= minLevel.rawValue else { return }
+		guard level.rawValue >= self.minLevel.rawValue else { return }
 		print("MQTT(\(level)): \(message)")
 	}
 
 	func debug(_ message: String) {
-		log(level: .debug, message: message)
+		self.log(level: .debug, message: message)
 	}
 
 	func info(_ message: String) {
-		log(level: .info, message: message)
+		self.log(level: .info, message: message)
 	}
 
 	func warning(_ message: String) {
-		log(level: .warning, message: message)
+		self.log(level: .warning, message: message)
 	}
 
 	func error(_ message: String) {
-		log(level: .error, message: message)
+		self.log(level: .error, message: message)
 	}
 }

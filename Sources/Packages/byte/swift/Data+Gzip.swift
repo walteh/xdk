@@ -75,7 +75,7 @@ public struct GzipError: Swift.Error {
 	/// Returned message by zlib.
 	public let message: String
 
-	internal init(code: Int32, msg: UnsafePointer<CChar>?) {
+	init(code: Int32, msg: UnsafePointer<CChar>?) {
 		self.message = msg.flatMap { String(validatingUTF8: $0) } ?? "Unknown gzip error"
 
 		self.kind = {
@@ -259,8 +259,8 @@ private enum DataSize {
 
 public extension Data {
 	func ungzip() throws -> Data {
-		if isGzipped {
-			return try gunzipped()
+		if self.isGzipped {
+			return try self.gunzipped()
 		} else {
 			return self
 		}

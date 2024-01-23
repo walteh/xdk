@@ -1,5 +1,5 @@
 //
-//  Logger+Thread.swift
+//  Thread.swift
 //
 //  Created by walter on 9/30/22.
 //

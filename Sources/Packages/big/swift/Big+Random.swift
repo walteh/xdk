@@ -28,8 +28,8 @@ extension big.Int {
 
 		var randomValue = big.Int(0)
 
-		(0 ..< bytesNeeded).forEach {
-			randomValue |= big.Int(bytes[$0]) << (8 * $0)
+		for item in 0 ..< bytesNeeded {
+			randomValue |= big.Int(bytes[item]) << (8 * item)
 		}
 
 		randomValue &= mask
@@ -42,7 +42,7 @@ extension big.Int {
 		return min + randomValue
 	}
 
-	internal static func getBytesNeeded(_ request: big.Int) -> (Int, big.Int) {
+	static func getBytesNeeded(_ request: big.Int) -> (Int, big.Int) {
 		var range = request
 		var bitsNeeded = 0
 		var bytesNeeded = 0

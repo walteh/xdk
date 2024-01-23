@@ -41,7 +41,7 @@ extension FixedWidthInteger {
 	///
 	/// - Requires: `dividend.high < self`, so that the result will fit in a single digit.
 	/// - Complexity: O(1) with 2 divisions, 6 multiplications and ~12 or so additions/subtractions.
-	internal func fastDividingFullWidth(_ dividend: (high: Self, low: Self.Magnitude)) -> (quotient: Self, remainder: Self) {
+	func fastDividingFullWidth(_ dividend: (high: Self, low: Self.Magnitude)) -> (quotient: Self, remainder: Self) {
 		// Division is complicated; doing it with single-digit operations is maddeningly complicated.
 		// This is a Swift adaptation for "divlu2" in Hacker's Delight,
 		// which is in turn a C adaptation of Knuth's Algorithm D (TAOCP vol 2, 4.3.1).

@@ -5,8 +5,8 @@
 //  Created by walter on 3/3/23.
 //
 
-@testable import XDKBig
 import XCTest
+@testable import XDKBig
 
 class big_tests: XCTestCase {
 	override func setUpWithError() throws {

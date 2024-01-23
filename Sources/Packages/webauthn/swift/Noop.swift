@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Noop.swift
 //
 //
 //  Created by walter on 3/5/23.
@@ -10,25 +10,23 @@ import Foundation
 import XDKXID
 
 public class WebauthnNoopRemoteClient: WebauthnRemoteAPI {
-	
 	let userID = XID.build()
-	
+
 	public func getPublicKeyProvider() -> ASAuthorizationPlatformPublicKeyCredentialProvider {
 		return .init(relyingPartyIdentifier: "noop")
 	}
-	
+
 	public func getIsPerformingModalRequest() -> Bool {
 		false
 	}
-	
+
 	public func getUserID() -> String {
-		return userID.string()
+		return self.userID.string()
 	}
-	
-	
+
 	public init() {}
 
-	public func remote(init type: CeremonyType, credentialID _: Data?) async throws -> Challenge {
+	public func remote(init _: CeremonyType, credentialID _: Data?) async throws -> Challenge {
 		return XID.build()
 	}
 
@@ -44,7 +42,7 @@ public class WebauthnNoopRemoteClient: WebauthnRemoteAPI {
 		return .init(token: "", credentialID: Data())
 	}
 
-	public func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data) async throws -> Bool {
+	public func remote(deviceAttestation _: Data, clientDataJSON _: String, using _: Data) async throws -> Bool {
 		return false
 	}
 }

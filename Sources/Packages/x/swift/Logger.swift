@@ -9,7 +9,6 @@ import Foundation
 import Logging
 
 public extension x {
-
 	private static let defaultLogger = Logging.Logger(label: "default")
 
 	static func log(_ level: Logging.Logger.Level = .info, _ logger: Logging.Logger? = nil) -> LogEvent {
@@ -74,8 +73,6 @@ public extension Logging.Logger.Metadata {
 		return (self["function"]?.description ?? "", self["file"]?.description ?? "", (try? Int(self["line"]?.description ?? "", format: .number)) ?? 0)
 	}
 }
-
-
 
 // class ConsoleHandler: Logging.LogHandler {
 //	public subscript(metadataKey key: String) -> Logging.Logger.Metadata.Value? {

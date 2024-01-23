@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  Result.swift
+//
 //
 //  Created by walter on 1/22/24.
 //
@@ -9,9 +9,9 @@ import Foundation
 
 public extension Result where Failure == Error {
 	static func X(formatError: (x.Error) -> x.Error = { $0 }, __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping () throws -> Success) -> Result<Success, Failure> {
-		return Result { try body() }.mapError {err in return formatError(x.error(err, __file: __file, __line: __line, __function: __function)) }
+		return Result { try body() }.mapError { err in return formatError(x.error(err, __file: __file, __line: __line, __function: __function)) }
 	}
-	
+
 	static func X(formatError: (x.Error) -> x.Error = { $0 }, __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping @Sendable () async throws -> Success) async -> Result<Success, Failure> {
 		do {
 			let result = try await body()
@@ -20,7 +20,7 @@ public extension Result where Failure == Error {
 			return .failure(formatError(x.error(error, __file: __file, __line: __line, __function: __function)))
 		}
 	}
-	
+
 	static func X(formatError: (x.Error) -> x.Error = { $0 }, __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping () throws -> Void) -> Result<Void, Failure> {
 		do {
 			try body()
@@ -29,7 +29,7 @@ public extension Result where Failure == Error {
 			return .failure(formatError(x.error(error, __file: __file, __line: __line, __function: __function)))
 		}
 	}
-	
+
 	static func X(formatError: (x.Error) -> x.Error = { $0 }, __file: String = #fileID, __line: Int = #line, __function: String = #function, catching body: @escaping @Sendable () async throws -> Void) async -> Result<Void, Failure> {
 		do {
 			try await body()
@@ -40,12 +40,11 @@ public extension Result where Failure == Error {
 	}
 }
 
-
 public extension Result {
 	// Extract the value if it's a success
 	var value: Success? {
 		switch self {
-		case .success(let value):
+		case let .success(value):
 			return value
 		case .failure:
 			return nil
@@ -57,7 +56,7 @@ public extension Result {
 		switch self {
 		case .success:
 			return nil
-		case .failure(let error):
+		case let .failure(error):
 			return error
 		}
 	}

@@ -1,5 +1,5 @@
 //
-//  Api.swift
+//  RemoteAPI.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/12/22.
@@ -9,16 +9,13 @@
 import AuthenticationServices
 import Foundation
 
+import XDKAppSession
 import XDKHex
 import XDKKeychain
-import XDKAppSession
 import XDKX
 import XDKXID
 
-
 extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
-
-	
 	public func remote(init type: CeremonyType, credentialID: Data? = nil) async throws -> Challenge {
 		var req: URLRequest = .init(url: host.appending(path: "/init"))
 
@@ -40,15 +37,13 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 
 	public func remote(authorization: ASAuthorization) async throws -> JWT {
 		if let reg1 = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
-			return try await remote(credentialRegistration: reg1)
+			return try await self.remote(credentialRegistration: reg1)
 		} else if let reg2 = authorization.credential as? ASAuthorizationPublicKeyCredentialAssertion {
-			return try await remote(credentialAssertion: reg2)
+			return try await self.remote(credentialAssertion: reg2)
 		}
 
 		throw x.error("invalid authentication type")
 	}
-
-
 
 	public func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async throws -> JWT {
 		var req: URLRequest = .init(url: host.appending(path: "/ios/register/passkey"))
@@ -147,7 +142,6 @@ func checkFor(header: String = "", in response: URLResponse, with _: Int) throws
 
 	return xNuggChallenge
 }
-
 
 func buildHeadersFor(requestAssertion assertion: Data, challenge: XDKXID.XID, sessionID: XDKXID.XID, credentialID: Data) -> [String: String] {
 	var abc = """

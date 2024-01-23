@@ -1,5 +1,5 @@
 //
-//  Multiplication.swift
+//  Big+Multipy.swift
 //  big.Int
 //
 //  Created by Károly Lőrentey on 2016-01-03.

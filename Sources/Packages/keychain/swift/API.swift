@@ -17,16 +17,16 @@ public protocol KeychainAPI {
 
 public extension KeychainAPI {
 	func read<T>(objectType _: T.Type, id: String) -> Result<T?, Error> where T: NSObject, T: NSSecureCoding {
-		let _data = read(insecurly: "\(T.description())_\(id)")
+		let _data = self.read(insecurly: "\(T.description())_\(id)")
 		guard let data = _data.value else { return .failure(_data.error!) }
-		guard let data = data else { return .success(nil) }
+		guard let data else { return .success(nil) }
 		return Result.X { try NSKeyedUnarchiver.unarchivedObject(ofClass: T.self, from: data) }
 	}
 
 	func write<T>(object: T, overwriting: Bool, id: String) -> Error? where T: NSObject, T: NSSecureCoding {
 		let _resp = Result.X { try NSKeyedArchiver.archivedData(withRootObject: object, requiringSecureCoding: true) }
 		guard let resp = _resp.value else { return _resp.error! }
-		return write(insecurly: "\(T.description())_\(id)", overwriting: overwriting, as: resp)
+		return self.write(insecurly: "\(T.description())_\(id)", overwriting: overwriting, as: resp)
 	}
 }
 

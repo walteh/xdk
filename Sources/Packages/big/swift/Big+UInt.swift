@@ -1,5 +1,5 @@
 //
-//  big.UInt.swift
+//  Big+UInt.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/28/22.
@@ -35,12 +35,12 @@ extension big.UInt: UnsignedInteger {
 		self.storage = []
 	}
 
-	internal init(word: Word) {
+	init(word: Word) {
 		self.kind = .inline(word, 0)
 		self.storage = []
 	}
 
-	internal init(low: Word, high: Word) {
+	init(low: Word, high: Word) {
 		self.kind = .inline(low, high)
 		self.storage = []
 	}
@@ -52,7 +52,7 @@ extension big.UInt: UnsignedInteger {
 		normalize()
 	}
 
-	internal init(words: [Word], from startIndex: Int, to endIndex: Int) {
+	init(words: [Word], from startIndex: Int, to endIndex: Int) {
 		self.kind = .slice(from: startIndex, to: endIndex)
 		self.storage = words
 		normalize()

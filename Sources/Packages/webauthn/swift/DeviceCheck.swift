@@ -12,8 +12,8 @@ import DeviceCheck
 import Foundation
 import os
 
-import XDKKeychain
 import XDKAppSession
+import XDKKeychain
 import XDKX
 
 struct AssertionResult {
@@ -54,13 +54,11 @@ class AppAttestKeyID: NSObject, NSSecureCoding {
 }
 
 extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
-	
 	public func initialized() throws -> Bool {
 		return try self.keychainAPI.read(objectType: AppAttestKeyID.self, id: "default").get() != nil
 	}
 
 	public func assert(request: inout URLRequest, dataToSign: Data? = nil) async throws {
-
 		guard let key = try self.keychainAPI.read(objectType: AppAttestKeyID.self, id: "default").get() else {
 			throw DeviceCheckError.unexpectedNil
 		}
@@ -90,7 +88,6 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 	}
 
 	public func attest() async throws {
-
 		let ceremony: CeremonyType = .Create
 
 		let challenge = try await remote(init: ceremony)

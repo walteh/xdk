@@ -6,8 +6,8 @@
 //  Copyright © 2022 nugg.xyz LLC. All rights reserved.
 //
 
-import XDKBig
 import XCTest
+import XDKBig
 @testable import XDKRLP
 
 private struct TestCase {
@@ -51,7 +51,7 @@ extension Transaction__Tests {
 
 		print(try! tx.rlp().hexEncodedString())
 
-		try _test(args: .init(
+		try self._test(args: .init(
 			transaction: EthereumTransaction(
 				to: .init(hex: "aaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbb")!,
 				nonce: .init(88),

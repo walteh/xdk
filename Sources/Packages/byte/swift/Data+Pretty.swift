@@ -1,5 +1,5 @@
 //
-//  Data+XData.swift
+//  Data+Pretty.swift
 //  nugg.xyz
 //
 //  Created by walter on 02/28/2023.

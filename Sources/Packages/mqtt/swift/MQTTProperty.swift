@@ -1,5 +1,5 @@
 //
-//  MQTTPropertyType.swift
+//  MQTTProperty.swift
 //  MQTT
 //
 //  Created by liwei wang on 2021/7/6.
@@ -82,7 +82,7 @@ func integerCompute(data: [UInt8], formatType: Int, offset: Int) -> (res: Int, n
 }
 
 func unsignedByteToInt(data: UInt8) -> (Int) {
-	return (Int)(data & 0xFF)
+	return Int(data & 0xFF)
 }
 
 func unsignedBytesToInt(data0: UInt8, data1: UInt8) -> (Int) {

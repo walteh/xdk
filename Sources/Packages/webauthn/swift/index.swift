@@ -7,8 +7,8 @@
 
 import AuthenticationServices
 import Foundation
-import XDKKeychain
 import XDKAppSession
+import XDKKeychain
 import XDKXID
 
 public struct JWT {

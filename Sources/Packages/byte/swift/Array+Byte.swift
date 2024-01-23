@@ -1,5 +1,5 @@
 //
-//  Array+Uint8.swift
+//  Array+Byte.swift
 //  nugg.xyz
 //
 //  Created by walter on 11/23/22.

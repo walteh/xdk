@@ -5,10 +5,10 @@
 //  Created by walter on 3/3/23.
 //
 
-@testable import XDKECDSA
 import XCTest
 import XDKHex
 import XDKX
+@testable import XDKECDSA
 
 class ecdsaTests: XCTestCase {
 	override func setUpWithError() throws {

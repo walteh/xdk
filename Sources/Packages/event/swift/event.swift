@@ -1,5 +1,5 @@
 //
-//  hex.swift
+//  event.swift
 //  nugg.xyz
 //
 //  Created by walter on 02/28/2023.

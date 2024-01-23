@@ -1,5 +1,5 @@
 //
-//  FramePubCom.swift
+//  FramePubComp.swift
 //  MQTT
 //
 //  Created by JianBo on 2019/8/7.

@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  UInt32+Byte.swift
 //
 //
 //  Created by walter on 3/4/23.
@@ -11,7 +11,9 @@ public extension UInt32 {
 	var byteArrayLittleEndian: [UInt8] {
 		var preres = self.byteArrayLittleEndianRaw
 
-		while preres.first == 0 { preres.removeFirst() }
+		while preres.first == 0 {
+			preres.removeFirst()
+		}
 
 		return preres
 	}
