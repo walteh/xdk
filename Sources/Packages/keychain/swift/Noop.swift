@@ -8,7 +8,7 @@
 import Foundation
 import XDKX
 
-class NoopClient: NSObject {
+public class NoopClient: NSObject {
 	var store = [String: Data]()
 
 	override public init() {}

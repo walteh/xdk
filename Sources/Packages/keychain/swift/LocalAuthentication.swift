@@ -22,7 +22,7 @@ extension LAContext {
 	}
 }
 
-class LocalAuthenticationClient: NSObject, ObservableObject {
+public class LocalAuthenticationClient: NSObject, ObservableObject {
 	var authenticationContext = LAContext()
 
 	let group: String
