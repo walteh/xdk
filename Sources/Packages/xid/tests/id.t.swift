@@ -5,13 +5,13 @@ final class IDTests: XCTestCase {
 	func testIDDecodable() throws {
 		let data = "\"caia5ng890f0tr00hgtg\"".data(using: .utf8)!
 		let decoder = JSONDecoder()
-		let id = try decoder.decode(xid.XID.self, from: data)
+		let id = try decoder.decode(XDKXID.XID.self, from: data)
 
 		XCTAssertEqual("caia5ng890f0tr00hgtg", String(describing: id))
 	}
 
 	func testIDEncodable() throws {
-		let id = xid.New()
+		let id = XID.build()
 
 		let encoder = JSONEncoder()
 		let data = try encoder.encode(id)
@@ -22,24 +22,24 @@ final class IDTests: XCTestCase {
 	}
 
 	func testIDInitFromDataThrow() {
-		XCTAssertThrowsError(try xid.XID(from: Data([0x78, 0x69, 0x64]))) { error in
-			XCTAssertEqual(XIDError.invalidID, error as! XIDError)
+		XCTAssertThrowsError(try XDKXID.XID.rebuild(raw: Data([0x78, 0x69, 0x64]))) { error in
+			XCTAssertEqual(XIDError.InvalidRawDataLength(have: 3, want: 12), error as! XIDError)
 		}
 	}
 
 	func testIDInitFromStringThrow() {
-		XCTAssertThrowsError(try xid.XID(from: "xid")) { error in
-			XCTAssertEqual(XIDError.invalidIDStringLength(have: 3, want: 20), error as! XIDError)
+		XCTAssertThrowsError(try XDKXID.XID.rebuild(string: "xid")) { error in
+			XCTAssertEqual(XIDError.InvalidStringLength(have: 3, want: 20), error as! XIDError)
 		}
 
-		XCTAssertThrowsError(try xid.XID(from: "caia5ng890f0tr00hgt=")) { error in
+		XCTAssertThrowsError(try XDKXID.XID.rebuild(string: "caia5ng890f0tr00hgt=")) { error in
 			XCTAssertEqual(XIDError.decodeValidationFailure, error as! XIDError)
 		}
 	}
 
 	func testIDPartsExtraction() {
 		struct Test {
-			var id: xid.XID
+			var id: XDKXID.XID
 			var time: Date
 			var machineID: Data
 			var pid: UInt16
@@ -48,21 +48,21 @@ final class IDTests: XCTestCase {
 
 		let tests: [Test] = [
 			Test(
-				id: xid.XID(_bytes: Data([0x4D, 0x88, 0xE1, 0x5B, 0x60, 0xF4, 0x86, 0xE4, 0x28, 0x41, 0x2D, 0xC9])),
+				id: try! XDKXID.XID.rebuild(raw: Data([0x4D, 0x88, 0xE1, 0x5B, 0x60, 0xF4, 0x86, 0xE4, 0x28, 0x41, 0x2D, 0xC9])),
 				time: Date(timeIntervalSince1970: TimeInterval(1_300_816_219)),
 				machineID: Data([0x60, 0xF4, 0x86]),
 				pid: 0xE428,
 				counter: 4_271_561
 			),
 			Test(
-				id: xid.XID(_bytes: Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])),
+				id: try! XDKXID.XID.rebuild(raw: Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])),
 				time: Date(timeIntervalSince1970: TimeInterval(0)),
 				machineID: Data([0x00, 0x00, 0x00]),
 				pid: 0x0000,
 				counter: 0
 			),
 			Test(
-				id: xid.XID(_bytes: Data([0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x00, 0x00, 0x01])),
+				id: try! XDKXID.XID.rebuild(raw: Data([0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x00, 0x00, 0x01])),
 				time: Date(timeIntervalSince1970: TimeInterval(0)),
 				machineID: Data([0xAA, 0xBB, 0xCC]),
 				pid: 0xDDEE,
@@ -78,9 +78,9 @@ final class IDTests: XCTestCase {
 		}
 	}
 
-	func testIDString() {
+	func testIDString() throws {
 		let bytes: [UInt8] = [0x4D, 0x88, 0xE1, 0x5B, 0x60, 0xF4, 0x86, 0xE4, 0x28, 0x41, 0x2D, 0xC9]
-		let id = xid.XID(_bytes: Data(bytes))
+		let id = try XDKXID.XID.rebuild(raw: Data(bytes))
 
 		XCTAssertEqual("9m4e2mr0ui3e8a215n4g", String(describing: id))
 	}

@@ -1,13 +1,12 @@
 //
 //  Logger+Thread.swift
-//  app
 //
 //  Created by walter on 9/30/22.
 //
 
 import Foundation
 
-extension Thread {
+public extension Thread {
 	var isRunningXCTest: Bool {
 		threadDictionary.allKeys
 			.contains {

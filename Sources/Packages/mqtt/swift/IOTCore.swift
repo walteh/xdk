@@ -7,11 +7,11 @@
 
 import Foundation
 
-import XDKSession
+import XDKAppSession
 import XDKX
 
 public extension mqtt {
-	static func NewIOTCoreClient(host: String, session: some session.API, delegate: some mqtt.Delegate) -> MQTT5IOTCore {
+	static func NewIOTCoreClient(host: String, session: some XDKAppSession.AppSessionAPI, delegate: some mqtt.Delegate) -> MQTT5IOTCore {
 		let res = MQTT5IOTCore(host: host, session: session, delegate: delegate)
 		return res
 	}
@@ -20,7 +20,7 @@ public extension mqtt {
 public class MQTT5IOTCore: MQTT5 {
 	public static var queue = DispatchQueue(label: "mqtt.iot-core")
 
-	init(host: String, session: some session.API, delegate: some mqtt.Delegate) {
+	init(host: String, session: some XDKAppSession.AppSessionAPI, delegate: some mqtt.Delegate) {
 		let sock = MQTTWebSocket(uri: "/mqtt")
 		sock.enableSSL = true
 

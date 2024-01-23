@@ -9,13 +9,13 @@ import Foundation
 
 import Logging
 
-public class FileLogHandler: Logging.LogHandler {
+public class FileHandler: Logging.LogHandler {
 	public subscript(metadataKey key: String) -> Logging.Logger.Metadata.Value? {
 		get {
-			return self[metadataKey: key]
+			return self.metadata[key]
 		}
 		set(newValue) {
-			self[metadataKey: key] = newValue
+			self.metadata[key] = newValue
 		}
 	}
 

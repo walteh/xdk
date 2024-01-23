@@ -77,6 +77,6 @@ extension x.Env {
 	}
 
 	private static func load(fileName: String, ofType: FileType) -> Result<Data, Error> {
-		return Result.X { try self.load(fileName: fileName, ofType: ofType) }
+		return Result.X { return try self.load(fileName: fileName, ofType: ofType) }
 	}
 }

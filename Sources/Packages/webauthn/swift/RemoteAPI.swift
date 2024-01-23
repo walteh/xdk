@@ -11,30 +11,18 @@ import Foundation
 
 import XDKHex
 import XDKKeychain
-import XDKSession
+import XDKAppSession
 import XDKX
+import XDKXID
 
-public extension webauthn {
-	class Client: NSObject {
-		let host: URL
 
-		let sessionAPI: SESSION
-		let keychainAPI: KEYCHAIN
+extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 
-		public init(host: String, keychainAPI: KEYCHAIN, sessionAPI: SESSION) {
-			self.host = .init(string: host)!
-			self.keychainAPI = keychainAPI
-			self.sessionAPI = sessionAPI
-			super.init()
-		}
-	}
-}
-
-extension webauthn.Client: webauthn.API {
-	public func Init(sessionID: Data, type: webauthn.CeremonyType, credentialID: Data? = nil) async throws -> webauthn.Challenge {
+	
+	public func remote(init type: CeremonyType, credentialID: Data? = nil) async throws -> Challenge {
 		var req: URLRequest = .init(url: host.appending(path: "/init"))
 
-		req.setValue(xhex.ToHexString(sessionID), forHTTPHeaderField: "X-Nugg-Hex-Session-ID")
+		req.setValue(xhex.ToHexString(sessionAPI.ID().data()), forHTTPHeaderField: "X-Nugg-Hex-Session-ID")
 		req.setValue(type.rawValue, forHTTPHeaderField: "X-Nugg-Utf-Ceremony-Type")
 
 		if credentialID != nil {
@@ -47,10 +35,10 @@ extension webauthn.Client: webauthn.API {
 
 		let chal = try checkFor(header: "x-nugg-hex-challenge", in: response, with: 204)
 
-		return xhex.ToHexData(chal.data)
+		return try XID.rebuild(string: chal)
 	}
 
-	public func remote(authorization: ASAuthorization) async throws -> webauthn.JWT {
+	public func remote(authorization: ASAuthorization) async throws -> JWT {
 		if let reg1 = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
 			return try await remote(credentialRegistration: reg1)
 		} else if let reg2 = authorization.credential as? ASAuthorizationPublicKeyCredentialAssertion {
@@ -60,23 +48,9 @@ extension webauthn.Client: webauthn.API {
 		throw x.error("invalid authentication type")
 	}
 
-	func buildHeadersFor(requestAssertion assertion: Data, challenge: Data, sessionID: Data, credentialID: Data) -> [String: String] {
-		var abc = """
-		{
-			"credential_id":"\(xhex.ToHexString(credentialID))",
-			"assertion_object":"\(xhex.ToHexString(assertion))",
-			"session_id":"\(xhex.ToHexString(sessionID))",
-			"provider":"apple",
-			"client_data_json":"{\\"challenge\\":\\"\(challenge.base64URLEncodedString())\\",\\"origin\\":\\"https://nugg.xyz\\",\\"type\\":\\"\(webauthn.CeremonyType.Get.rawValue)\\"}"
-		}
-		"""
 
-		abc.removeAll { x in x.isNewline || x.isWhitespace }
 
-		return ["X-Nugg-Hex-Request-Assertion": xhex.ToHexString(abc.data(using: .utf8) ?? Data())]
-	}
-
-	public func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async throws -> webauthn.JWT {
+	public func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async throws -> JWT {
 		var req: URLRequest = .init(url: host.appending(path: "/ios/register/passkey"))
 
 		req.httpMethod = "POST"
@@ -99,7 +73,7 @@ extension webauthn.Client: webauthn.API {
 		return .init(token: chal, credentialID: attest.credentialID)
 	}
 
-	public func remote(credentialAssertion assert: ASAuthorizationPublicKeyCredentialAssertion) async throws -> webauthn.JWT {
+	public func remote(credentialAssertion assert: ASAuthorizationPublicKeyCredentialAssertion) async throws -> JWT {
 		var req: URLRequest = .init(url: host.appending(path: "/passkey/assert"))
 
 		req.httpMethod = "POST"
@@ -118,7 +92,7 @@ extension webauthn.Client: webauthn.API {
 		return .init(token: chal, credentialID: assert.credentialID)
 	}
 
-	public func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data, sessionID: Data) async throws -> Bool {
+	func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data) async throws -> Bool {
 		var req: URLRequest = .init(url: host.appending(path: "/ios/register/device"))
 
 		req.httpMethod = "POST"
@@ -127,7 +101,7 @@ extension webauthn.Client: webauthn.API {
 		req.setValue("text/plain", forHTTPHeaderField: "Content-Type")
 //		req.setValue(da.base64URLEncodedString(), forHTTPHeaderField: "X-Nugg-Base64-Attestation-Object")
 		req.setValue(clientDataJSON, forHTTPHeaderField: "X-Nugg-Utf-Client-Data-Json")
-		req.setValue(xhex.ToHexString(sessionID), forHTTPHeaderField: "X-Nugg-Hex-Session-Id")
+		req.setValue(xhex.ToHexString(sessionAPI.ID().data()), forHTTPHeaderField: "X-Nugg-Hex-Session-Id")
 
 		req.httpBodyStream = .init(data: xhex.ToHexString(da).data(using: .utf8) ?? Data())
 
@@ -172,4 +146,21 @@ func checkFor(header: String = "", in response: URLResponse, with _: Int) throws
 	}
 
 	return xNuggChallenge
+}
+
+
+func buildHeadersFor(requestAssertion assertion: Data, challenge: XDKXID.XID, sessionID: XDKXID.XID, credentialID: Data) -> [String: String] {
+	var abc = """
+	{
+		"credential_id":"\(xhex.ToHexString(credentialID))",
+		"assertion_object":"\(xhex.ToHexString(assertion))",
+		"session_id":"\(xhex.ToHexString(sessionID.data()))",
+		"provider":"apple",
+		"client_data_json":"{\\"challenge\\":\\"\(challenge.data().base64URLEncodedString())\\",\\"origin\\":\\"https://nugg.xyz\\",\\"type\\":\\"\(CeremonyType.Get.rawValue)\\"}"
+	}
+	"""
+
+	abc.removeAll { x in x.isNewline || x.isWhitespace }
+
+	return ["X-Nugg-Hex-Request-Assertion": xhex.ToHexString(abc.data(using: .utf8) ?? Data())]
 }

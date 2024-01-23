@@ -4,12 +4,11 @@ import XCTest
 final class XIDTests: XCTestCase {
 	func testXIDNext() {
 		let n = 100
-		var xid = XIDManager()
-		var ids: [xid.XID] = []
+		var ids: [XDKXID.XID] = []
 
 		// Generate n ids
 		for _ in 0 ..< n {
-			ids.append(xid.next())
+			ids.append(buf.next())
 		}
 
 		for i in 1 ..< n {

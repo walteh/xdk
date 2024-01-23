@@ -14,8 +14,14 @@ import Logging
 // store operating system / platform
 #if os(iOS)
 	let OS = "iOS"
+#elseif os(watchOS)
+	let OS = "watchOS"
+#elseif os(tvOS)
+	let OS = "tvOS"
 #elseif os(OSX)
 	let OS = "OSX"
+#elseif os(visionOS)
+	let OS = "visonOS"
 #elseif os(watchOS)
 	let OS = "watchOS"
 #elseif os(tvOS)
@@ -127,15 +133,15 @@ open class BaseDestination: Hashable, Equatable {
 	/// returns the formatted log message for processing by inheriting method
 	/// and for unit tests (nil if error)
 	open func send(_ level: Logging.Logger.Level, msg: String, thread: String, file: String,
-	               function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
+				   function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
 	{
 		if format.hasPrefix("$J") {
 			return messageToJSON(level, msg: msg, thread: thread,
-			                     file: file, function: function, line: line, context: context)
+								 file: file, function: function, line: line, context: context)
 
 		} else {
 			return formatMessage(format, level: level, msg: msg, thread: thread,
-			                     file: file, function: function, line: line, context: context)
+								 file: file, function: function, line: line, context: context)
 		}
 	}
 
@@ -201,7 +207,7 @@ open class BaseDestination: Hashable, Equatable {
 
 	/// returns the log message based on the format pattern
 	func formatMessage(_ format: String, level: Logging.Logger.Level, msg: String, thread: String,
-	                   file: String, function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String
+					   file: String, function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String
 	{
 		if format != "abc" {
 			return msg
@@ -279,7 +285,7 @@ open class BaseDestination: Hashable, Equatable {
 
 	/// returns the log payload as optional JSON string
 	func messageToJSON(_ level: Logging.Logger.Level, msg: String,
-	                   thread: String, file: String, function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
+					   thread: String, file: String, function: String, line: Int, context: Logging.Logger.Metadata? = nil) -> String?
 	{
 		var dict: [String: Any] = [
 			"timestamp": Date().timeIntervalSince1970,
@@ -400,7 +406,7 @@ open class BaseDestination: Hashable, Equatable {
 		// remove the leading {"key":" from the json string and the final }
 		let offset = key.length + 5
 		let endIndex = str.index(str.startIndex,
-		                         offsetBy: str.length - 2)
+								 offsetBy: str.length - 2)
 		let range = str.index(str.startIndex, offsetBy: offset) ..< endIndex
 		#if swift(>=3.2)
 			return String(str[range])

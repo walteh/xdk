@@ -1,125 +1,202 @@
-import CryptoKit
+
 import Foundation
 
-import Atomics
+import XDKX
 
-#if canImport(UIKit)
-	import UIKit
-#endif
+internal var buf = XIDManager()
 
-public enum xid {
-	private static var buf = XIDManager()
-
-	public static func New() -> xid.XID {
-		buf.next()
+public struct XID {
+  internal var _bytes: (
+	UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+	UInt8, UInt8, UInt8, UInt8
+  )
+	
+	public static func build() -> XID {
+		return buf.next()
 	}
-
-	public static func NewXID() -> String {
-		String(describing: buf.next())
+	
+	internal static func rebuild(raw: Data) throws -> XID {
+		return try XID.init(raw: raw)
 	}
-
-	public static func NewXID(bytes: Data) throws -> xid.XID {
-		if bytes.count != 12 {
-			throw XIDError.invalidID
-		}
-
-		return xid.XID(_bytes: bytes)
+	
+	public static func rebuild(string: String) throws -> XID {
+		return try XID.init(string: string)
 	}
-
-	public static func NewXID(from: Data) throws -> xid.XID {
-		try xid.XID(from: from)
-	}
-
-	public static func NewXID(from: String) throws -> xid.XID {
-		try xid.XID(from: from)
+	
+	public static func rebuild(utf8: Data) throws -> XID {
+		return try XID.init(utf8: utf8)
 	}
 }
 
-struct XIDManager {
-	private(set) static var counter: ManagedAtomic<Int32> = {
-		var i: Int32 = 0
-		let status = withUnsafeMutableBytes(of: &i) { ptr in
-			SecRandomCopyBytes(kSecRandomDefault, ptr.count, ptr.baseAddress!)
+extension XID {
+	public func data() -> Data { return self.string().data(using: .utf8) ?? Data() }
+	public func string() -> String { return self.description }
+}
+
+
+public extension XID {
+	private init(raw: Data) throws {
+		if raw.count != 12 {
+			throw x.error(XIDError.InvalidRawDataLength(have: raw.count, want: 12))
+		}
+		
+		self._bytes = (
+			raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7],
+			raw[8], raw[9], raw[10], raw[11]
+		)
+	}
+	
+	private init(string: String) throws {
+		if string.count != 20 {
+			throw x.error(XIDError.InvalidStringLength(have: string.count, want: 20))
 		}
 
-		if status != errSecSuccess {
-			i = Int32.random(in: Int32.min ... Int32.max)
+		guard let data = string.data(using: .utf8) else {
+			throw x.error(XIDError.invalidID)
 		}
 
-		return ManagedAtomic<Int32>(i)
-	}()
+		try self.init(utf8: data)
+	}
 
-	private(set) lazy var mid: Data = machineID()
+	private init(utf8: Data) throws {
+		if utf8.count != 20 {
+			throw XIDError.invalidID
+		}
+		
+		let from = utf8
 
-	private(set) lazy var pid: Data = processID()
+//		self._bytes = Data(repeating: 0x00, count: 12)
+		self._bytes.11 = base32DecodeMap[Data.Index(from[17])] << 6 | base32DecodeMap[Data.Index(from[18])] << 1 | base32DecodeMap[Data.Index(from[19])] >> 4
+		self._bytes.10 = base32DecodeMap[Data.Index(from[16])] << 3 | base32DecodeMap[Data.Index(from[17])] >> 2
+		self._bytes.9 = base32DecodeMap[Data.Index(from[14])] << 5 | base32DecodeMap[Data.Index(from[15])]
+		self._bytes.8 = base32DecodeMap[Data.Index(from[12])] << 7 | base32DecodeMap[Data.Index(from[13])] << 2 | base32DecodeMap[Data.Index(from[14])] >> 3
+		self._bytes.7 = base32DecodeMap[Data.Index(from[11])] << 4 | base32DecodeMap[Data.Index(from[12])] >> 1
+		self._bytes.6 = base32DecodeMap[Data.Index(from[9])] << 6 | base32DecodeMap[Data.Index(from[10])] << 1 | base32DecodeMap[Data.Index(from[11])] >> 4
+		self._bytes.5 = base32DecodeMap[Data.Index(from[8])] << 3 | base32DecodeMap[Data.Index(from[9])] >> 2
+		self._bytes.4 = base32DecodeMap[Data.Index(from[6])] << 5 | base32DecodeMap[Data.Index(from[7])]
+		self._bytes.3 = base32DecodeMap[Data.Index(from[4])] << 7 | base32DecodeMap[Data.Index(from[5])] << 2 | base32DecodeMap[Data.Index(from[6])] >> 3
+		self._bytes.2 = base32DecodeMap[Data.Index(from[3])] << 4 | base32DecodeMap[Data.Index(from[4])] >> 1
+		self._bytes.1 = base32DecodeMap[Data.Index(from[1])] << 6 | base32DecodeMap[Data.Index(from[2])] << 1 | base32DecodeMap[Data.Index(from[3])] >> 4
+		self._bytes.0 = base32DecodeMap[Data.Index(from[0])] << 3 | base32DecodeMap[Data.Index(from[1])] >> 2
 
-	public init() {}
+		// Validate that there are no padding in data that would cause the re-encoded id to not equal data.
+		var check = Data(repeating: 0x00, count: 4)
+		check[3] = base32Alphabet[Data.Index((self._bytes.11 << 4) & 0x1F)]
+		check[2] = base32Alphabet[Data.Index((self._bytes.11 >> 1) & 0x1F)]
+		check[1] = base32Alphabet[Data.Index((self._bytes.11 >> 6) & 0x1F | (self._bytes.10 << 2) & 0x1F)]
+		check[0] = base32Alphabet[Data.Index(self._bytes.10 >> 3)]
 
-	public mutating func next() -> xid.XID {
-		var bytes = Data(repeating: 0x00, count: 12)
+		if check != from[16 ... 19] {
+			throw x.error(XIDError.decodeValidationFailure)
+		}
+	}
+}
 
-		// Timestamp, 4 bytes (big endian)
-		let ts = timestamp()
-		bytes[0] = ts[0]
-		bytes[1] = ts[1]
-		bytes[2] = ts[2]
-		bytes[3] = ts[3]
-
-		// Machine ID, 3 bytes
-		bytes[4] = mid[0]
-		bytes[5] = mid[1]
-		bytes[6] = mid[2]
-
-		// Process ID, 2 bytes (specs don't specify endianness, use big endian)
-		bytes[7] = pid[0]
-		bytes[8] = pid[1]
-
-		// Increment, 3 bytes (big endian)
-		let i = XIDManager.counter.wrappingIncrementThenLoad(ordering: .relaxed)
-		bytes[9] = UInt8((i & 0xFF0000) >> 16)
-		bytes[10] = UInt8((i & 0x00FF00) >> 8)
-		bytes[11] = UInt8(i & 0x0000FF)
-
-		return xid.XID(_bytes: bytes)
+public extension XID {
+	func counter() -> Int32 {
+		return Int32(
+			UInt32(self.data()[9]) << 16 | UInt32(self.data()[10]) << 8 | UInt32(self.data()[11])
+		)
 	}
 
 	func machineID() -> Data {
-		let ptr = UnsafeMutablePointer<uuid_t>.allocate(capacity: 1)
-		defer {
-			ptr.deinitialize(count: 1)
-			ptr.deallocate()
-		}
-
-		#if os(macOS)
-			var timeout = timespec(tv_sec: 0, tv_nsec: 500_000_000)
-			gethostuuid(ptr, &timeout)
-		#else
-			#if canImport(UIKit)
-				ptr.pointee = UIDevice.current.identifierForVendor!.uuid
-			#else
-				uuid_generate(ptr)
-			#endif
-		#endif
-
-		let mid: Data = withUnsafeBytes(of: ptr.pointee) { bytes in
-			Data(Insecure.MD5.hash(data: bytes))
-		}
-
-		return mid
+		return Data(self.data()[4 ... 6])
 	}
 
-	func processID() -> Data {
-		var pid = Int32(getpid()).bigEndian
-		let data = Data(bytes: &pid, count: MemoryLayout.size(ofValue: pid))
+	func pid() -> UInt16 {
+		let pid: UInt16 = withUnsafeBytes(of: Data(data()[7 ... 8])) { ptr in
+			let n = ptr.load(as: UInt16.self)
+			return UInt16(bigEndian: n)
+		}
 
-		// Can't really fit a 4 byte `pid_t` into 2 bytes, ignore the most significant bytes
-		return Data(data[2 ... 3])
+		return pid
 	}
 
-	func timestamp() -> Data {
-		var n = UInt32(Date().timeIntervalSince1970).bigEndian
-		let data = Data(bytes: &n, count: MemoryLayout.size(ofValue: n))
+	func time() -> Date {
+		let t: Date = withUnsafeBytes(of: Data(data()[0 ... 3])) { ptr in
+			let n = ptr.load(as: UInt32.self)
+			return Date(timeIntervalSince1970: TimeInterval(UInt32(bigEndian: n)))
+		}
 
-		return data
+		return t
 	}
 }
+
+ extension XID: CustomStringConvertible {
+	public var description: String {
+//		if self._bytes.count != 12 {
+//			return ""
+//		}
+
+		// base32hex encoding
+		var chars = Data(repeating: 0x00, count: 20)
+		chars[19] = base32Alphabet[Data.Index((self._bytes.11 << 4) & 0x1F)]
+		chars[18] = base32Alphabet[Data.Index((self._bytes.11 >> 1) & 0x1F)]
+		chars[17] = base32Alphabet[Data.Index((self._bytes.11 >> 6) & 0x1F | (self._bytes.10 << 2) & 0x1F)]
+		chars[16] = base32Alphabet[Data.Index(self._bytes.10 >> 3)]
+		chars[15] = base32Alphabet[Data.Index(self._bytes.9 & 0x1F)]
+		chars[14] = base32Alphabet[Data.Index((self._bytes.9 >> 5) | (self._bytes.8 << 3) & 0x1F)]
+		chars[13] = base32Alphabet[Data.Index((self._bytes.8 >> 2) & 0x1F)]
+		chars[12] = base32Alphabet[Data.Index(self._bytes.8 >> 7 | (self._bytes.7 << 1) & 0x1F)]
+		chars[11] = base32Alphabet[Data.Index((self._bytes.7 >> 4) & 0x1F | (self._bytes.6 << 4) & 0x1F)]
+		chars[10] = base32Alphabet[Data.Index((self._bytes.6 >> 1) & 0x1F)]
+		chars[9] = base32Alphabet[Data.Index((self._bytes.6 >> 6) & 0x1F | (self._bytes.5 << 2) & 0x1F)]
+		chars[8] = base32Alphabet[Data.Index(self._bytes.5 >> 3)]
+		chars[7] = base32Alphabet[Data.Index(self._bytes.4 & 0x1F)]
+		chars[6] = base32Alphabet[Data.Index(self._bytes.4 >> 5 | (self._bytes.3 << 3) & 0x1F)]
+		chars[5] = base32Alphabet[Data.Index((self._bytes.3 >> 2) & 0x1F)]
+		chars[4] = base32Alphabet[Data.Index(self._bytes.3 >> 7 | (self._bytes.2 << 1) & 0x1F)]
+		chars[3] = base32Alphabet[Data.Index((self._bytes.2 >> 4) & 0x1F | (self._bytes.1 << 4) & 0x1F)]
+		chars[2] = base32Alphabet[Data.Index((self._bytes.1 >> 1) & 0x1F)]
+		chars[1] = base32Alphabet[Data.Index((self._bytes.1 >> 6) & 0x1F | (self._bytes.0 << 2) & 0x1F)]
+		chars[0] = base32Alphabet[Data.Index(self._bytes.0 >> 3)]
+
+		return String(bytes: chars, encoding: .utf8) ?? ""
+	}
+}
+
+  extension XID: Decodable {
+	public init(from decoder: Decoder) throws {
+		let container = try decoder.singleValueContainer()
+		try self.init(string: container.decode(String.self))
+	}
+}
+
+  extension XID: Encodable {
+	public func encode(to encoder: Encoder) throws {
+		var container = encoder.singleValueContainer()
+		try container.encode(String(describing: self))
+	}
+}
+
+  extension XID: Equatable {
+	public static func == (lhs: XID, rhs: XID) -> Bool {
+		return lhs.string() == rhs.string()
+	}
+}
+
+
+private let base32Alphabet = Data("0123456789abcdefghijklmnopqrstuv".utf8)
+
+private let base32DecodeMap: Data = {
+	var map = Data(repeating: 0xFF, count: 256)
+	for i in 0 ..< base32Alphabet.count {
+		map[Data.Index(base32Alphabet[i])] = UInt8(i)
+	}
+
+	return map
+}()
+
+
+//extension XID: NSSecureCoding {
+//	static var supportsSecureCoding = true
+//
+//	func encode(with coder: NSCoder) {
+//		coder.encode(self._bytes, forKey: "id")
+//	}
+//
+//	init?(coder: NSCoder) {
+//		let id = coder.decodeObject(of: NSData.self, forKey: "id") as Data
+//		try? self.init(raw: id)
+//	}
+//}

@@ -35,10 +35,10 @@ let websocket = Folder(local: "WebSocket", hasC: false, deps: [x, byte]).apply()
 let mtx = Folder(local: "MTX", hasC: false, deps: [x, hex]).apply()
 let rlp = Folder(local: "RLP", hasC: false, deps: [x, ecdsa, byte, hex, big]).apply()
 let logging = Folder(local: "Logging", hasC: false, deps: [x, swiftLogs, hex]).apply()
-let session = Folder(local: "Session", hasC: false, deps: [x, keychain, xid]).apply()
+let appsession = Folder(local: "AppSession", hasC: false, deps: [x, keychain, xid]).apply()
 let moc = Folder(local: "MOC", hasC: false, deps: [x, keychain]).apply()
-let mqtt = Folder(local: "MQTT", hasC: false, deps: [x, byte, session]).apply()
-let webauthn = Folder(local: "Webauthn", hasC: false, deps: [x, ecdsa, byte, hex, big, keychain, session]).apply()
+let mqtt = Folder(local: "MQTT", hasC: false, deps: [x, byte, appsession]).apply()
+let webauthn = Folder(local: "Webauthn", hasC: false, deps: [x, ecdsa, byte, hex, big, keychain, appsession]).apply()
 
 func complete() {
 	package.targets.append(mainTarget)

@@ -7,27 +7,44 @@
 
 import AuthenticationServices
 import Foundation
+import XDKXID
 
-public class WebauthnNoopAPI: webauthn.API {
+public class WebauthnNoopRemoteClient: WebauthnRemoteAPI {
+	
+	let userID = XID.build()
+	
+	public func getPublicKeyProvider() -> ASAuthorizationPlatformPublicKeyCredentialProvider {
+		return .init(relyingPartyIdentifier: "noop")
+	}
+	
+	public func getIsPerformingModalRequest() -> Bool {
+		false
+	}
+	
+	public func getUserID() -> String {
+		return userID.string()
+	}
+	
+	
 	public init() {}
 
-	public func Init(sessionID _: Data, type _: webauthn.CeremonyType, credentialID _: Data?) async throws -> webauthn.Challenge {
-		return Data()
+	public func remote(init type: CeremonyType, credentialID _: Data?) async throws -> Challenge {
+		return XID.build()
 	}
 
-	public func remote(authorization _: ASAuthorization) async throws -> webauthn.JWT {
+	public func remote(authorization _: ASAuthorization) async throws -> JWT {
 		return .init(token: "", credentialID: Data())
 	}
 
-	public func remote(credentialRegistration _: ASAuthorizationPlatformPublicKeyCredentialRegistration) async throws -> webauthn.JWT {
+	public func remote(credentialRegistration _: ASAuthorizationPlatformPublicKeyCredentialRegistration) async throws -> JWT {
 		return .init(token: "", credentialID: Data())
 	}
 
-	public func remote(credentialAssertion _: ASAuthorizationPublicKeyCredentialAssertion) async throws -> webauthn.JWT {
+	public func remote(credentialAssertion _: ASAuthorizationPublicKeyCredentialAssertion) async throws -> JWT {
 		return .init(token: "", credentialID: Data())
 	}
 
-	public func remote(deviceAttestation _: Data, clientDataJSON _: String, using _: Data, sessionID _: Data) async throws -> Bool {
+	public func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data) async throws -> Bool {
 		return false
 	}
 }

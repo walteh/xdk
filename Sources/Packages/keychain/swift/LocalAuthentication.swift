@@ -11,7 +11,7 @@ import LocalAuthentication
 import os
 import XDKX
 
-public extension LAContext {
+extension LAContext {
 	func evaluatePolicy(_ policy: LAPolicy, localizedReason reason: String) async throws -> Bool {
 		return try await withCheckedThrowingContinuation { cont in
 			self.evaluatePolicy(policy, localizedReason: reason) { result, error in
@@ -22,15 +22,13 @@ public extension LAContext {
 	}
 }
 
-public extension keychain {
-	class Client: NSObject, ObservableObject {
-		var authenticationContext = LAContext()
+class LocalAuthenticationClient: NSObject, ObservableObject {
+	var authenticationContext = LAContext()
 
-		let group: String
+	let group: String
 
-		public init(group: String) {
-			self.group = group
-		}
+	public init(group: String) {
+		self.group = group
 	}
 }
 
@@ -49,7 +47,7 @@ func convertToBytes<T>(struct: T) -> [UInt8] {
 	return withUnsafeBytes(of: &myStruct) { Array($0) }
 }
 
-extension keychain.Client: keychain.API {
+extension LocalAuthenticationClient: KeychainAPI {
 	/// Keychain errors we might encounter.
 	public func authenticationAvailable() -> Bool {
 		return authenticationContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: nil)
@@ -57,31 +55,10 @@ extension keychain.Client: keychain.API {
 
 	public func withAuthentication() async -> Result<Bool, Error> {
 		guard authenticationAvailable() else {
-			return .failure(x.error(keychain.Error.auth_failed))
+			return .failure(x.error(KeychainError.auth_failed))
 		}
 
 		return await Result.X { try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: "Wanna Touch my ID?") }
-	}
-
-	public func write<T: NSSecureCoding & NSObject>(object: T, overwriting: Bool, id: String) -> Error? {
-		let _data = Result.X { try NSKeyedArchiver.archivedData(withRootObject: object, requiringSecureCoding: true) }
-		guard let data = _data.value else { return _data.error! }
-
-		return write(insecurly: String(describing: T.self) + "_" + id, overwriting: overwriting, as: Data(data))
-	}
-
-	public func read<T: NSSecureCoding & NSObject>(objectType _: T.Type, id: String) -> Result<T?, Error> {
-		let _data = read(insecurly: String(describing: T.self) + "_" + id)
-		guard let data = _data.value else { return .failure(_data.error!) }
-
-		if data == nil {
-			return .success(nil)
-		}
-
-		let _from = Result.X { try NSKeyedUnarchiver.unarchivedObject(ofClass: T.self, from: data!) }
-		guard let from = _from.value else { return .failure(_from.error!) }
-
-		return .success(from)
 	}
 
 	/// Stores credentials for the given server.
@@ -112,7 +89,7 @@ extension keychain.Client: keychain.API {
 			}
 
 			if status == errSecParam {
-				return x.error(keychain.Error.errSecParam)
+				return x.error(KeychainError.errSecParam)
 			}
 
 			return x.error(status)
