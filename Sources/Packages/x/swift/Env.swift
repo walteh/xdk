@@ -76,7 +76,7 @@ extension x.Env {
 		throw x.error("file not found").with(message: "could not find \(fileName).\(ofType.rawValue)")
 	}
 
-	private static func load(fileName: String, ofType: FileType) -> XReturn<Data> {
-		return toXReturn { return try self.load(fileName: fileName, ofType: ofType) }
+	private static func load(fileName: String, ofType: FileType) -> Result<Data, Error> {
+		return Result.X { try self.load(fileName: fileName, ofType: ofType) }
 	}
 }

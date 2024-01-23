@@ -8,53 +8,58 @@ import XDKXID
 public enum session {
 	public typealias API = SessionAPI
 
-	public static func loadFrom(keychain: any keychain.API) -> SessionAPI {
-		return KeychainSession(keychainAPI: keychain)
+	public static func loadFrom(keychain: any keychain.API) throws -> SessionAPI {
+		return try KeychainSession(keychainAPI: keychain)
 	}
 }
 
-public protocol SessionAPI {
-	func ID() -> xid.ID
+class SessionID: NSObject, NSSecureCoding {
+	static var supportsSecureCoding = true
+
+	let _id: Data
+	
+	var id: XDKXID.xid.XID {
+		return try! xid.XID(raw: _id)
+	}
+
+	init(id: XDKXID.xid.XID) {
+		self._id = id.bytes
+	}
+
+	public func encode(with coder: NSCoder) {
+		coder.encode(id, forKey: "id")
+	}
+
+	required public init?(coder: NSCoder) {
+		self._id = coder.decodeObject(of: NSData.self, forKey: "id")! as Data
+	}
 }
 
-extension keychain.Key {
-	static let SessionID = keychain.Key(rawValue: "SessionID")
+
+public protocol SessionAPI {
+	func ID() -> xid.XID
 }
 
 class KeychainSession: NSObject {
-	public let sessionID: xid.ID
+	public let sessionID: SessionID
 
 	public let keychainAPI: any keychain.API
 
-	init(keychainAPI: any keychain.API) {
+	init(keychainAPI: any keychain.API) throws {
 		self.keychainAPI = keychainAPI
-		let res = self.keychainAPI.read(insecurly: .SessionID)
-
-		var id: xid.ID? = nil
-
-		if let res {
-			do {
-				id = try xid.ID(raw: res)
-			} catch {
-				x.error(error).log()
-			}
-		}
-
+		
+		var id = try self.keychainAPI.read(objectType: SessionID.self, id: "default").get()
+		
 		if id == nil {
-			let tmpid = xid.New()
-			do {
-				try self.keychainAPI.write(insecurly: .SessionID, overwriting: true, as: tmpid.data)
-				id = tmpid
-			} catch {
-				x.error(error)
+			let tmpid = SessionID(id: xid.New())
+			if let err = self.keychainAPI.write(object: tmpid, overwriting: true, id: "default") {
+				throw err
 			}
+			id = tmpid
 		}
 
-		if id == nil {
-			fatalError("could not save session id to keychain")
-		}
 
-		x.log(.info).add("sessionID", id).msg("idk")
+		x.log(.info).add("sessionID", id!.description).msg("idk")
 
 		sessionID = id!
 
@@ -63,7 +68,7 @@ class KeychainSession: NSObject {
 }
 
 extension KeychainSession: SessionAPI {
-	func ID() -> xid.ID {
-		return sessionID
+	func ID() -> xid.XID {
+		return sessionID.id
 	}
 }

@@ -8,9 +8,9 @@ import Atomics
 #endif
 
 public enum xid {
-	private static var buf = XID()
+	private static var buf = XIDManager()
 
-	public static func New() -> xid.ID {
+	public static func New() -> xid.XID {
 		buf.next()
 	}
 
@@ -18,24 +18,24 @@ public enum xid {
 		String(describing: buf.next())
 	}
 
-	public static func NewXID(bytes: Data) throws -> xid.ID {
+	public static func NewXID(bytes: Data) throws -> xid.XID {
 		if bytes.count != 12 {
 			throw XIDError.invalidID
 		}
 
-		return xid.ID(bytes: bytes)
+		return xid.XID(_bytes: bytes)
 	}
 
-	public static func NewXID(from: Data) throws -> xid.ID {
-		try xid.ID(from: from)
+	public static func NewXID(from: Data) throws -> xid.XID {
+		try xid.XID(from: from)
 	}
 
-	public static func NewXID(from: String) throws -> xid.ID {
-		try xid.ID(from: from)
+	public static func NewXID(from: String) throws -> xid.XID {
+		try xid.XID(from: from)
 	}
 }
 
-struct XID {
+struct XIDManager {
 	private(set) static var counter: ManagedAtomic<Int32> = {
 		var i: Int32 = 0
 		let status = withUnsafeMutableBytes(of: &i) { ptr in
@@ -55,7 +55,7 @@ struct XID {
 
 	public init() {}
 
-	public mutating func next() -> xid.ID {
+	public mutating func next() -> xid.XID {
 		var bytes = Data(repeating: 0x00, count: 12)
 
 		// Timestamp, 4 bytes (big endian)
@@ -75,12 +75,12 @@ struct XID {
 		bytes[8] = pid[1]
 
 		// Increment, 3 bytes (big endian)
-		let i = XID.counter.wrappingIncrementThenLoad(ordering: .relaxed)
+		let i = XIDManager.counter.wrappingIncrementThenLoad(ordering: .relaxed)
 		bytes[9] = UInt8((i & 0xFF0000) >> 16)
 		bytes[10] = UInt8((i & 0x00FF00) >> 8)
 		bytes[11] = UInt8(i & 0x0000FF)
 
-		return xid.ID(bytes: bytes)
+		return xid.XID(_bytes: bytes)
 	}
 
 	func machineID() -> Data {

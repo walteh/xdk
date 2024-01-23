@@ -14,12 +14,26 @@ public extension keychain {
 }
 
 extension keychain.Noop: keychain.API {
-	public func read(insecurly _: keychain.Key) -> Data? {
+	public func read(insecurly key: String) -> Result<Data?, Error> {
+		return .success(nil)
+	}
+	
+	public func write(insecurly key: String, overwriting: Bool, as value: Data) -> Error? {
 		return nil
 	}
-
-	public func write(insecurly _: keychain.Key, overwriting _: Bool, as _: Data) throws {}
-
+	
+	public func read<T>(objectType: T.Type, id: String) -> Result<T?, Error> where T : NSObject, T : NSSecureCoding {
+		return .success(nil)
+	}
+	
+	public func write<T>(object: T, overwriting: Bool, id: String) -> Error? where T : NSObject, T : NSSecureCoding {
+		return nil
+	}
+	
+	public func withAuthentication() async -> Result<Bool, Error> {
+		return .success(true)
+	}
+	
 	public func withAuthentication() async throws -> Bool {
 		return false
 	}

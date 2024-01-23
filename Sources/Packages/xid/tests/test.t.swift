@@ -5,7 +5,7 @@ import XCTest
 final class Tests: XCTestCase {
 	func testJSONDecode() throws {
 		struct User: Decodable {
-			var id: xid.ID
+			var id: xid.XID
 			var name: String
 		}
 
@@ -24,7 +24,7 @@ final class Tests: XCTestCase {
 
 	func testJSONEncode() throws {
 		struct User: Encodable {
-			var id: xid.ID
+			var id: xid.XID
 			var name: String
 		}
 
@@ -48,14 +48,14 @@ final class Tests: XCTestCase {
 
 	func testNewXIDFromData() throws {
 		let actual = try xid.NewXID(from: "9m4e2mr0ui3e8a215n4g".data(using: .utf8)!)
-		let expected = xid.ID(bytes: Data([0x4D, 0x88, 0xE1, 0x5B, 0x60, 0xF4, 0x86, 0xE4, 0x28, 0x41, 0x2D, 0xC9]))
+		let expected = xid.XID(_bytes: Data([0x4D, 0x88, 0xE1, 0x5B, 0x60, 0xF4, 0x86, 0xE4, 0x28, 0x41, 0x2D, 0xC9]))
 
 		XCTAssertEqual(expected, actual)
 	}
 
 	func testNewXIDFromString() throws {
 		let actual = try xid.NewXID(from: "9m4e2mr0ui3e8a215n4g")
-		let expected = xid.ID(bytes: Data([0x4D, 0x88, 0xE1, 0x5B, 0x60, 0xF4, 0x86, 0xE4, 0x28, 0x41, 0x2D, 0xC9]))
+		let expected = xid.XID(_bytes: Data([0x4D, 0x88, 0xE1, 0x5B, 0x60, 0xF4, 0x86, 0xE4, 0x28, 0x41, 0x2D, 0xC9]))
 
 		XCTAssertEqual(expected, actual)
 	}

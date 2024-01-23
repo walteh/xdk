@@ -47,6 +47,24 @@ public extension NSNotification.Name {
 //	}
 // }
 
+class PasskeyCredentialID: NSObject, NSSecureCoding {
+	static var supportsSecureCoding = true
+
+	let credentialID: Data
+
+	init(credentialID: Data) {
+		self.credentialID = credentialID
+	}
+
+	public func encode(with coder: NSCoder) {
+		coder.encode(credentialID, forKey: "credentialID")
+	}
+
+	required public init?(coder: NSCoder) {
+		self.credentialID = coder.decodeObject(forKey: "credentialID") as! Data
+	}
+}
+
 extension keychain.Key {
 	static let PasskeyCredentialID = keychain.Key(rawValue: "PasskeyCredentialID")
 }
@@ -72,8 +90,13 @@ extension webauthn.Client: webauthn.passkey.API {
 	public func startSignInObserver() -> NSObjectProtocol {
 		let signInObserver = NotificationCenter.default.addObserver(forName: .UserSignInRequest, object: nil, queue: nil) { _ in
 			Task.detached(priority: .userInitiated) {
+				let _read = self.keychainAPI.read(objectType: PasskeyCredentialID.self, id: "default")
+				guard let read = _read.value else {
+					x.Error.Log(_read.error!, "")
+					return
+				}
 				do {
-					if self.keychainAPI.read(insecurly: .PasskeyCredentialID) != nil {
+					if read != nil {
 						try await self.attestPasskey()
 					} else {
 						try await self.assertPasskey()
@@ -88,15 +111,15 @@ extension webauthn.Client: webauthn.passkey.API {
 	}
 
 	public func assertPasskey() async throws {
-		guard let credid = keychainAPI.read(insecurly: .PasskeyCredentialID) else {
+		guard let credid = try self.keychainAPI.read(objectType: PasskeyCredentialID.self, id: "default").get() else {
 			throw x.Error.Wrap(webauthn.devicecheck.Error.invalidKey("credentialId"))
 		}
 
-		let challenge = try await Init(sessionID: sessionAPI.ID().data, type: .Get, credentialID: credid)
+		let challenge = try await Init(sessionID: sessionAPI.ID().data, type: .Get, credentialID: credid.credentialID)
 
 		let req = publicKeyProvider.createCredentialAssertionRequest(challenge: challenge)
 
-		req.allowedCredentials = [.init(credentialID: credid)]
+		req.allowedCredentials = [.init(credentialID: credid.credentialID)]
 
 		let authController = ASAuthorizationController(authorizationRequests: [req])
 		authController.delegate = self
@@ -128,8 +151,9 @@ extension webauthn.Client: webauthn.passkey.API {
 		Task(priority: .high) {
 			do {
 				let res = try await remote(authorization: authorization)
-				try keychainAPI.write(insecurly: .PasskeyCredentialID, overwriting: true, as: res.credentialID)
-//					credentialID = res.credentialID
+				if let err = keychainAPI.write(object: PasskeyCredentialID(credentialID: res.credentialID), overwriting: true, id: "default") {
+					throw err
+				}
 			} catch {
 				x.Error.Log(error, "failed to successfully handle auth")
 			}
@@ -149,7 +173,9 @@ extension webauthn.Client: webauthn.passkey.API {
 				// this happens when the user tries to log in with a pass key they have deleted
 //					self.credentialID = nil
 				do {
-					try keychainAPI.write(insecurly: .PasskeyCredentialID, overwriting: true, as: Data())
+					if let err = keychainAPI.write(object: PasskeyCredentialID(credentialID: Data()), overwriting: true, id: "default") {
+						throw err
+					}
 				} catch {
 					x.error(error).log()
 				}

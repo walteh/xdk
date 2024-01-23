@@ -80,11 +80,11 @@ extension keychain.Key {
 
 extension webauthn.Client: webauthn.devicecheck.API {
 	public func initialized() -> Bool {
-		return keychainAPI.read(insecurly: .AppAttestKey) != nil
+		return keychainAPI.read(insecurly: "AppAttestKey").value != nil
 	}
 
 	public func assert(request: inout URLRequest, dataToSign: Data? = nil) async throws {
-		guard let key = keychainAPI.read(insecurly: .AppAttestKey) else {
+		guard let key = try keychainAPI.read(insecurly: "AppAttestKey").get() else {
 			throw webauthn.devicecheck.Error.unexpectedNil
 		}
 
@@ -134,7 +134,7 @@ extension webauthn.Client: webauthn.devicecheck.API {
 		let successfulAttest = try await remote(deviceAttestation: attestation, clientDataJSON: clientDataJSON, using: datakey, sessionID: sessionID)
 
 		if successfulAttest {
-			try keychainAPI.write(insecurly: .AppAttestKey, overwriting: true, as: datakey)
+			_ = keychainAPI.write(insecurly: "AppAttestKey", overwriting: true, as: datakey)
 		} else {
 			throw x.error("deviceAttestation was not successful").log()
 		}
