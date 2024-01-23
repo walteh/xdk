@@ -13,6 +13,16 @@ public protocol AppSessionAPI {
 	func ID() -> XDKXID.XID
 }
 
+public class NoopAppSession: AppSessionAPI {
+	let base = XID.build()
+	
+	public func ID() -> XDKXID.XID {
+		return base
+	}
+	
+	public init() {}
+}
+
 public extension AppSessionAPI {
 	static func loadFrom(keychain: any XDKKeychain.KeychainAPI) throws -> AppSessionAPI {
 		return try KeychainAppSession(keychainAPI: keychain)
@@ -37,3 +47,4 @@ class AppSessionID: NSObject, NSSecureCoding {
 		self.id = try! XID.rebuild(string: dat)
 	}
 }
+
