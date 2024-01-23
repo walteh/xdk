@@ -14,7 +14,7 @@ public class KeychainAppSession: NSObject {
 
 	public let keychainAPI: any KeychainAPI
 
-	init(keychainAPI: any KeychainAPI) throws {
+	public init(keychainAPI: any KeychainAPI) throws {
 		self.keychainAPI = keychainAPI
 
 		var id = try self.keychainAPI.read(objectType: AppSessionID.self, id: "default").get()
