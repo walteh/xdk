@@ -18,8 +18,8 @@ class swift_sdkTests: XCTestCase {
 	}
 
 	func testExample() throws {
-		
-		let err = x.error("hello")
+		let err1 = URLError(.badURL, userInfo: ["hi": "there"])
+		let err = x.error("hello", root: err1)
 		x.log(.error).err(err).send("test")
 		// This is an example of a functional test case.
 		// Use XCTAssert and related functions to verify your tests produce the correct results.

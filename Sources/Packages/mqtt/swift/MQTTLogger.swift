@@ -12,19 +12,19 @@ import os
 import XDKX
 
 // Convenience functions
-func printDebug(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
+func printDebug(_ message: String, __file: String = #fileID, __line: UInt = #line, __function: String = #function) {
 	x.log(.debug, __file: __file, __function: __function, __line: __line).send(message)
 }
 
-func printInfo(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
+func printInfo(_ message: String, __file: String = #fileID, __line: UInt = #line, __function: String = #function) {
 	x.log(.info, __file: __file, __function: __function, __line: __line).send(message)
 }
 
-func printWarning(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
+func printWarning(_ message: String, __file: String = #fileID, __line: UInt = #line, __function: String = #function) {
 	x.log(.warning, __file: __file, __function: __function, __line: __line).send(message)
 }
 
-func printError(_ message: String, __file: String = #fileID, __line: Int = #line, __function: String = #function) {
+func printError(_ message: String, __file: String = #fileID, __line: UInt = #line, __function: String = #function) {
 	x.log(.error, __file: __file, __function: __function, __line: __line).send(message)
 }
 

@@ -49,10 +49,9 @@ public struct ConsoleLogger: LogHandler {
 		var stream = ""
 
 		stream += "\n"
-		stream += "=====================================\n"
-		stream += "to view logs:"
+		stream += "=================== to view logs ==================\n"
 		stream += "tail -f -n100 \(url.relativeString.replacingOccurrences(of: "file://", with: ""))\n"
-		stream += "=====================================\n"
+		stream += "===================================================\n"
 		stream += "\n"
 
 		print(stream)
@@ -75,22 +74,7 @@ public struct ConsoleLogger: LogHandler {
 		function: String,
 		line: UInt
 	) {
-		var file = file
-		var function = function
-		var line = Int(line)
 		var metadata = metadata
-
-		if metadata != nil {
-			(function, file, line) = metadata!.getCaller()
-			metadata!["file"] = nil
-			metadata!["line"] = nil
-			metadata!["function"] = nil
-
-			if function.contains("(") {
-				let mid = function.split(separator: "(")
-				function = String(mid.first!) + String(mid[1] == ")" ? "()" : "(...)")
-			}
-		}
 
 		var text: ConsoleText = "[\(label)] "
 
@@ -100,17 +84,13 @@ public struct ConsoleLogger: LogHandler {
 
 		text += "[ ".consoleText(color: .palette(245)) + String(Thread.current.queueName).padding(toLength: 15, withPad: ".", startingAt: 0).consoleText(color: .palette(253)) + " ]".consoleText(color: .palette(245)) + " "
 
-		let dullsep = ":".consoleText(color: .palette(242))
+		if metadata != nil {
+			let caller = metadata!.getCaller()
+			metadata!.clearCaller()
+			text += caller.format(with: ConsoleTextPrettyCallFormatter()) + " "
+		}
 
-		let filename = fileNameWithoutSuffix(file).consoleText(color: .lightPurple)
-		let targetName = targetOfFile(file).consoleText(color: .orange)
-		let functionName = function.consoleText(color: .lightBlue)
-		let lineName = String(line).consoleText(color: .perrywinkle)
-
-		text += targetName + dullsep + filename + dullsep + functionName + dullsep + lineName + " "
-
-		text += " "
-			+ message.description.consoleText()
+		text += " " + message.description.consoleText()
 
 		let allMetadata = (metadata ?? [:])
 			.merging(self.metadata, uniquingKeysWith: { a, _ in a })
@@ -122,20 +102,6 @@ public struct ConsoleLogger: LogHandler {
 		}
 
 		_ = self.fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
-	}
-}
-
-let formatter = DateFormatter()
-let startDate = Date()
-let calendar = Calendar.current
-
-private extension Logger.Metadata {
-	var sortedDescriptionWithoutQuotes: String {
-		let contents = Array(self)
-			.sorted(by: { $0.0 < $1.0 })
-			.map { "\($0.description.consoleText(color: .palette(243)).terminalStylize())\("=".consoleText(color: .palette(240)).terminalStylize())\("\"\($1)\"".consoleText(color: .palette(196)).terminalStylize())" }
-			.joined(separator: " ")
-		return " \(contents)"
 	}
 }
 
@@ -164,36 +130,51 @@ public extension Logger.Level {
 	}
 }
 
-/// returns the filename of a path
-func fileNameOfFile(_ file: String) -> String {
-	let fileParts = file.components(separatedBy: "/")
-	if let lastPart = fileParts.last {
-		return lastPart
+
+struct ConsoleTextPrettyCallFormatter: PrettyCallerFormatter {
+	
+	func format(function: String) -> ConsoleText {
+		return function.consoleText(color: .lightBlue)
 	}
-	return ""
+	
+	func format(line: String) -> ConsoleText {
+		return line.consoleText(color: .perrywinkle)
+	}
+	
+	func format(file: String) -> ConsoleText {
+		return file.consoleText(color: .lightPurple)
+	}
+	
+	func format(target: String) -> ConsoleText {
+		return target.consoleText(color: .orange)
+	}
+	
+	func format(seperator: String) -> ConsoleText {
+		return seperator.consoleText(color: .palette(242))
+	}
+	
 }
 
-func targetOfFile(_ file: String) -> String {
-	let fileParts = file.components(separatedBy: "/")
-	if var firstPart = fileParts.first {
-		firstPart = firstPart.replacingOccurrences(of: "", with: "").replacingOccurrences(of: "_", with: "/")
-		return firstPart
+
+
+
+
+let formatter = DateFormatter()
+let startDate = Date()
+let calendar = Calendar.current
+
+private extension Logger.Metadata {
+	var sortedDescriptionWithoutQuotes: String {
+		let contents = Array(self)
+			.sorted(by: { $0.0 < $1.0 })
+			.map { "\($0.description.consoleText(color: .palette(243)).terminalStylize())\("=".consoleText(color: .palette(240)).terminalStylize())\("\"\($1)\"".consoleText(color: .palette(196)).terminalStylize())" }
+			.joined(separator: " ")
+		return " \(contents)"
 	}
-	return ""
 }
 
-/// returns the filename without suffix (= file ending) of a path
-func fileNameWithoutSuffix(_ file: String) -> String {
-	let fileName = fileNameOfFile(file)
 
-	if !fileName.isEmpty {
-		let fileNameParts = fileName.components(separatedBy: ".")
-		if let firstPart = fileNameParts.first {
-			return firstPart
-		}
-	}
-	return ""
-}
+
 
 /// returns a formatted date string
 /// optionally in a given abbreviated timezone like "UTC"
@@ -230,7 +211,7 @@ func jsonStringValue(_ jsonString: String?, key: String) -> String {
 	// remove the leading {"key":" from the json string and the final }
 	let offset = key.length + 5
 	let endIndex = str.index(str.startIndex,
-	                         offsetBy: str.length - 2)
+							 offsetBy: str.length - 2)
 	let range = str.index(str.startIndex, offsetBy: offset) ..< endIndex
 	#if swift(>=3.2)
 		return String(str[range])
@@ -254,7 +235,7 @@ func jsonStringFromDict(_ dict: [String: Any]) -> String? {
 }
 
 func messageToJSON(_ level: Logging.Logger.Level, msg: String,
-                   thread: String, file: String, function: String, line: Int, metadata: Logging.Logger.Metadata) -> String?
+				   thread: String, file: String, function: String, line: Int, metadata: Logging.Logger.Metadata) -> String?
 {
 	var dict: [String: Any] = [
 		"timestamp": Date().timeIntervalSince1970,
