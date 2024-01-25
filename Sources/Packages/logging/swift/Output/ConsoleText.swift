@@ -26,8 +26,6 @@ public extension String {
 ///
 /// See `Console.output(_:newLine:)` for more information.
 public struct ConsoleText: RandomAccessCollection, ExpressibleByArrayLiteral, ExpressibleByStringLiteral, CustomStringConvertible {
-
-
 	/// See `Collection`.
 	public var startIndex: Int {
 		return self.fragments.startIndex
@@ -157,8 +155,8 @@ extension ConsoleText: RangeReplaceableCollection {
 	public init() {
 		self.init(fragments: [])
 	}
-	
-	public mutating func replaceSubrange<C>(_ subrange: Range<Self.Index>, with newElements: C) where C : Collection, Self.Element == C.Element {
+
+	public mutating func replaceSubrange<C>(_ subrange: Range<Self.Index>, with newElements: C) where C: Collection, Self.Element == C.Element {
 		self.fragments.replaceSubrange(subrange, with: newElements)
 	}
 }
@@ -166,7 +164,6 @@ extension ConsoleText: RangeReplaceableCollection {
 extension ConsoleText: ExpressibleByStringInterpolation {
 	public init(stringInterpolation: StringInterpolation) {
 		self.fragments = stringInterpolation.fragments
-		
 	}
 
 	public struct StringInterpolation: StringInterpolationProtocol {

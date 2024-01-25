@@ -18,25 +18,26 @@ public extension x {
 	}
 
 	@discardableResult
-	static func error(status: OSStatus, __file: String = #fileID,  __function: String = #function,__line: UInt = #line) -> XError {
+	static func error(status: OSStatus, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {
 		return XError("OSStatus[\(status)]", __file: __file, __function: __function, __line: __line)
 	}
 }
 
 public class XError: NSError {
-	
-	public override var underlyingErrors: [Error] {
+	override public var underlyingErrors: [Error] {
 		if let r = selfroot {
 			return [r]
 		}
 		return []
 	}
-	
+
 	let message: String
 	let selfroot: NSError?
-	
+
+	var meta: LogEvent
+
 	let caller: Caller
-	
+
 	public required convenience init(rawValue: String) {
 		self.init(rawValue)
 	}
@@ -50,81 +51,63 @@ public class XError: NSError {
 
 		self.message = message
 		self.caller = Caller(file: __file, function: __function, line: __line)
-		
-		super.init(domain: "XError", code: -6)
+		self.meta = LogEvent(.error)
+		super.init(domain: "XError", code: -6, userInfo: [
+			"caller": self.caller.format(),
+		])
 	}
-	
-	required init?(coder: NSCoder) {
+
+	@available(*, unavailable)
+	required init?(coder _: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
 	}
 
-}
+	public func info(_ key: String, _ value: CustomDebugStringConvertible) -> Self {
+		return self.info([key: value])
+	}
 
-public extension NSError {
-	
-	func info(_ values: [String: Any]) -> NSError {
-		var inf = userInfo
-		for m in values {
-			inf[m.key] = m.value
-		}
-		return NSError(domain: self.domain, code: self.code, userInfo: inf)
-	}
-	
-	func info(_ key: String, _ value: CustomDebugStringConvertible) -> NSError {
-		return info([key: value])
-	}
-	
-	func info(description: String) -> NSError {
+	public func info(description: String) -> Self {
 		return self.info(NSLocalizedDescriptionKey, description)
 	}
-	
-	func info(failure: String) -> NSError {
+
+	public func info(failure: String) -> Self {
 		return self.info(NSLocalizedFailureErrorKey, failure)
 	}
-	
-	func info(failureReason: String) -> NSError {
+
+	public func info(failureReason: String) -> Self {
 		return self.info(NSLocalizedFailureReasonErrorKey, failureReason)
 	}
-	
-	func info(recoverySuggestion: String) -> NSError {
+
+	public func info(recoverySuggestion: String) -> Self {
 		return self.info(NSLocalizedRecoverySuggestionErrorKey, recoverySuggestion)
 	}
-	
-	func event(_ manip: (LogEvent) -> LogEvent) -> NSError {
+
+	public func event(_ manip: (LogEvent) -> LogEvent) -> Self {
 		var event = LogEvent(.error)
 		event = manip(event)
 		return self.info(event.metadata)
 	}
-	
-//	init(
-//		domain: String,
-//		code: Int,
-//		userInfo dict: [String : Any]? = nil
-//	) {
-//		
-//	}
-	
-//	var caller: String {
-//		
-//	}
-//
-//	
-//	@inlinable
-//	convenience init(domain: String, code: Int, userInfo dict: [String : Any]? = nil) {
-//		self.init(domain: domain, code: code, userInfo: userInfo)
-//	}
-	
-	var root: NSError? {
+
+	public func info(_: [String: Any]) -> Self {
+		for i in self.meta.metadata {
+			self.meta.metadata[i.key] = i.value
+		}
+		return self
+	}
+}
+
+public extension NSError {
+	var root: Error? {
 		if self.underlyingErrors.count == 1 {
-			return self.underlyingErrors[0] as NSError
+			return self.underlyingErrors[0]
 		}
 		return nil
 	}
-	
+
 //	public var typ: String {
 //		return "\(type(of: self))"
 //	}
-	
+
 //	public var rawValue: String {
 //		return message
 //	}
@@ -142,7 +125,13 @@ public extension NSError {
 		var root = self.root
 		while root != nil {
 			strs += [root!]
-			root = root!.root
+			if let r = root as? XError {
+				root = r.selfroot
+			} else if let r = root as? NSError {
+				root = r.root
+			} else {
+				root = nil
+			}
 		}
 		strs.reverse()
 		return strs

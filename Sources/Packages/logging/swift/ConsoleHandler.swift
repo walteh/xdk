@@ -6,9 +6,7 @@
 //
 
 import Foundation
-
 import Logging
-
 import XDKX
 
 /// Outputs logs to a `Console`.
@@ -76,6 +74,8 @@ public struct ConsoleLogger: LogHandler {
 	) {
 		var metadata = metadata
 
+		let mainCaller = XDKX.Caller.build(file: file, function: function, line: line)
+
 		var text: ConsoleText = "[\(label)] "
 
 		text += "\(level.name)".consoleText(level.style) + " "
@@ -87,7 +87,8 @@ public struct ConsoleLogger: LogHandler {
 		if metadata != nil {
 			let caller = metadata!.getCaller()
 			metadata!.clearCaller()
-			text += caller.format(with: ConsoleTextPrettyCallFormatter()) + " "
+			let updatedCaller = caller.merge(into: mainCaller)
+			text += updatedCaller.format(with: ConsoleTextPrettyCallFormatter()) + " "
 		}
 
 		text += " " + message.description.consoleText()
@@ -130,34 +131,27 @@ public extension Logger.Level {
 	}
 }
 
-
 struct ConsoleTextPrettyCallFormatter: PrettyCallerFormatter {
-	
 	func format(function: String) -> ConsoleText {
 		return function.consoleText(color: .lightBlue)
 	}
-	
+
 	func format(line: String) -> ConsoleText {
-		return line.consoleText(color: .perrywinkle)
+		return line.consoleText(color: .brightRed, isBold: true)
 	}
-	
+
 	func format(file: String) -> ConsoleText {
 		return file.consoleText(color: .lightPurple)
 	}
-	
+
 	func format(target: String) -> ConsoleText {
 		return target.consoleText(color: .orange)
 	}
-	
+
 	func format(seperator: String) -> ConsoleText {
 		return seperator.consoleText(color: .palette(242))
 	}
-	
 }
-
-
-
-
 
 let formatter = DateFormatter()
 let startDate = Date()
@@ -172,9 +166,6 @@ private extension Logger.Metadata {
 		return " \(contents)"
 	}
 }
-
-
-
 
 /// returns a formatted date string
 /// optionally in a given abbreviated timezone like "UTC"
@@ -211,7 +202,7 @@ func jsonStringValue(_ jsonString: String?, key: String) -> String {
 	// remove the leading {"key":" from the json string and the final }
 	let offset = key.length + 5
 	let endIndex = str.index(str.startIndex,
-							 offsetBy: str.length - 2)
+	                         offsetBy: str.length - 2)
 	let range = str.index(str.startIndex, offsetBy: offset) ..< endIndex
 	#if swift(>=3.2)
 		return String(str[range])
@@ -235,7 +226,7 @@ func jsonStringFromDict(_ dict: [String: Any]) -> String? {
 }
 
 func messageToJSON(_ level: Logging.Logger.Level, msg: String,
-				   thread: String, file: String, function: String, line: Int, metadata: Logging.Logger.Metadata) -> String?
+                   thread: String, file: String, function: String, line: Int, metadata: Logging.Logger.Metadata) -> String?
 {
 	var dict: [String: Any] = [
 		"timestamp": Date().timeIntervalSince1970,

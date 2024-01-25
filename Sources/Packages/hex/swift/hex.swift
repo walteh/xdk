@@ -52,11 +52,10 @@ func toHexData(_ data: Data, uppercase: Bool = false) -> Data {
 	var bytes = Data()
 	bytes.reserveCapacity(data.count * 2)
 
-	let table: XDKByte.Bytes
-	if uppercase {
-		table = radix16table_uppercase
+	let table: XDKByte.Bytes = if uppercase {
+		radix16table_uppercase
 	} else {
-		table = radix16table_lowercase
+		radix16table_lowercase
 	}
 
 	for byte in data {

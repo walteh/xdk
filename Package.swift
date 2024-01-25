@@ -5,13 +5,13 @@ import PackageDescription
 
 let package = Package(
 	name: "xdk",
-	// platforms: [
-	// 	.macOS(.v14),
-	// 	.iOS(.v17),
-	// 	.tvOS(.v17),
-	// 	.watchOS(.v10),
-	// 	.visionOS(.v1),
-	// ],
+	platforms: [
+		.macOS(.v14),
+		.iOS(.v17),
+		.tvOS(.v17),
+		.watchOS(.v10),
+		.visionOS(.v1),
+	],
 	products: [],
 	dependencies: [],
 	targets: []
@@ -23,6 +23,7 @@ let mainTarget = Target.target(
 
 let swiftLogs = Folder(product: .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"), name: "Logging", packageName: "swift-log").apply()
 let swiftAtomics = Folder(product: .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"), name: "Atomics", packageName: "swift-atomics").apply()
+let awssdk = Folder(product: .package(url: "https://github.com/awslabs/aws-sdk-swift", exact: "0.34.0"), name: "AWS", packageName: "aws-sdk-swift").apply()
 
 let x = Folder(local: "X", hasC: false, deps: [swiftLogs]).apply()
 let byte = Folder(local: "Byte", hasC: false, deps: [x]).apply()
@@ -39,6 +40,7 @@ let appsession = Folder(local: "AppSession", hasC: false, deps: [x, keychain, xi
 let moc = Folder(local: "MOC", hasC: false, deps: [x, keychain]).apply()
 let mqtt = Folder(local: "MQTT", hasC: false, deps: [x, byte, appsession]).apply()
 let webauthn = Folder(local: "Webauthn", hasC: false, deps: [x, ecdsa, byte, hex, big, keychain, appsession]).apply()
+let awssso = Folder(local: "AWSSSO", hasC: false, deps: [x, awssdk.with(name: "AWSSSO"), awssdk.with(name: "AWSSSOOIDC")]).apply()
 
 func complete() {
 	package.targets.append(mainTarget)
@@ -48,7 +50,7 @@ class Folder {
 	let PACKAGE_ROOT = "./Sources/Packages/"
 
 	var dummy: Package.Dependency?
-	let rawName: String
+	var rawName: String
 
 	var packageName: String = "xdk"
 	var hasC: Bool
@@ -60,6 +62,14 @@ class Folder {
 
 	func camel() -> String {
 		return "\(self.rawName.prefix(1).uppercased() + self.rawName.dropFirst())"
+	}
+
+	func with(name: String) -> Folder {
+		if self.dummy != nil {
+			return Folder(product: self.dummy!, name: name, packageName: self.packageName)
+		}
+
+		return Folder(local: name, hasC: self.hasC, deps: self.subfolders)
 	}
 
 	init(local: String, hasC: Bool = false, deps: [Folder] = []) {

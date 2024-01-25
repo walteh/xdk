@@ -5,6 +5,7 @@
 # format options
 
 --allman false
+--asynccapturing
 --binarygrouping 4,8
 --commas always
 --comments indent
@@ -31,12 +32,12 @@
 --self insert
 --semicolons inline
 --stripunusedargs always
---swiftversion 5.7
+--swiftversion 5.9
 --trimwhitespace always
 --wraparguments preserve
 --wrapcollections preserve
 --redundanttype explicit
---acronyms "URL,URLSession,JSON,HTTP,HTTPS,WSS,API,ID,UUID,MQTT,IP,IPv4,IOTCore,AWS,PNG,JWT"
+--acronyms "URLSession,JSON,HTTP,HTTPS,WSS,API,UUID,MQTT,IP,IPv4,IOTCore,AWS,PNG,JWT"
 
 # rules
 

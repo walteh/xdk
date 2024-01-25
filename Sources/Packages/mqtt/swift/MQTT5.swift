@@ -388,12 +388,10 @@ public class MQTT5: NSObject, mqtt.API {
 	///   - properties: Publish Properties
 	@discardableResult
 	public func publish(message: MQTT5Message, DUP: Bool = false, retained _: Bool = false, properties: MQTTPublishProperties) -> Int {
-		let msgid: UInt16
-
-		if message.qos == .qos0 {
-			msgid = 0
+		let msgid: UInt16 = if message.qos == .qos0 {
+			0
 		} else {
-			msgid = self.nextMessageID()
+			self.nextMessageID()
 		}
 
 		printDebug("message.topic \(message.topic)   = message.payload \(message.payload)")
