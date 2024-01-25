@@ -55,13 +55,14 @@ public struct Caller {
 		}
 
 		let dullsep = formatter.format(seperator: ":")
+		let spacesep = formatter.format(seperator: " ")
 		
-		let functionName = formatter.format(function: functionStr)
+		_ = formatter.format(function: functionStr) // not in use right now, but maybe later
 		let filename = formatter.format(file: fileNameOfFile())
 		let targetName = formatter.format(target: targetOfFile())
 		let lineName = formatter.format(line: String(line))
 				
-		return targetName + formatter.format(seperator: " ") + filename + dullsep + lineName
+		return targetName + spacesep + filename + dullsep + lineName
 	}
 
 }
