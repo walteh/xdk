@@ -6,3 +6,5 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 .swiftpm/xcode/package.xcworkspace/xcshareddata/IdeWorkspaceChecks.plist
+build
+.vscode/settings.json

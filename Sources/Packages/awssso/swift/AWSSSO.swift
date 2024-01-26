@@ -1,6 +1,5 @@
 //
 //  AWSSSO.swift
-//  spatial-aws-basic
 //
 //  Created by walter on 1/21/24.
 //
@@ -29,7 +28,13 @@ public class AWSSSOUserSession: ObservableObject, AWSSSOUserSessionAPI {
 	@Published public var service: String? = nil
 	@Published public var resource: String? = nil
 
-	public init() {}
+	public init(account: AccountRole? = nil, region: String? = nil, service: String? = nil, resource: String? = nil, accessToken: SecureAccessToken? = nil) {
+		self.account = account
+		self.region = region
+		self.service = service
+		self.accessToken = accessToken
+		self.resource = resource
+	}
 
 	@Published public var accessToken: SecureAccessToken? {
 		didSet {
@@ -120,11 +125,6 @@ class RoleCredentials: NSObject, NSSecureCoding {
 	}
 }
 
-// public struct Account {
-// 	public let accountID: String
-// 	public let roles: [String]
-// }
-
 public struct AccountRole: Hashable, Equatable {
 	public let accountID: String
 	public let role: String
@@ -139,8 +139,12 @@ public struct AccountRole: Hashable, Equatable {
 	}
 
 	func getCreds(_ client: AWSSSO.SSOClient, keychain: any KeychainAPI, accessToken: SecureAccessToken) async -> Result<RoleCredentials, Error> {
-		let _curr = keychain.read(objectType: RoleCredentials.self, id: self.name)
-		guard let curr = _curr.value else { return .failure(_curr.error!) }
+		let (curr, err1) = keychain.read(objectType: RoleCredentials.self, id: self.name).validate()
+		if let err1 {
+			return .failure(x.error("error reading role creds from keychain", root: err1))
+		}
+
+		// dereference err1
 
 		if let curr {
 			if curr.expiresAt > Date().addingTimeInterval(60 * 5) {
@@ -149,114 +153,22 @@ public struct AccountRole: Hashable, Equatable {
 		}
 
 		// into this at compile time
-		let _creds = await Result.X { try await client.getRoleCredentials(input: .init(accessToken: accessToken.accessToken, accountId: self.accountID, roleName: self.role)) }
-		guard let creds = _creds.value else { return .failure(_creds.error!) }
+		let (creds, err2) = await Result.X { try await client.getRoleCredentials(input: .init(accessToken: accessToken.accessToken, accountId: self.accountID, roleName: self.role)) }.validate()
+		if let err2 {
+			return .failure(x.error("error fetching role creds", root: err2))
+		}
 
-		guard let rolecreds = creds.roleCredentials else { return .failure(x.error("missing role creds ...")) }
+		guard let rolecreds = creds.roleCredentials else {
+			return .failure(x.error("roleCredentials does not exist"))
+		}
+
 		let rcreds = RoleCredentials(rolecreds)
-
 		if let err = keychain.write(object: rcreds, overwriting: true, id: "default3") {
 			return .failure(x.error("error writing role creds to keychain", root: err))
 		}
 
 		return .success(rcreds)
 	}
-}
-
-func listAccounts(_ client: AWSSSO.SSOClient, accessToken: SecureAccessToken) async -> Result<[AccountRole], Error> {
-	let _response = await Result.X { try await client.listAccounts(input: .init(accessToken: accessToken.accessToken)) }
-	guard let response = _response.value else { return .failure(_response.error!) }
-
-	var accounts = [AccountRole]()
-	guard let accountList = response.accountList else { return .failure(x.error("response.accountList does not exist")) }
-	// Iterate over accounts and fetch roles for each
-	for account in accountList {
-		let _roles = await listRolesForAccount(client, accessToken: accessToken, accountID: account.accountId!)
-		guard let roles = _roles.value else { return .failure(_roles.error!) }
-		for role in roles {
-			accounts.append(role)
-		}
-	}
-
-	return .success(accounts)
-}
-
-func listRolesForAccount(_ client: AWSSSO.SSOClient, accessToken: SecureAccessToken, accountID: String) async -> Result<[AccountRole], Error> {
-	// List roles for the given account
-	let _rolesResponse = await Result.X {
-		try await client.listAccountRoles(input: .init(accessToken: accessToken.accessToken, accountId: accountID))
-	}
-	guard let rolesResponse = _rolesResponse.value else { return .failure(_rolesResponse.error!) }
-
-	var roles = [AccountRole]()
-	if let roleList = rolesResponse.roleList {
-		for role in roleList {
-			roles.append(AccountRole(accountID: role.accountId!, role: role.roleName!))
-		}
-	} else {
-		return .failure(x.error("No roles found for account"))
-	}
-
-	return .success(roles)
-}
-
-public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, keychain: any KeychainAPI) async -> Result<URL, Error> {
-	guard let account = userSession.account else {
-		return .failure(x.error("Account not set"))
-	}
-
-	guard let region = userSession.region else {
-		return .failure(x.error("Region not set"))
-	}
-
-	guard let accessToken = userSession.accessToken else {
-		return .failure(x.error("accessToken not set"))
-	}
-
-	x.log(.debug).send("A")
-
-	let _client = Result.X { try AWSSSO.SSOClient(region: region) }
-	guard let sso = _client.value else { return .failure(_client.error!) }
-
-	x.log(.debug).send("B")
-
-	let _creds = await account.getCreds(sso, keychain: keychain, accessToken: accessToken)
-	guard let creds = _creds.value else { return .failure(_creds.error!) }
-
-	x.log(.debug).send("C")
-
-	guard let federationURL = constructFederationURL(with: creds, region: region) else {
-		return .failure(x.error("Failed to construct federation URL"))
-	}
-
-	x.log(.debug).send("D")
-
-	let _signInTokenResult = await fetchSignInToken(from: federationURL)
-	guard let signInTokenResult = _signInTokenResult.value else { return .failure(_signInTokenResult.error!) }
-
-	x.log(.debug).add("sign in result", signInTokenResult).send("we right here")
-
-	let consoleHomeURL = region.starts(with: "us-gov-") ?
-		"https://console.amazonaws-us-gov.com/console/home?region=\(region)" :
-		"https://\(region).console.aws.amazon.com/console/home?region=\(region)"
-
-	let destinationURL = URL(string: consoleHomeURL)!
-
-	return constructLoginURL(with: signInTokenResult, federationURL: federationURL.url!, destinationURL: destinationURL)
-}
-
-public func constructConsoleURL(from session: any AWSSSOUserSessionAPI) -> URL? {
-	guard let service = session.service,
-	      let region = session.region,
-	      let account = session.account
-	else {
-		return nil
-	}
-
-	// Construct the URL based on the service, region, and account
-	// This is a simplified example and might need to be adjusted
-	let urlString = "https://\(region).console.aws.amazon.com/\(service.lowercased())/home?region=\(region)"
-	return URL(string: urlString)
 }
 
 struct SessionData: Encodable {
@@ -269,88 +181,6 @@ struct SessionInfo: Encodable {
 	var sessionID: String
 	var sessionKey: String
 	var sessionToken: String
-}
-
-func constructFederationURL(with credentials: RoleCredentials, region: String) -> URLRequest? {
-	let federationBaseURL = region.starts(with: "us-gov-") ?
-		"https://signin.amazonaws-us-gov.com/federation" :
-		"https://signin.aws.amazon.com/federation"
-
-	guard let sessionStringJSON = try? JSONEncoder().encode(SessionData(
-		Action: "getSignInToken",
-		sessionDuration: 3200,
-		Session: SessionInfo(
-			sessionID: credentials.accessKeyID,
-			sessionKey: credentials.secretAccessKey,
-			sessionToken: credentials.sessionToken
-		)
-	)) else {
-		return nil
-	}
-
-//	let sessionString = String(data: sessionStringJSON, encoding: .utf8)!
-//	let encodedSessionString = sessionString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
-
-//	let federationURLString = "\(federationBaseURL)?Action=getSigninToken&sessionDuration=3200&Session=\(sessionStringJSON.string!)"
-	var req = URLRequest(url: URL(string: federationBaseURL)!)
-	req.httpBody = sessionStringJSON
-	req.httpMethod = "POST"
-	return req
-}
-
-func fetchSignInToken(from url: URLRequest) async -> Result<String, Error> {
-	let requestResult = await Result.X { try await URLSession.shared.data(for: url) }
-	guard let (data, response) = requestResult.value else {
-		return .failure(requestResult.error!)
-	}
-
-	guard let httpResponse = response as? HTTPURLResponse else {
-		return .failure(x.error("unexpected response type: \(response)"))
-	}
-
-	if httpResponse.statusCode != 200 {
-		// add info but only the first 10 and last 10 chars
-		let lastfirst = String(data: data, encoding: .utf8)!.prefix(10) + "..." + String(data: data, encoding: .utf8)!.suffix(10)
-		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst))
-	}
-
-	let jsonResult = Result.X { try JSONSerialization.jsonObject(with: data) as? [String: Any] }
-	guard let jsonObject = jsonResult.value else {
-		return .failure(jsonResult.error!)
-	}
-
-	if jsonObject == nil {
-		return .failure(x.error("no json data returned"))
-	}
-
-	if let signInToken = jsonObject!["SigninToken"] as? String {
-		return .success(signInToken)
-	} else {
-		return .failure(x.error("error parsing json"))
-	}
-}
-
-func constructLoginURL(with signInToken: String, federationURL: URL, destinationURL: URL) -> Result<URL, Error> {
-	guard var components = URLComponents(url: federationURL, resolvingAgainstBaseURL: false) else {
-		return .failure(x.error("unable to build url components").event {
-			return $0.add("federationURL", federationURL)
-		})
-	}
-
-	components.queryItems = [
-		URLQueryItem(name: "Action", value: "login"),
-		URLQueryItem(name: "Issuer", value: "Leapp"),
-		URLQueryItem(name: "Destination", value: destinationURL.absoluteString),
-		URLQueryItem(name: "SigninToken", value: signInToken),
-	]
-
-	if let url = components.url {
-		return .success(url)
-	} else {
-		return .failure(x.error("coule not convert components to url").event {
-			return $0.add("components", components)
-		})
-	}
 }
 
 public struct UserSignInData: Equatable {
@@ -452,6 +282,192 @@ public class SecureAccessToken: NSObject, NSSecureCoding {
 	}
 }
 
+func listAccounts(_ client: AWSSSO.SSOClient, accessToken: SecureAccessToken) async -> Result<[AccountRole], Error> {
+	let (response, err1) = await Result.X { try await client.listAccounts(input: .init(accessToken: accessToken.accessToken)) }.validate()
+	if let err1 {
+		return .failure(x.error("error fetching accounts", root: err1))
+	}
+
+	var accounts = [AccountRole]()
+	guard let accountList = response.accountList else {
+		return .failure(x.error("response.accountList does not exist"))
+	}
+	// Iterate over accounts and fetch roles for each
+	for account in accountList {
+		let (roles, err2) = await listRolesForAccount(client, accessToken: accessToken, accountID: account.accountId!).validate()
+		if let err2 {
+			return .failure(x.error("error fetching roles for account", root: err2))
+		}
+		for role in roles {
+			accounts.append(role)
+		}
+	}
+
+	return .success(accounts)
+}
+
+func listRolesForAccount(_ client: AWSSSO.SSOClient, accessToken: SecureAccessToken, accountID: String) async -> Result<[AccountRole], Error> {
+	// List roles for the given account
+	let _rolesResponse = await Result.X {
+		try await client.listAccountRoles(input: .init(accessToken: accessToken.accessToken, accountId: accountID))
+	}
+	guard let rolesResponse = _rolesResponse.value else { return .failure(_rolesResponse.error!) }
+
+	var roles = [AccountRole]()
+	if let roleList = rolesResponse.roleList {
+		for role in roleList {
+			roles.append(AccountRole(accountID: role.accountId!, role: role.roleName!))
+		}
+	} else {
+		return .failure(x.error("No roles found for account"))
+	}
+
+	return .success(roles)
+}
+
+public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, keychain: any KeychainAPI) async -> Result<URL, Error> {
+	guard let account = userSession.account else {
+		return .failure(x.error("Account not set"))
+	}
+
+	guard let region = userSession.region else {
+		return .failure(x.error("Region not set"))
+	}
+
+	guard let accessToken = userSession.accessToken else {
+		return .failure(x.error("accessToken not set"))
+	}
+
+	x.log(.debug).send("A")
+
+	let _client = Result.X { try AWSSSO.SSOClient(region: region) }
+	guard let sso = _client.value else { return .failure(_client.error!) }
+
+	x.log(.debug).send("B")
+
+	let (creds, err1) = await account.getCreds(sso, keychain: keychain, accessToken: accessToken).validate()
+	if let err1 {
+		return .failure(x.error("error fetching role creds", root: err1))
+	}
+
+	guard let federationURL = constructFederationURL(with: creds, region: region) else {
+		return .failure(x.error("Failed to construct federation URL"))
+	}
+
+	x.log(.debug).send("D")
+
+	let (signInTokenResult, err2) = await fetchSignInToken(from: federationURL).validate()
+	if let err2 {
+		return .failure(x.error("error fetching signInToken", root: err2))
+	}
+
+	x.log(.debug).add("sign in result", signInTokenResult).send("we right here")
+
+	let consoleHomeURL = region.starts(with: "us-gov-") ?
+		"https://console.amazonaws-us-gov.com/console/home?region=\(region)" :
+		"https://\(region).console.aws.amazon.com/console/home?region=\(region)"
+
+	let destinationURL = URL(string: consoleHomeURL)!
+
+	return constructLoginURL(with: signInTokenResult, federationURL: federationURL.url!, destinationURL: destinationURL)
+}
+
+public func constructConsoleURL(from session: any AWSSSOUserSessionAPI) -> URL? {
+	guard let service = session.service,
+	      let region = session.region,
+	      let account = session.account
+	else {
+		return nil
+	}
+
+	// Construct the URL based on the service, region, and account
+	// This is a simplified example and might need to be adjusted
+	let urlString = "https://\(region).console.aws.amazon.com/\(service.lowercased())/home?region=\(region)"
+	return URL(string: urlString)
+}
+
+func constructFederationURL(with credentials: RoleCredentials, region: String) -> URLRequest? {
+	let federationBaseURL = region.starts(with: "us-gov-") ?
+		"https://signin.amazonaws-us-gov.com/federation" :
+		"https://signin.aws.amazon.com/federation"
+
+	guard let sessionStringJSON = try? JSONEncoder().encode(SessionData(
+		Action: "getSignInToken",
+		sessionDuration: 3200,
+		Session: SessionInfo(
+			sessionID: credentials.accessKeyID,
+			sessionKey: credentials.secretAccessKey,
+			sessionToken: credentials.sessionToken
+		)
+	)) else {
+		return nil
+	}
+
+//	let sessionString = String(data: sessionStringJSON, encoding: .utf8)!
+//	let encodedSessionString = sessionString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
+
+//	let federationURLString = "\(federationBaseURL)?Action=getSigninToken&sessionDuration=3200&Session=\(sessionStringJSON.string!)"
+	var req = URLRequest(url: URL(string: federationBaseURL)!)
+	req.httpBody = sessionStringJSON
+	req.httpMethod = "POST"
+	return req
+}
+
+func fetchSignInToken(from url: URLRequest) async -> Result<String, Error> {
+	let ((data, response), err1) = await Result.X { try await URLSession.shared.data(for: url) }.validate()
+	if let err1 {
+		return .failure(x.error("error fetching signInToken", root: err1))
+	}
+
+	guard let httpResponse = response as? HTTPURLResponse else {
+		return .failure(x.error("unexpected response type: \(response)"))
+	}
+
+	if httpResponse.statusCode != 200 {
+		// add info but only the first 10 and last 10 chars
+		let lastfirst = String(data: data, encoding: .utf8)!.prefix(10) + "..." + String(data: data, encoding: .utf8)!.suffix(10)
+		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst))
+	}
+
+	let (jsonResult, err2) = Result.X { try JSONSerialization.jsonObject(with: data) as? [String: Any] }.validate()
+	if let err2 {
+		return .failure(x.error("error parsing json", root: err2))
+	}
+
+	if jsonResult == nil {
+		return .failure(x.error("no json data returned"))
+	}
+
+	if let signInToken = jsonResult!["SigninToken"] as? String {
+		return .success(signInToken)
+	} else {
+		return .failure(x.error("error parsing json"))
+	}
+}
+
+func constructLoginURL(with signInToken: String, federationURL: URL, destinationURL: URL) -> Result<URL, Error> {
+	guard var components = URLComponents(url: federationURL, resolvingAgainstBaseURL: false) else {
+		return .failure(x.error("unable to build url components").event {
+			return $0.add("federationURL", federationURL)
+		})
+	}
+
+	components.queryItems = [
+		URLQueryItem(name: "Action", value: "login"),
+		URLQueryItem(name: "Issuer", value: "Leapp"),
+		URLQueryItem(name: "Destination", value: destinationURL.absoluteString),
+		URLQueryItem(name: "SigninToken", value: signInToken),
+	]
+
+	if let url = components.url {
+		return .success(url)
+	} else {
+		return .failure(x.error("coule not convert components to url").event {
+			return $0.add("components", components)
+		})
+	}
+}
+
 private func pollForToken(_ client: AWSSSOOIDC.SSOOIDCClientProtocol, registration: SecureClientRegistrationInfo, deviceAuth: UserSignInData, pollInterval: TimeInterval, expirationTime: TimeInterval) async -> Result<AWSSSOOIDC.CreateTokenOutput, Error> {
 	// Calculate the expiration time as a Date
 	let expirationDate = Date().addingTimeInterval(expirationTime)
@@ -524,7 +540,7 @@ private func registerClientIfNeeded(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol,
 	return saveClientRegistrationToSecureStorage(keychainAPI, regd)
 }
 
-public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainAPI: any XDKKeychain.KeychainAPI, ssoRegion: String, startURL: URL, promptUser: (_ url: UserSignInData) -> Void) async -> Result<SecureAccessToken, Error> {
+public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainAPI: any XDKKeychain.KeychainAPI, ssoRegion: String, startURL: URL, promptUser: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAccessToken, Error> {
 	let _current = loadAccessTokenFromStore(keychainAPI)
 	guard let current = _current.value else { return .failure(_current.error!) }
 

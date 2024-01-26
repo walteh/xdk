@@ -19,7 +19,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 	public func remote(init type: CeremonyType, credentialID: Data? = nil) async throws -> Challenge {
 		var req: URLRequest = .init(url: host.appending(path: "/init"))
 
-		req.setValue(xhex.ToHexString(sessionAPI.ID().data()), forHTTPHeaderField: "X-Nugg-Hex-Session-ID")
+		req.setValue(xhex.ToHexString(sessionAPI.ID().utf8()), forHTTPHeaderField: "X-Nugg-Hex-Session-ID")
 		req.setValue(type.rawValue, forHTTPHeaderField: "X-Nugg-Utf-Ceremony-Type")
 
 		if credentialID != nil {
@@ -95,7 +95,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		req.setValue("text/plain", forHTTPHeaderField: "Content-Type")
 //		req.setValue(da.base64URLEncodedString(), forHTTPHeaderField: "X-Nugg-Base64-Attestation-Object")
 		req.setValue(clientDataJSON, forHTTPHeaderField: "X-Nugg-Utf-Client-Data-Json")
-		req.setValue(xhex.ToHexString(sessionAPI.ID().data()), forHTTPHeaderField: "X-Nugg-Hex-Session-Id")
+		req.setValue(xhex.ToHexString(sessionAPI.ID().utf8()), forHTTPHeaderField: "X-Nugg-Hex-Session-Id")
 
 		req.httpBodyStream = .init(data: xhex.ToHexString(da).data(using: .utf8) ?? Data())
 
@@ -148,9 +148,9 @@ func buildHeadersFor(requestAssertion assertion: Data, challenge: XDKXID.XID, se
 	{
 		"credential_id":"\(xhex.ToHexString(credentialID))",
 		"assertion_object":"\(xhex.ToHexString(assertion))",
-		"session_id":"\(xhex.ToHexString(sessionID.data()))",
+		"session_id":"\(xhex.ToHexString(sessionID.utf8()))",
 		"provider":"apple",
-		"client_data_json":"{\\"challenge\\":\\"\(challenge.data().base64URLEncodedString())\\",\\"origin\\":\\"https://nugg.xyz\\",\\"type\\":\\"\(CeremonyType.Get.rawValue)\\"}"
+		"client_data_json":"{\\"challenge\\":\\"\(challenge.utf8().base64URLEncodedString())\\",\\"origin\\":\\"https://nugg.xyz\\",\\"type\\":\\"\(CeremonyType.Get.rawValue)\\"}"
 	}
 	"""
 

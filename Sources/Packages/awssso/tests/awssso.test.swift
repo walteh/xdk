@@ -5,7 +5,11 @@
 //  Created by walter on 3/3/23.
 //
 
+import AWSSSOOIDC
 import XCTest
+import XDKKeychain
+import XDKX
+
 @testable import XDKAWSSSO
 
 class big_tests: XCTestCase {
@@ -17,12 +21,36 @@ class big_tests: XCTestCase {
 		// Put teardown code here. This method is called after the invocation of each test method in the class.
 	}
 
-	func testExample() throws {
-		// This is an example of a functional test case.
-		// Use XCTAssert and related functions to verify your tests produce the correct results.
-		// Any test you write for XCTest can be annotated as throws and async.
-		// Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-		// Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+	func testExample() async throws {
+		let keychain = XDKKeychain.NoopClient()
+		let selectedRegion = "us-east-1"
+
+		let val = "https://nuggxyz.awsapps.com/start#/"
+		guard let startURI = URL(string: val) else {
+			throw URLError(.init(rawValue: 0), userInfo: ["uri": val])
+		}
+
+		let (client, err) = Result.X { try AWSSSOOIDC.SSOOIDCClient(region: "us-east-1") }.validate()
+		XCTAssertNil(err)
+
+		var promptURL: XDKAWSSSO.UserSignInData? = nil
+		let (resp, err2) = await XDKAWSSSO.signInWithSSO(awsssoAPI: client, keychainAPI: keychain, ssoRegion: selectedRegion, startURL: startURI, promptUser: { url in
+			promptURL = url
+		}).validate()
+		XCTAssertNil(err2)
+
+		let sess = AWSSSOUserSession(
+			account: AccountRole(accountID: "324802912585", role: "AWSAdministratorAccess"),
+			region: "us-east-1",
+			service: "s3",
+			resource: nil,
+			accessToken: resp
+		)
+
+		XCTAssertNotNil(promptURL)
+
+		let url = await XDKAWSSSO.loadAWSConsole(userSession: sess, keychain: keychain).validate()
+		XCTAssertNotNil(url)
 	}
 
 	func testPerformanceExample() throws {

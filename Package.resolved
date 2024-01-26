@@ -55,6 +55,15 @@
       }
     },
     {
+      "identity" : "swift-xid",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/uatuko/swift-xid.git",
+      "state" : {
+        "revision" : "9172b9e07dbc6b94ce91c9455c090efdfdd556c9",
+        "version" : "0.2.1"
+      }
+    },
+    {
       "identity" : "xmlcoder",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/MaxDesiatov/XMLCoder.git",

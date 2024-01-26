@@ -72,7 +72,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 
 		var combo = Data(body)
 
-		combo.append(challenge.data())
+		combo.append(challenge.utf8())
 
 		do {
 			let assertion = try await DCAppAttestService.shared.generateAssertion(key.keyID.base64EncodedString(), clientDataHash: Data(combo).sha2())
@@ -100,7 +100,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 			}
 		}
 
-		let clientDataJSON = #"{"challenge":""# + challenge.data().base64URLEncodedString() + #"","origin":"https://nugg.xyz","type":""# + ceremony.rawValue + #""}"#
+		let clientDataJSON = #"{"challenge":""# + challenge.utf8().base64URLEncodedString() + #"","origin":"https://nugg.xyz","type":""# + ceremony.rawValue + #""}"#
 
 		let attestation = try await DCAppAttestService.shared.attestKey(key, clientDataHash: clientDataJSON.data.sha2())
 

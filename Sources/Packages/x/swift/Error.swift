@@ -31,8 +31,17 @@ public class XError: NSError {
 		return []
 	}
 
+	override public var userInfo: [String: Any] {
+		var info = super.userInfo
+		info["caller"] = self.caller.format()
+		for i in self.meta.metadata {
+			info[i.key] = i.value
+		}
+		return info
+	}
+
 	let message: String
-	let selfroot: NSError?
+	let selfroot: Error?
 
 	var meta: LogEvent
 
@@ -44,7 +53,7 @@ public class XError: NSError {
 
 	public init(_ message: String, root: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) {
 		if let r = root {
-			self.selfroot = r as NSError
+			self.selfroot = r
 		} else {
 			self.selfroot = nil
 		}
@@ -52,9 +61,7 @@ public class XError: NSError {
 		self.message = message
 		self.caller = Caller(file: __file, function: __function, line: __line)
 		self.meta = LogEvent(.error)
-		super.init(domain: "XError", code: -6, userInfo: [
-			"caller": self.caller.format(),
-		])
+		super.init(domain: "XError", code: -6, userInfo: [:])
 	}
 
 	@available(*, unavailable)
@@ -96,6 +103,26 @@ public class XError: NSError {
 	}
 }
 
+public extension Error {
+	// ==
+	static func == (lhs: Self, rhs: Self) -> Bool {
+		return lhs.localizedDescription == rhs.localizedDescription
+	}
+
+	func contains<G: Swift.Error>(_: G) -> Bool {
+		return ((self as NSError).deepest(ofType: G.self)) == nil
+	}
+}
+
+func check<G: Swift.Error>(error: some Error, contains _: G) -> Bool {
+	let error = error as NSError
+	return (error.deepest(ofType: G.self)) == nil
+}
+
+// func check<G: Swift.Error>(error: some NSError, contains _: G) -> Bool {
+// 	return (error.deepest(ofType: G.self)) == nil
+// }
+
 public extension NSError {
 	var root: Error? {
 		if self.underlyingErrors.count == 1 {
@@ -104,21 +131,31 @@ public extension NSError {
 		return nil
 	}
 
-//	public var typ: String {
-//		return "\(type(of: self))"
-//	}
+	func deepest<T: Swift.Error>(ofType _: T.Type) -> T? {
+		var list = self.rootList()
+		list.reverse()
+		for i in list {
+			if let r = i as? T {
+				return r
+			}
+		}
+		return nil
+	}
 
-//	public var rawValue: String {
-//		return message
-//	}
-//
-//	public typealias RawValue = String
-//
-//	private enum CodingKeys: String, CodingKey {
-//		case message, root
-//	}
+	func deepest<T: Swift.Error>(matching: T) -> T? {
+		var list = self.rootList()
+		list.reverse()
+		for i in list {
+			if let r = i as? T {
+				if r == matching {
+					return r
+				}
+			}
+		}
+		return nil
+	}
 
-	private func rootList() -> [Swift.Error] {
+	func rootList() -> [Swift.Error] {
 		// loop through the roots, and append each to a string backwards
 		var strs = [Swift.Error]()
 		strs += [self]
@@ -142,7 +179,7 @@ public extension NSError {
 			if let errd = $0 as? XError {
 				return errd.message
 			} else {
-				return $0.localizedDescription
+				return ($0 as NSError).localizedDescription
 			}
 		}
 		Swift.print("HI1", strs)

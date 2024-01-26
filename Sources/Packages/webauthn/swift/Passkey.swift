@@ -71,7 +71,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 
 		let challenge = try await remote(init: .Get, credentialID: credid.credentialID)
 
-		let req = self.publicKeyProvider.createCredentialAssertionRequest(challenge: challenge.data())
+		let req = self.publicKeyProvider.createCredentialAssertionRequest(challenge: challenge.utf8())
 
 		req.allowedCredentials = [.init(credentialID: credid.credentialID)]
 
@@ -86,9 +86,9 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		let challenge = try await remote(init: .Create)
 
 		let registrationRequest = self.publicKeyProvider.createCredentialRegistrationRequest(
-			challenge: challenge.data(),
+			challenge: challenge.utf8(),
 			name: "nugg.xyz",
-			userID: sessionAPI.ID().data()
+			userID: sessionAPI.ID().utf8()
 		)
 
 		let authController = ASAuthorizationController(authorizationRequests: [registrationRequest])

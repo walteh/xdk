@@ -22,18 +22,24 @@ final class IDTests: XCTestCase {
 	}
 
 	func testIDInitFromDataThrow() {
-		XCTAssertThrowsError(try XDKXID.XID.rebuild(raw: Data([0x78, 0x69, 0x64]))) { error in
-			XCTAssertEqual(XIDError.InvalidRawDataLength(have: 3, want: 12), error as! XIDError)
+		if let err = Result.X { try XDKXID.XID.rebuild(raw: Data([0x78, 0x69, 0x64])) }.error {
+			XCTAssert(err.contains(XIDError.InvalidRawDataLength(have: 3, want: 12)))
+		} else {
+			XCTFail("expected error")
 		}
 	}
 
 	func testIDInitFromStringThrow() {
-		XCTAssertThrowsError(try XDKXID.XID.rebuild(string: "xid")) { error in
-			XCTAssertEqual(XIDError.InvalidStringLength(have: 3, want: 20), error as! XIDError)
+		if let err = Result.X { try XDKXID.XID.rebuild(string: "caia5ng890f0tr00hgtg") }.error {
+			XCTAssert(err.contains(XIDError.invalidID))
+		} else {
+			XCTFail("expected error")
 		}
 
-		XCTAssertThrowsError(try XDKXID.XID.rebuild(string: "caia5ng890f0tr00hgt=")) { error in
-			XCTAssertEqual(XIDError.decodeValidationFailure, error as! XIDError)
+		if let err = Result.X { try XDKXID.XID.rebuild(string: "caia5ng890f0tr00hgtg=") }.error {
+			XCTAssert(err.contains(XIDError.invalidID))
+		} else {
+			XCTFail("expected error")
 		}
 	}
 

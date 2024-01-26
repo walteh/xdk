@@ -67,3 +67,15 @@ public extension Result {
 		}
 	}
 }
+
+public extension Result {
+	func validate() -> (success: Success, error: Failure?) {
+		switch self {
+		case let .success(value):
+			return (value, nil)
+		case let .failure(error):
+			let su = unsafeBitCast(Success.self, to: Success.self)
+			return (su, error)
+		}
+	}
+}

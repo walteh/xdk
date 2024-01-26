@@ -8,7 +8,7 @@ final class XIDTests: XCTestCase {
 
 		// Generate n ids
 		for _ in 0 ..< n {
-			ids.append(buf.next())
+			ids.append(XDKXID.XID.build())
 		}
 
 		for i in 1 ..< n {
