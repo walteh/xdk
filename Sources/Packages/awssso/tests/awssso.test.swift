@@ -30,14 +30,20 @@ class big_tests: XCTestCase {
 			throw URLError(.init(rawValue: 0), userInfo: ["uri": val])
 		}
 
-		let (client, err) = Result.X { try AWSSSOOIDC.SSOOIDCClient(region: "us-east-1") }.validate()
-		XCTAssertNil(err)
+		var err: Error? = nil
+
+		guard let client = Result.X { try AWSSSOOIDC.SSOOIDCClient(region: "us-east-1") }.to(&err) else {
+			XCTFail("failed to create client" + (err?.localizedDescription ?? "unknown error"))
+			return
+		}
 
 		var promptURL: XDKAWSSSO.UserSignInData? = nil
-		let (resp, err2) = await XDKAWSSSO.signInWithSSO(awsssoAPI: client, keychainAPI: keychain, ssoRegion: selectedRegion, startURL: startURI, promptUser: { url in
+		guard let resp = await XDKAWSSSO.signInWithSSO(awsssoAPI: client, keychainAPI: keychain, ssoRegion: selectedRegion, startURL: startURI) { url in
 			promptURL = url
-		}).validate()
-		XCTAssertNil(err2)
+		}.to(&err) else {
+			XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
+			return
+		}
 
 		let sess = AWSSSOUserSession(
 			account: AccountRole(accountID: "324802912585", role: "AWSAdministratorAccess"),
@@ -49,7 +55,11 @@ class big_tests: XCTestCase {
 
 		XCTAssertNotNil(promptURL)
 
-		let url = await XDKAWSSSO.loadAWSConsole(userSession: sess, keychain: keychain).validate()
+		guard let url = await XDKAWSSSO.loadAWSConsole(userSession: sess, keychain: keychain).to(&err) else {
+			XCTFail("failed to load console" + (err?.localizedDescription ?? "unknown error"))
+			return
+		}
+
 		XCTAssertNotNil(url)
 	}
 

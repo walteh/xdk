@@ -44,6 +44,22 @@ public extension Result where Failure == Error {
 			return .failure(err)
 		}
 	}
+
+	// static func to(err: inout Error?, __file: String = #fileID, __function: String = #function, __line: UInt = #line, catching body: @escaping () throws -> Success) -> Success? {
+	// 	return Result.X(__file: __file, __function: __function, __line: __line, catching: body).validate(&err)
+	// }
+
+	// static func to(err: inout Error?, __file: String = #fileID, __function: String = #function, __line: UInt = #line, catching body: @escaping @Sendable () async throws -> Success) async -> Success? {
+	// 	return await Result.X(__file: __file, __function: __function, __line: __line, catching: body).validate(&err)
+	// }
+
+	// static func to(err: inout Error?, __file: String = #fileID, __function: String = #function, __line: UInt = #line, catching body: @escaping () throws -> Void) -> Void? {
+	// 	return Result.X(__file: __file, __function: __function, __line: __line, catching: body).validate(&err)
+	// }
+
+	// static func to(err: inout Error?, __file: String = #fileID, __function: String = #function, __line: UInt = #line, catching body: @escaping @Sendable () async throws -> Void) async -> Void? {
+	// 	return await Result.X(__file: __file, __function: __function, __line: __line, catching: body).validate(&err)
+	// }
 }
 
 public extension Result {
@@ -69,13 +85,13 @@ public extension Result {
 }
 
 public extension Result {
-	func validate() -> (success: Success, error: Failure?) {
+	func to(_ e: inout Error?) -> (Success?) {
 		switch self {
 		case let .success(value):
-			return (value, nil)
+			return value
 		case let .failure(error):
-			let su = unsafeBitCast(Success.self, to: Success.self)
-			return (su, error)
+			e = error
+			return nil
 		}
 	}
 }

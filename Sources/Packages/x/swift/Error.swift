@@ -8,10 +8,6 @@
 import Foundation
 
 public extension x {
-	enum GenericError: Swift.Error {
-		case unknown
-	}
-
 	@discardableResult
 	static func error(_ str: String, root: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {
 		return XError(str, root: root, __file: __file, __function: __function, __line: __line)

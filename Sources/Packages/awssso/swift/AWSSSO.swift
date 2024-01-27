@@ -139,9 +139,10 @@ public struct AccountRole: Hashable, Equatable {
 	}
 
 	func getCreds(_ client: AWSSSO.SSOClient, keychain: any KeychainAPI, accessToken: SecureAccessToken) async -> Result<RoleCredentials, Error> {
-		let (curr, err1) = keychain.read(objectType: RoleCredentials.self, id: self.name).validate()
-		if let err1 {
-			return .failure(x.error("error reading role creds from keychain", root: err1))
+		var err: Error? = nil
+
+		guard let curr = keychain.read(objectType: RoleCredentials.self, id: self.name).to(&err) else {
+			return .failure(x.error("error reading role creds from keychain", root: err))
 		}
 
 		// dereference err1
@@ -153,9 +154,8 @@ public struct AccountRole: Hashable, Equatable {
 		}
 
 		// into this at compile time
-		let (creds, err2) = await Result.X { try await client.getRoleCredentials(input: .init(accessToken: accessToken.accessToken, accountId: self.accountID, roleName: self.role)) }.validate()
-		if let err2 {
-			return .failure(x.error("error fetching role creds", root: err2))
+		guard let creds = await Result.X { try await client.getRoleCredentials(input: .init(accessToken: accessToken.accessToken, accountId: self.accountID, roleName: self.role)) }.to(&err) else {
+			return .failure(x.error("error fetching role creds", root: err))
 		}
 
 		guard let rolecreds = creds.roleCredentials else {
@@ -283,9 +283,10 @@ public class SecureAccessToken: NSObject, NSSecureCoding {
 }
 
 func listAccounts(_ client: AWSSSO.SSOClient, accessToken: SecureAccessToken) async -> Result<[AccountRole], Error> {
-	let (response, err1) = await Result.X { try await client.listAccounts(input: .init(accessToken: accessToken.accessToken)) }.validate()
-	if let err1 {
-		return .failure(x.error("error fetching accounts", root: err1))
+	var err: Error? = nil
+
+	guard let response = await Result.X { try await client.listAccounts(input: .init(accessToken: accessToken.accessToken)) }.to(&err) else {
+		return .failure(x.error("error fetching accounts", root: err))
 	}
 
 	var accounts = [AccountRole]()
@@ -294,9 +295,8 @@ func listAccounts(_ client: AWSSSO.SSOClient, accessToken: SecureAccessToken) as
 	}
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {
-		let (roles, err2) = await listRolesForAccount(client, accessToken: accessToken, accountID: account.accountId!).validate()
-		if let err2 {
-			return .failure(x.error("error fetching roles for account", root: err2))
+		guard let roles = await listRolesForAccount(client, accessToken: accessToken, accountID: account.accountId!).to(&err) else {
+			return .failure(x.error("error fetching roles for account", root: err))
 		}
 		for role in roles {
 			accounts.append(role)
@@ -326,6 +326,8 @@ func listRolesForAccount(_ client: AWSSSO.SSOClient, accessToken: SecureAccessTo
 }
 
 public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, keychain: any KeychainAPI) async -> Result<URL, Error> {
+	var err: Error? = nil
+
 	guard let account = userSession.account else {
 		return .failure(x.error("Account not set"))
 	}
@@ -340,14 +342,14 @@ public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, keychain: any 
 
 	x.log(.debug).send("A")
 
-	let _client = Result.X { try AWSSSO.SSOClient(region: region) }
-	guard let sso = _client.value else { return .failure(_client.error!) }
+	guard let client = Result.X { try AWSSSO.SSOClient(region: region) }.to(&err) else {
+		return .failure(x.error("error creating client", root: err))
+	}
 
 	x.log(.debug).send("B")
 
-	let (creds, err1) = await account.getCreds(sso, keychain: keychain, accessToken: accessToken).validate()
-	if let err1 {
-		return .failure(x.error("error fetching role creds", root: err1))
+	guard let creds = await account.getCreds(client, keychain: keychain, accessToken: accessToken).to(&err) else {
+		return .failure(x.error("error fetching role creds", root: err))
 	}
 
 	guard let federationURL = constructFederationURL(with: creds, region: region) else {
@@ -356,9 +358,8 @@ public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, keychain: any 
 
 	x.log(.debug).send("D")
 
-	let (signInTokenResult, err2) = await fetchSignInToken(from: federationURL).validate()
-	if let err2 {
-		return .failure(x.error("error fetching signInToken", root: err2))
+	guard let signInTokenResult = await fetchSignInToken(from: federationURL).to(&err) else {
+		return .failure(x.error("error fetching signInToken", root: err))
 	}
 
 	x.log(.debug).add("sign in result", signInTokenResult).send("we right here")
@@ -414,9 +415,10 @@ func constructFederationURL(with credentials: RoleCredentials, region: String) -
 }
 
 func fetchSignInToken(from url: URLRequest) async -> Result<String, Error> {
-	let ((data, response), err1) = await Result.X { try await URLSession.shared.data(for: url) }.validate()
-	if let err1 {
-		return .failure(x.error("error fetching signInToken", root: err1))
+	var err: Error? = nil
+
+	guard let (data, response) = await Result.X { try await URLSession.shared.data(for: url) }.to(&err) else {
+		return .failure(x.error("error fetching sign in token", root: err))
 	}
 
 	guard let httpResponse = response as? HTTPURLResponse else {
@@ -429,9 +431,8 @@ func fetchSignInToken(from url: URLRequest) async -> Result<String, Error> {
 		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst))
 	}
 
-	let (jsonResult, err2) = Result.X { try JSONSerialization.jsonObject(with: data) as? [String: Any] }.validate()
-	if let err2 {
-		return .failure(x.error("error parsing json", root: err2))
+	guard let jsonResult = Result.X { try JSONSerialization.jsonObject(with: data) as? [String: Any] }.to(&err) else {
+		return .failure(x.error("error parsing json", root: err))
 	}
 
 	if jsonResult == nil {
@@ -447,9 +448,7 @@ func fetchSignInToken(from url: URLRequest) async -> Result<String, Error> {
 
 func constructLoginURL(with signInToken: String, federationURL: URL, destinationURL: URL) -> Result<URL, Error> {
 	guard var components = URLComponents(url: federationURL, resolvingAgainstBaseURL: false) else {
-		return .failure(x.error("unable to build url components").event {
-			return $0.add("federationURL", federationURL)
-		})
+		return .failure(x.error("unable to build url components").info("federationURL", federationURL))
 	}
 
 	components.queryItems = [
@@ -515,8 +514,11 @@ func loadClientRegistrationFromSecureStorage(_ client: any XDKKeychain.KeychainA
 }
 
 func saveClientRegistrationToSecureStorage(_ client: any XDKKeychain.KeychainAPI, _ registration: AWSSSOOIDC.RegisterClientOutput) -> Result<SecureClientRegistrationInfo, Error> {
-	let _work = SecureClientRegistrationInfo.fromAWS(registration)
-	guard let work = _work.value else { return .failure(_work.error!) }
+	var err: Error? = nil
+
+	guard let work = SecureClientRegistrationInfo.fromAWS(registration).to(&err) else {
+		return .failure(x.error("error creating secure client registration", root: err))
+	}
 
 	if let err = client.write(object: work, overwriting: true, id: "default1") {
 		return .failure(err)
@@ -526,23 +528,31 @@ func saveClientRegistrationToSecureStorage(_ client: any XDKKeychain.KeychainAPI
 
 private func registerClientIfNeeded(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainAPI: any XDKKeychain.KeychainAPI) async -> Result<SecureClientRegistrationInfo, Error> {
 	// Check if client is already registered and saved in secure storage (Keychain)
-	let reg = loadClientRegistrationFromSecureStorage(keychainAPI)
-	guard let registration = reg.value else { return .failure(reg.error!) }
 
-	if let registration {
-		return .success(registration)
+	var err: Error? = nil
+
+	guard let reg = loadClientRegistrationFromSecureStorage(keychainAPI).to(&err) else {
+		return .failure(x.error("error loading client registration", root: err))
+	}
+
+	if let reg {
+		return .success(reg)
 	}
 
 	// No registration found, register a new client
-	let _regd = await Result.X { try await awsssoAPI.registerClient(input: .init(clientName: "spatial-aws-basic", clientType: "public", scopes: [])) }
-	guard let regd = _regd.value else { return .failure(_regd.error!) }
+	guard let regd = await Result.X { try await awsssoAPI.registerClient(input: .init(clientName: "spatial-aws-basic", clientType: "public", scopes: [])) }.to(&err) else {
+		return .failure(x.error("error registering client", root: err))
+	}
 
 	return saveClientRegistrationToSecureStorage(keychainAPI, regd)
 }
 
-public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainAPI: any XDKKeychain.KeychainAPI, ssoRegion: String, startURL: URL, promptUser: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAccessToken, Error> {
-	let _current = loadAccessTokenFromStore(keychainAPI)
-	guard let current = _current.value else { return .failure(_current.error!) }
+public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainAPI: any XDKKeychain.KeychainAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAccessToken, Error> {
+	var err: Error? = nil
+
+	guard let current = loadAccessTokenFromStore(keychainAPI).to(&err) else {
+		return .failure(x.error("error loading access token", root: err))
+	}
 
 	if let current {
 		if current.expiresAt.timeIntervalSince(Date().addingTimeInterval(5.0 * 60 * -1)) > 0.0 {
@@ -550,23 +560,27 @@ public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainA
 		}
 	}
 
-	let _registration = await registerClientIfNeeded(awsssoAPI: awsssoAPI, keychainAPI: keychainAPI)
-	guard let registration = _registration.value else { return .failure(_registration.error!) }
+	guard let registration = await registerClientIfNeeded(awsssoAPI: awsssoAPI, keychainAPI: keychainAPI).to(&err) else {
+		return .failure(x.error("error registering client", root: err))
+	}
 
 	let input = AWSSSOOIDC.StartDeviceAuthorizationInput(clientId: registration.clientID, clientSecret: registration.clientSecret, startUrl: startURL.absoluteString)
 
-	let _deviceAuth = await Result.X { try await awsssoAPI.startDeviceAuthorization(input: input) }
-	guard let deviceAuth = _deviceAuth.value else { return .failure(_deviceAuth.error!) }
+	guard let deviceAuth = await Result.X { try await awsssoAPI.startDeviceAuthorization(input: input) }.to(&err) else {
+		return .failure(x.error("error starting device auth", root: err))
+	}
 
 	let data = UserSignInData.fromAWS(deviceAuth)
 
-	promptUser(data)
+	callback(data)
 
-	let _tok = await pollForToken(awsssoAPI, registration: registration, deviceAuth: data, pollInterval: 1.0, expirationTime: 60.0)
-	guard let tok = _tok.value else { return .failure(_tok.error!) }
+	guard let tok = await pollForToken(awsssoAPI, registration: registration, deviceAuth: data, pollInterval: 1.0, expirationTime: 60.0).to(&err) else {
+		return .failure(x.error("error polling for token", root: err))
+	}
 
-	let _work = SecureAccessToken.fromAWS(input: input, output: tok, region: ssoRegion)
-	guard let work = _work.value else { return .failure(_work.error!) }
+	guard let work = SecureAccessToken.fromAWS(input: input, output: tok, region: ssoRegion).to(&err) else {
+		return .failure(x.error("error creating secure access token", root: err))
+	}
 
 	return saveAccessTokenToStore(keychainAPI, work)
 }
