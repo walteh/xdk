@@ -5,24 +5,27 @@
 
 import Foundation
 
-import XDKKeychain
-import XDKX
+import XDK
 import XDKXID
 
-public class KeychainAppSession: NSObject {
+public class StoredAppSession: NSObject {
 	public let appSessionID: AppSessionID
 
-	public let keychainAPI: any KeychainAPI
+	public let storageAPI: any StorageAPI
 
-	public init(keychainAPI: any KeychainAPI) throws {
-		self.keychainAPI = keychainAPI
+	public init(storageAPI: any StorageAPI) throws {
+		var err = Error?.none
 
-		var id = try? self.keychainAPI.read(objectType: AppSessionID.self, id: "default").get()
+		self.storageAPI = storageAPI
+
+		guard var id = XDK.Read(using: storageAPI, AppSessionID.self).to(&err) else {
+			throw x.error("failed to read app session id", root: err)
+		}
 
 		if id == nil {
 			let tmpid = AppSessionID(id: XID.build())
-			if let err = self.keychainAPI.write(object: tmpid, overwriting: true, id: "default") {
-				throw err
+			guard let _ = XDK.Write(using: storageAPI, tmpid).to(&err) else {
+				throw x.error("failed to write app session id", root: err)
 			}
 			id = tmpid
 		}
@@ -35,7 +38,7 @@ public class KeychainAppSession: NSObject {
 	}
 }
 
-extension KeychainAppSession: AppSessionAPI {
+extension StoredAppSession: AppSessionAPI {
 	public func ID() -> XDKXID.XID {
 		return self.appSessionID.id
 	}

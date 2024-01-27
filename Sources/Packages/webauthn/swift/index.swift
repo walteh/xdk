@@ -19,23 +19,23 @@ public struct JWT {
 public typealias Challenge = XID
 
 public protocol WebauthnDeviceCheckAPI {
-	func assert(request: inout URLRequest, dataToSign: Data?) async throws
-	func attest() async throws
-	func initialized() throws -> Bool
+	func assert(request: inout URLRequest, dataToSign: Data?) async -> Result<Void, Error>
+	func attest() async -> Result<Void, Error>
+	func initialized() -> Result<Bool, Error>
 }
 
 public protocol WebauthnPasskeyAPI: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-	func assertPasskey() async throws
-	func attestPasskey() async throws
+	func assertPasskey() async -> Result<Void, Error>
+	func attestPasskey() async -> Result<Void, Error>
 	func startSignInObserver() -> NSObjectProtocol
 }
 
 public protocol WebauthnRemoteAPI {
-	func remote(init type: CeremonyType, credentialID: Data?) async throws -> Challenge
-	func remote(authorization: ASAuthorization) async throws -> JWT
-	func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async throws -> JWT
-	func remote(credentialAssertion assert: ASAuthorizationPublicKeyCredentialAssertion) async throws -> JWT
-	func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data) async throws -> Bool
+	func remote(init type: CeremonyType, credentialID: Data?) async -> Result<Challenge, Error>
+	func remote(authorization: ASAuthorization) async -> Result<JWT, Error>
+	func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async -> Result<JWT, Error>
+	func remote(credentialAssertion assert: ASAuthorizationPublicKeyCredentialAssertion) async -> Result<JWT, Error>
+	func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data) async -> Result<Void, Error>
 	func getPublicKeyProvider() -> ASAuthorizationPlatformPublicKeyCredentialProvider
 	func getIsPerformingModalRequest() -> Bool
 	func getUserID() -> String

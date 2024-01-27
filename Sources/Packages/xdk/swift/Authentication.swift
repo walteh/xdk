@@ -12,3 +12,13 @@ func ObtainAuthentication(using: AuthenticationAPI, reason: String) async -> Res
 func AuthenticationAvailable(using: AuthenticationAPI) -> Result<Bool, Error> {
 	return using.authenticationAvailable()
 }
+
+public class NoopAuthentication: AuthenticationAPI {
+	public func obtainAuthentication(reason _: String) async -> Result<Bool, Error> {
+		return .success(true)
+	}
+
+	public func authenticationAvailable() -> Result<Bool, Error> {
+		return .success(true)
+	}
+}

@@ -7,16 +7,16 @@
 
 import AuthenticationServices
 import Foundation
+import XDK
 import XDKAppSession
-import XDKKeychain
 
 class WebauthnAuthenticationServicesClient: NSObject {
 	let host: URL
 
 	let sessionAPI: any XDKAppSession.AppSessionAPI
-	let keychainAPI: any XDKKeychain.KeychainAPI
+	let keychainAPI: any XDK.StorageAPI
 
-	public init(host: String, keychainAPI: any XDKKeychain.KeychainAPI, sessionAPI: any XDKAppSession.AppSessionAPI, relyingPartyIdentifier: String) {
+	public init(host: String, keychainAPI: any XDK.StorageAPI, sessionAPI: any XDKAppSession.AppSessionAPI, relyingPartyIdentifier: String) {
 		self.host = .init(string: host)!
 		self.keychainAPI = keychainAPI
 		self.sessionAPI = sessionAPI

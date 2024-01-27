@@ -7,8 +7,8 @@
 
 import AWSSSOOIDC
 import XCTest
+import XDK
 import XDKKeychain
-import XDKX
 
 @testable import XDKAWSSSO
 
@@ -22,7 +22,7 @@ class big_tests: XCTestCase {
 	}
 
 	func testExample() async throws {
-		let keychain = XDKKeychain.NoopClient()
+		let keychain = XDK.InMemoryStorage()
 		let selectedRegion = "us-east-1"
 
 		let val = "https://nuggxyz.awsapps.com/start#/"
@@ -38,7 +38,7 @@ class big_tests: XCTestCase {
 		}
 
 		var promptURL: XDKAWSSSO.UserSignInData? = nil
-		guard let resp = await XDKAWSSSO.signInWithSSO(awsssoAPI: client, keychainAPI: keychain, ssoRegion: selectedRegion, startURL: startURI) { url in
+		guard let resp = await XDKAWSSSO.signInWithSSO(awsssoAPI: client, storageAPI: keychain, ssoRegion: selectedRegion, startURL: startURI) { url in
 			promptURL = url
 		}.to(&err) else {
 			XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
@@ -55,7 +55,7 @@ class big_tests: XCTestCase {
 
 		XCTAssertNotNil(promptURL)
 
-		guard let url = await XDKAWSSSO.loadAWSConsole(userSession: sess, keychain: keychain).to(&err) else {
+		guard let url = await XDKAWSSSO.loadAWSConsole(userSession: sess, storageAPI: keychain).to(&err) else {
 			XCTFail("failed to load console" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}

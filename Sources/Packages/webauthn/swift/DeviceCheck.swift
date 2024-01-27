@@ -12,9 +12,8 @@ import DeviceCheck
 import Foundation
 import os
 
+import XDK
 import XDKAppSession
-import XDKKeychain
-import XDKX
 
 struct AssertionResult {
 	let challenge: String
@@ -54,64 +53,84 @@ class AppAttestKeyID: NSObject, NSSecureCoding {
 }
 
 extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
-	public func initialized() throws -> Bool {
-		return try self.keychainAPI.read(objectType: AppAttestKeyID.self, id: "default").get() != nil
+	public func initialized() -> Result<Bool, Error> {
+		return XDK.Read(using: self.keychainAPI, AppAttestKeyID.self).map { res in return res != nil }
 	}
 
-	public func assert(request: inout URLRequest, dataToSign: Data? = nil) async throws {
-		guard let key = try self.keychainAPI.read(objectType: AppAttestKeyID.self, id: "default").get() else {
-			throw DeviceCheckError.unexpectedNil
+	public func assert(request: inout URLRequest, dataToSign: Data? = nil) async -> Result<Void, Error> {
+		var err: Error? = nil
+
+		guard let key = XDK.Read(using: self.keychainAPI, AppAttestKeyID.self).to(&err) else {
+			return .failure(x.error("failed to read key from keychain", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
-		let challenge = try await remote(init: .Get, credentialID: key.keyID)
+		guard let key else {
+			return .failure(x.error("failed to read key from keychain", alias: DeviceCheckError.unexpectedNil))
+		}
+
+		guard let challenge = await remote(init: .Get, credentialID: key.keyID).to(&err) else {
+			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+		}
 
 		// read they body of the request as bytes
 		guard let body = dataToSign ?? request.httpBody else {
-			throw DeviceCheckError.unexpectedNil
+			return .failure(x.error("failed to get body of request", alias: DeviceCheckError.unexpectedNil))
 		}
 
 		var combo = Data(body)
 
 		combo.append(challenge.utf8())
 
-		do {
-			let assertion = try await DCAppAttestService.shared.generateAssertion(key.keyID.base64EncodedString(), clientDataHash: Data(combo).sha2())
+		let safeCombo = combo
 
-			let headers = buildHeadersFor(requestAssertion: assertion, challenge: challenge, sessionID: sessionAPI.ID(), credentialID: key.keyID)
-
-			for (key, value) in headers {
-				request.setValue(value, forHTTPHeaderField: key)
-			}
-		} catch {
-			throw x.error("DCAppAttestService.shared.generateAssertion failed", root: error)
+		guard let assertion = await Result.X({ try await DCAppAttestService.shared.generateAssertion(key.keyID.base64EncodedString(), clientDataHash: Data(safeCombo).sha2()) }).to(&err) else {
+			return .failure(x.error("DCAppAttestService.shared.generateAssertion failed", root: err))
 		}
+
+		let headers = buildHeadersFor(requestAssertion: assertion, challenge: challenge, sessionID: sessionAPI.ID(), credentialID: key.keyID)
+
+		for (key, value) in headers {
+			request.setValue(value, forHTTPHeaderField: key)
+		}
+
+		return .success(())
 	}
 
-	public func attest() async throws {
+	public func attest() async -> Result<Void, Error> {
+		var err: Error? = nil
+
 		let ceremony: CeremonyType = .Create
 
-		let challenge = try await remote(init: ceremony)
+		guard let challenge = await self.remote(init: ceremony).to(&err) else {
+			return .failure(x.error("failed to get challenge", root: err))
+		}
 
-		let key = try await DCAppAttestService.shared.generateKey()
+		guard let key = await Result.X({ try await DCAppAttestService.shared.generateKey() }).to(&err) else {
+			return .failure(x.error("DCAppAttestSerivice.shared.generateKey() failed", root: err))
+		}
 
 		guard let datakey = key.base64Decoded else {
-			throw x.error("DCAppAttestSerivice.shared.generateKey() returned a non base64 value").event {
+			return .failure(x.error("DCAppAttestSerivice.shared.generateKey() returned a non base64 value").event {
 				$0.add("value", key)
-			}
+			})
 		}
 
 		let clientDataJSON = #"{"challenge":""# + challenge.utf8().base64URLEncodedString() + #"","origin":"https://nugg.xyz","type":""# + ceremony.rawValue + #""}"#
 
-		let attestation = try await DCAppAttestService.shared.attestKey(key, clientDataHash: clientDataJSON.data.sha2())
-
-		let successfulAttest = try await remote(deviceAttestation: attestation, clientDataJSON: clientDataJSON, using: datakey)
-
-		if successfulAttest {
-			if let err = keychainAPI.write(object: AppAttestKeyID(keyID: datakey), overwriting: true, id: "default") {
-				throw err
-			}
-		} else {
-			throw x.error("deviceAttestation was not successful")
+		guard let attestation = await Result.X({
+			try await DCAppAttestService.shared.attestKey(key, clientDataHash: clientDataJSON.data.sha2())
+		}).to(&err) else {
+			return .failure(x.error("DCAppAttestService.shared.attestKey failed", root: err))
 		}
+
+		guard let _ = await self.remote(deviceAttestation: attestation, clientDataJSON: clientDataJSON, using: datakey).to(&err) else {
+			return .failure(x.error("remote(deviceAttestation:clientDataJSON:using:) failed", root: err))
+		}
+
+		if let _ = XDK.Write(using: self.keychainAPI, AppAttestKeyID(keyID: datakey)).to(&err) {
+			return .failure(x.error("failed to write key to keychain", root: err))
+		}
+
+		return .success(())
 	}
 }

@@ -18,8 +18,8 @@ class LocalAuthenticationTests: XCTestCase {
 	}
 
 	func testExample() throws {
-		let ok = LocalAuthenticationClient(group: "abc").authenticationAvailable()
-		XCTAssertTrue(ok)
+		let ok = LocalAuthenticationClient(group: "abc", version: "1").authenticationAvailable()
+		XCTAssertTrue(try ok.get())
 	}
 
 	func testPerformanceExample() throws {

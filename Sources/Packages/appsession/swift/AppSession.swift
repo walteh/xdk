@@ -5,8 +5,8 @@
 
 import Foundation
 
+import XDK
 import XDKKeychain
-import XDKX
 import XDKXID
 
 public protocol AppSessionAPI {
@@ -21,12 +21,6 @@ public class NoopAppSession: AppSessionAPI {
 	}
 
 	public init() {}
-}
-
-public extension AppSessionAPI {
-	static func loadFrom(keychain: any XDKKeychain.KeychainAPI) throws -> AppSessionAPI {
-		return try KeychainAppSession(keychainAPI: keychain)
-	}
 }
 
 public class AppSessionID: NSObject, NSSecureCoding {

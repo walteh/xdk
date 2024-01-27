@@ -9,7 +9,7 @@
 import Foundation
 import LocalAuthentication
 import os
-import XDKX
+import XDK
 
 extension LAContext {
 	func evaluatePolicy(_ policy: LAPolicy, localizedReason reason: String) async throws -> Bool {
@@ -34,59 +34,13 @@ public class LocalAuthenticationClient: NSObject, ObservableObject {
 	}
 }
 
-// extension LocalAuthenticationClient: XDK.AuthenticationAPI, XDK.StorageAPI {
-// 	public static func create(group: String, version: String) -> LocalAuthenticationClient {
-// 		return LocalAuthenticationClient(group: group, version: version)
-// 	}
-// }
-
-func convertFromBytes<T>(bytes: [UInt8], type _: T.Type) -> T {
-	let pointer = UnsafeMutablePointer<T>.allocate(capacity: 1)
-	_ = pointer.withMemoryRebound(to: UInt8.self, capacity: bytes.count) {
-		ptr in memcpy(ptr, bytes, bytes.count)
-	}
-	let structValue = pointer.pointee
-	pointer.deallocate()
-	return structValue
-}
-
-func convertToBytes(struct: some Any) -> [UInt8] {
-	var myStruct = `struct`
-	return withUnsafeBytes(of: &myStruct) { Array($0) }
-}
-
-extension LocalAuthenticationClient: KeychainAPI {
+extension LocalAuthenticationClient: XDK.StorageAPI {
 	public func version() -> String {
 		return self._version
 	}
 
-	/// Keychain errors we might encounter.
-	public func authenticationAvailable() -> Result<Bool, Error> {
-		var err: NSError?
-		let ok = self.authenticationContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: &err)
-		if err != nil {
-			return .failure(x.error("unable to check authentication availability", root: err))
-		}
-
-		return .success(ok)
-	}
-
-	public func obtainAuthentication(reason: String) async -> Result<Bool, Error> {
-		var err: Error? = nil
-
-		guard let ok = self.authenticationAvailable().to(&err) else {
-			return .failure(x.error("local auth not available", root: err, alias: KeychainError.auth_failed))
-		}
-
-		guard let res = await Result.X { try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: reason) }.to(&err) else {
-			return .failure(x.error("unable to authenticate", root: err, alias: KeychainError.auth_failed))
-		}
-
-		return .success(res)
-	}
-
 	/// Stores credentials for the given server.
-	public func write(insecurly key: String, overwriting: Bool = false, as value: Data) -> Result<Void, Error> {
+	public func write(unsafe key: String, overwriting: Bool, as value: Data) -> Result<Void, Error> {
 		var query: [String: Any] = [:]
 		query[kSecClass as String] = kSecClassGenericPassword
 		query[kSecAttrSynchronizable as String] = true
@@ -121,7 +75,7 @@ extension LocalAuthenticationClient: KeychainAPI {
 	}
 
 	/// Reads the stored credentials for the given server.
-	public func read(insecurly key: String) -> Result<Data?, Error> {
+	public func read(unsafe key: String) -> Result<Data?, Error> {
 		var query: [String: Any] = [:]
 		query[kSecClass as String] = kSecClassGenericPassword
 		query[kSecAttrSynchronizable as String] = true
@@ -144,5 +98,32 @@ extension LocalAuthenticationClient: KeychainAPI {
 		default:
 			return .failure(x.error(status: status))
 		}
+	}
+}
+
+extension LocalAuthenticationClient: XDK.AuthenticationAPI {
+	/// Keychain errors we might encounter.
+	public func authenticationAvailable() -> Result<Bool, Error> {
+		var err: NSError?
+		let ok = self.authenticationContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: &err)
+		if err != nil {
+			return .failure(x.error("unable to check authentication availability", root: err))
+		}
+
+		return .success(ok)
+	}
+
+	public func obtainAuthentication(reason: String) async -> Result<Bool, Error> {
+		var err: Error? = nil
+
+		guard let ok = self.authenticationAvailable().to(&err) else {
+			return .failure(x.error("local auth not available", root: err, alias: KeychainError.auth_failed))
+		}
+
+		guard let res = await Result.X { try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: reason) }.to(&err) else {
+			return .failure(x.error("unable to authenticate", root: err, alias: KeychainError.auth_failed))
+		}
+
+		return .success(res)
 	}
 }

@@ -1,6 +1,7 @@
 // swift-tools-version: 5.9
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
+import Foundation
 import PackageDescription
 
 let package = Package(
@@ -18,111 +19,150 @@ let package = Package(
 )
 
 let mainTarget = Target.target(
-	name: "xdk"
+	name: "XDKModule",
+	path: "./Sources/XDKModule/swift"
 )
 
-let swiftLogs = Folder(product: .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"), name: "Logging", packageName: "swift-log").apply()
-let swiftAtomics = Folder(product: .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"), name: "Atomics", packageName: "swift-atomics").apply()
-let awssdk = Folder(product: .package(url: "https://github.com/awslabs/aws-sdk-swift", exact: "0.34.0"), name: "AWS", packageName: "aws-sdk-swift").apply()
-let swiftXid = Folder(product: .package(url: "https://github.com/uatuko/swift-xid.git", exact: "0.2.1"), name: "xid", packageName: "swift-xid").apply()
-let swiftContext = Folder(product: .package(url: "https://github.com/apple/swift-service-context.git", from: "1.0.0"), name: "ServiceContextModule", packageName: "swift-service-context").apply()
+let swiftLogs = Git(module: "Logging", version: "1.5.4", url: "https://github.com/apple/swift-log.git").apply()
+// let swiftAtomics = Git(module: "Atomics", version: "1.2.0", url: "https://github.com/apple/swift-atomics.git").apply()
+let awssdk = Git(module: "AWS", version: "0.34.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply()
+let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply()
+let swiftContext = Git(module: "ServiceContextModule", version: "1.0.0", url: "https://github.com/apple/swift-service-context.git").apply()
 
-let x = Folder(local: "X", hasC: false, deps: [swiftLogs, swiftContext]).apply()
-let byte = Folder(local: "Byte", hasC: false, deps: [x]).apply()
-let hex = Folder(local: "Hex", hasC: false, deps: [x, byte]).apply()
-let ecdsa = Folder(local: "ECDSA", hasC: true, deps: [x, hex]).apply()
-let keychain = Folder(local: "keychain", hasC: false, deps: [x]).apply()
-let xid = Folder(local: "XID", hasC: false, deps: [x, swiftXid]).apply()
-let big = Folder(local: "Big", hasC: false, deps: [x]).apply()
-let websocket = Folder(local: "WebSocket", hasC: false, deps: [x, byte]).apply()
-let mtx = Folder(local: "MTX", hasC: false, deps: [x, hex]).apply()
-let rlp = Folder(local: "RLP", hasC: false, deps: [x, ecdsa, byte, hex, big]).apply()
-let logging = Folder(local: "Logging", hasC: false, deps: [x, swiftLogs, hex]).apply()
-let appsession = Folder(local: "AppSession", hasC: false, deps: [x, keychain, xid]).apply()
-let moc = Folder(local: "MOC", hasC: false, deps: [x, keychain]).apply()
-// let mqtt = Folder(local: "MQTT", hasC: false, deps: [x, byte, appsession]).apply()
-let webauthn = Folder(local: "Webauthn", hasC: false, deps: [x, ecdsa, byte, hex, big, keychain, appsession]).apply()
-let awssso = Folder(local: "AWSSSO", hasC: false, deps: [x, awssdk.with(name: "AWSSSO"), awssdk.with(name: "AWSSSOOIDC")]).apply()
+let x = Local(name: "XDK").with(deps: [swiftLogs, swiftContext]).apply()
+let byte = Local(name: "Byte").with(deps: [x]).apply()
+let hex = Local(name: "Hex").with(deps: [x, byte]).apply()
+let ecdsa = Local(name: "ECDSA").with(c: true).with(deps: [x, hex]).apply()
+let keychain = Local(name: "keychain").with(deps: [x]).apply()
+let xid = Local(name: "XID").with(deps: [x, swiftXid]).apply()
+let big = Local(name: "Big").with(deps: [x]).apply()
+let websocket = Local(name: "WebSocket").with(deps: [x, byte]).apply()
+let mtx = Local(name: "MTX").with(deps: [x, hex]).apply()
+let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, big]).apply()
+let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply()
+let appsession = Local(name: "AppSession").with(deps: [x, keychain, xid]).apply()
+let moc = Local(name: "MOC").with(deps: [x, keychain]).apply()
+// let mqtt = Local(name: "MQTT").with( deps: [x, byte, appsession]).apply()
+let webauthn = Local(name: "Webauthn").with(deps: [x, ecdsa, byte, hex, big, keychain, appsession]).apply()
+let awssso = Local(name: "AWSSSO").with(deps: [x, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply()
 
 func complete() {
 	package.targets.append(mainTarget)
 }
 
-class Folder {
-	let PACKAGE_ROOT = "./Sources/Packages/"
+protocol Dep {
+	func target() -> Target.Dependency
+}
 
-	var dummy: Package.Dependency?
-	var rawName: String
+class Git {
+	var product: Package.Dependency
+	let name: String
+	let module: String
 
-	var packageName: String = "xdk"
-	var hasC: Bool
-	var subfolders: [Folder] = []
+	init(module: String, version: String, url: String) {
+		self.name = url.split(separator: "/").last!.replacingOccurrences(of: ".git", with: "")
+		self.module = module
+		self.product = .package(url: url, exact: Version(stringLiteral: version))
+	}
 
-	func name() -> String {
+	init(name: String, module: String, product: Package.Dependency) {
+		self.name = name
+		self.module = module
+		self.product = product
+	}
+
+	func child(module: String) -> Git {
+		return Git(name: self.name, module: module, product: self.product)
+	}
+
+	func apply() -> Self {
+		package.dependencies.append(self.product)
+		return self
+	}
+}
+
+extension Git: Dep {
+	func target() -> Target.Dependency {
+		return .product(name: self.module, package: self.name)
+	}
+}
+
+class Local {
+	var packageFolder: String = "./Sources/Packages/"
+
+	var name: String
+	var hasC: Bool = false
+	var subfolders: [Dep] = []
+
+	func module() -> String {
+		if self.name.starts(with: "XDK") {
+			return self.name
+		}
 		return "XDK\(self.camel())"
 	}
 
 	func camel() -> String {
-		return "\(self.rawName.prefix(1).uppercased() + self.rawName.dropFirst())"
+		return "\(self.name.prefix(1).uppercased() + self.name.dropFirst())"
 	}
 
-	func with(name: String) -> Folder {
-		if self.dummy != nil {
-			return Folder(product: self.dummy!, name: name, packageName: self.packageName)
-		}
-
-		return Folder(local: name, hasC: self.hasC, deps: self.subfolders)
+	func with(c: Bool) -> Self {
+		self.hasC = c
+		return self
 	}
 
-	init(local: String, hasC: Bool = false, deps: [Folder] = []) {
-		self.rawName = local
-		self.hasC = hasC
+	func with(deps: [Dep]) -> Self {
 		self.subfolders = deps
+		return self
 	}
 
-	convenience init(product: Package.Dependency, name: String, packageName: String) {
-		self.init(local: name, hasC: false, deps: [])
-		self.dummy = product
-		self.packageName = packageName
+	func with(packageFolder: String) -> Self {
+		self.packageFolder = packageFolder
+		return self
+	}
+
+	init(name: String) {
+		self.name = name
 	}
 
 	func apply() -> Self {
-		if self.dummy != nil {
-			package.dependencies.append(self.dummy!)
-			return self
-		}
-
 		package.products += [
-			.library(name: self.name(), targets: [self.name()]),
+			.library(name: self.module(), targets: [self.module()]),
 		]
 
 		if self.hasC {
 			package.targets += [
 				.target(
-					name: "\(self.name())C",
-					path: "\(self.PACKAGE_ROOT)\(self.rawName.lowercased())/c"
+					name: "\(self.module())C",
+					path: "\(self.packageFolder)\(self.name.lowercased())/c"
 				),
 			]
-			self.subfolders += [Folder(local: "\(self.camel())C", hasC: false, deps: [])]
+			self.subfolders += [Local(name: "\(self.camel())C")]
 		}
-		let fulldeps: [Target.Dependency] = self.subfolders.map { $0.dummy != nil ? .product(name: $0.rawName, package: $0.packageName) : .byName(name: $0.name()) }
+
 		package.targets += [
 			.target(
-				name: self.name(),
-				dependencies: fulldeps,
-				path: "\(self.PACKAGE_ROOT)\(self.rawName.lowercased())/swift"
+				name: self.module(),
+				dependencies: self.subfolders.map { $0.target() },
+				path: "\(self.packageFolder)\(self.name.lowercased())/swift"
 			),
 		]
 
 		package.targets += [
 			.testTarget(
-				name: "\(self.name())Tests",
-				dependencies: [.byName(name: self.name())],
-				path: "\(self.PACKAGE_ROOT)\(self.rawName.lowercased())/tests"
+				name: "\(self.module())Tests",
+				dependencies: [.byName(name: self.module())],
+				path: "\(self.packageFolder)\(self.name.lowercased())/tests"
 			),
 		]
-		mainTarget.dependencies.append(.byName(name: self.name()))
+
+		mainTarget.dependencies.append(.byName(name: self.module()))
 
 		return self
+	}
+}
+
+extension Local: Dep {
+	func target() -> Target.Dependency {
+		return .byName(name: self.module())
 	}
 }

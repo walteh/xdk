@@ -8,8 +8,8 @@ import AWSSSO
 import AWSSSOOIDC
 import Combine
 import Foundation
+import XDK
 import XDKKeychain
-import XDKX
 
 public protocol AWSSSOUserSessionAPI: ObservableObject {
 	var accessToken: SecureAccessToken? { get set }
@@ -138,10 +138,10 @@ public struct AccountRole: Hashable, Equatable {
 		self.role = role
 	}
 
-	func getCreds(_ client: AWSSSO.SSOClient, keychain: any KeychainAPI, accessToken: SecureAccessToken) async -> Result<RoleCredentials, Error> {
+	func getCreds(_ client: AWSSSO.SSOClient, storageAPI: some StorageAPI, accessToken: SecureAccessToken) async -> Result<RoleCredentials, Error> {
 		var err: Error? = nil
 
-		guard let curr = keychain.read(objectType: RoleCredentials.self, id: self.name).to(&err) else {
+		guard let curr = XDK.Read(using: storageAPI, RoleCredentials.self, differentiator: self.name).to(&err) else {
 			return .failure(x.error("error reading role creds from keychain", root: err))
 		}
 
@@ -163,7 +163,7 @@ public struct AccountRole: Hashable, Equatable {
 		}
 
 		let rcreds = RoleCredentials(rolecreds)
-		if let err = keychain.write(object: rcreds, overwriting: true, id: "default3") {
+		if let _ = XDK.Write(using: storageAPI, rcreds, overwrite: true, differentiator: self.name).to(&err) {
 			return .failure(x.error("error writing role creds to keychain", root: err))
 		}
 
@@ -325,7 +325,7 @@ func listRolesForAccount(_ client: AWSSSO.SSOClient, accessToken: SecureAccessTo
 	return .success(roles)
 }
 
-public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, keychain: any KeychainAPI) async -> Result<URL, Error> {
+public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, storageAPI: some XDK.StorageAPI) async -> Result<URL, Error> {
 	var err: Error? = nil
 
 	guard let account = userSession.account else {
@@ -348,7 +348,7 @@ public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, keychain: any 
 
 	x.log(.debug).send("B")
 
-	guard let creds = await account.getCreds(client, keychain: keychain, accessToken: accessToken).to(&err) else {
+	guard let creds = await account.getCreds(client, storageAPI: storageAPI, accessToken: accessToken).to(&err) else {
 		return .failure(x.error("error fetching role creds", root: err))
 	}
 
@@ -497,41 +497,12 @@ private func pollForToken(_ client: AWSSSOOIDC.SSOOIDCClientProtocol, registrati
 	return .failure(NSError(domain: "SSOService", code: -1, userInfo: [NSLocalizedDescriptionKey: "SSO login timed out"]))
 }
 
-func saveAccessTokenToStore(_ client: any XDKKeychain.KeychainAPI, _ work: SecureAccessToken) -> Result<SecureAccessToken, Error> {
-	if let err = client.write(object: work, overwriting: true, id: "default3") {
-		return .failure(err)
-	}
-
-	return .success(work)
-}
-
-func loadAccessTokenFromStore(_ client: any XDKKeychain.KeychainAPI) -> Result<SecureAccessToken?, Error> {
-	return client.read(objectType: SecureAccessToken.self, id: "default3")
-}
-
-func loadClientRegistrationFromSecureStorage(_ client: any XDKKeychain.KeychainAPI) -> Result<SecureClientRegistrationInfo?, Error> {
-	return client.read(objectType: SecureClientRegistrationInfo.self, id: "default1")
-}
-
-func saveClientRegistrationToSecureStorage(_ client: any XDKKeychain.KeychainAPI, _ registration: AWSSSOOIDC.RegisterClientOutput) -> Result<SecureClientRegistrationInfo, Error> {
-	var err: Error? = nil
-
-	guard let work = SecureClientRegistrationInfo.fromAWS(registration).to(&err) else {
-		return .failure(x.error("error creating secure client registration", root: err))
-	}
-
-	if let err = client.write(object: work, overwriting: true, id: "default1") {
-		return .failure(err)
-	}
-	return .success(work)
-}
-
-private func registerClientIfNeeded(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainAPI: any XDKKeychain.KeychainAPI) async -> Result<SecureClientRegistrationInfo, Error> {
+private func registerClientIfNeeded(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI: some XDK.StorageAPI) async -> Result<SecureClientRegistrationInfo, Error> {
 	// Check if client is already registered and saved in secure storage (Keychain)
 
 	var err: Error? = nil
 
-	guard let reg = loadClientRegistrationFromSecureStorage(keychainAPI).to(&err) else {
+	guard let reg = XDK.Read(using: storageAPI, SecureClientRegistrationInfo.self).to(&err) else {
 		return .failure(x.error("error loading client registration", root: err))
 	}
 
@@ -539,18 +510,28 @@ private func registerClientIfNeeded(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol,
 		return .success(reg)
 	}
 
+	let regClientInput = AWSSSOOIDC.RegisterClientInput(clientName: "spatial-aws-basic", clientType: "public", scopes: [])
+
 	// No registration found, register a new client
-	guard let regd = await Result.X { try await awsssoAPI.registerClient(input: .init(clientName: "spatial-aws-basic", clientType: "public", scopes: [])) }.to(&err) else {
+	guard let regd = await Result.X { try await awsssoAPI.registerClient(input: regClientInput) }.to(&err) else {
 		return .failure(x.error("error registering client", root: err))
 	}
 
-	return saveClientRegistrationToSecureStorage(keychainAPI, regd)
+	guard let work = SecureClientRegistrationInfo.fromAWS(regd).to(&err) else {
+		return .failure(x.error("error creating secure client registration", root: err))
+	}
+
+	guard let _ = XDK.Write(using: storageAPI, work).to(&err) else {
+		return .failure(x.error("error writing secure client registration", root: err))
+	}
+
+	return .success(work)
 }
 
-public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainAPI: any XDKKeychain.KeychainAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAccessToken, Error> {
+public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI: some XDK.StorageAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAccessToken, Error> {
 	var err: Error? = nil
 
-	guard let current = loadAccessTokenFromStore(keychainAPI).to(&err) else {
+	guard let current = XDK.Read(using: storageAPI, SecureAccessToken.self).to(&err) else {
 		return .failure(x.error("error loading access token", root: err))
 	}
 
@@ -560,7 +541,7 @@ public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainA
 		}
 	}
 
-	guard let registration = await registerClientIfNeeded(awsssoAPI: awsssoAPI, keychainAPI: keychainAPI).to(&err) else {
+	guard let registration = await registerClientIfNeeded(awsssoAPI: awsssoAPI, storageAPI: storageAPI).to(&err) else {
 		return .failure(x.error("error registering client", root: err))
 	}
 
@@ -582,5 +563,9 @@ public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, keychainA
 		return .failure(x.error("error creating secure access token", root: err))
 	}
 
-	return saveAccessTokenToStore(keychainAPI, work)
+	guard let _ = XDK.Write(using: storageAPI, work).to(&err) else {
+		return .failure(x.error("error writing secure access token", root: err))
+	}
+
+	return .success(work)
 }
