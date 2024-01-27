@@ -8,13 +8,48 @@
 import Foundation
 import Logging
 
-public let xlogger = Logging.Logger(label: "XDK")
+func Log(_ level: Logging.Logger.Level = .info, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> LogEvent {
+	return LogEvent(level, __file: __file, __function: __function, __line: __line)
+}
 
 public extension x {
 	static func log(_ level: Logging.Logger.Level = .info, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> LogEvent {
-		return LogEvent(level, __file: __file, __function: __function, __line: __line)
+		return Log(level, __file: __file, __function: __function, __line: __line)
 	}
 }
+
+public extension Context {
+	var logger: Logging.Logger {
+		return self[LoggerContextKey.self] ?? xlogger
+	}
+}
+
+private struct LoggerContextKey: ContextKey {
+	typealias Value = Logger
+}
+
+private struct LoggerMetadataContextKey: ContextKey {
+	typealias Value = Logger.Metadata
+}
+
+public func AddLoggerMetadataToContext(_ ok: (LogEvent) -> LogEvent) -> Context {
+	var ctx = GetContext()
+	var metadata = ctx[LoggerMetadataContextKey.self] ?? [:]
+	let event = ok(LogEvent(.trace))
+	for (k, v) in event.metadata {
+		metadata[k] = v
+	}
+	ctx[LoggerMetadataContextKey.self] = metadata
+	return ctx
+}
+
+public func AddLoggerToContext(ctx: Context, logger: Logger) -> Context {
+	var ctx = ctx
+	ctx[LoggerContextKey.self] = logger
+	return ctx
+}
+
+let xlogger = Logger(label: "x")
 
 public class LogEvent {
 	public let level: Logging.Logger.Level
@@ -31,6 +66,10 @@ public class LogEvent {
 		self.__file = __file
 		self.__line = UInt(__line)
 		self.__function = __function
+
+		for (k, v) in GetContext()[LoggerMetadataContextKey.self] ?? [:] {
+			self.metadata[k] = v
+		}
 	}
 
 	public subscript(metadataKey key: String) -> Logging.Logger.Metadata.Value? {
@@ -79,16 +118,16 @@ public class LogEvent {
 	@inlinable
 	public func send(_ str: some CustomDebugStringConvertible) {
 		if self.error == nil {
-			xlogger.log(level: self.level, .init(stringLiteral: str.debugDescription), metadata: self.metadata, source: self.caller, file: self.__file, function: self.__function, line: self.__line)
+			GetContext().logger.log(level: self.level, .init(stringLiteral: str.debugDescription), metadata: self.metadata, source: self.caller, file: self.__file, function: self.__function, line: self.__line)
 		} else {
 			var errStr = ""
-			if let err = self.error as? XError {
+			if let err = self.error as? RootListableError {
 				errStr = err.dump()
 			} else if let err = self.error as? NSError {
 				errStr = "\(err)"
 			}
 			self[metadataKey: "note"] = .string(str.debugDescription)
-			xlogger.log(level: self.level, .init(stringLiteral: errStr), metadata: self.metadata, source: self.caller, file: self.__file, function: self.__function, line: self.__line)
+			GetContext().logger.log(level: self.level, .init(stringLiteral: errStr), metadata: self.metadata, source: self.caller, file: self.__file, function: self.__function, line: self.__line)
 		}
 	}
 }

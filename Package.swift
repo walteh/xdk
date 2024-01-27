@@ -25,8 +25,9 @@ let swiftLogs = Folder(product: .package(url: "https://github.com/apple/swift-lo
 let swiftAtomics = Folder(product: .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"), name: "Atomics", packageName: "swift-atomics").apply()
 let awssdk = Folder(product: .package(url: "https://github.com/awslabs/aws-sdk-swift", exact: "0.34.0"), name: "AWS", packageName: "aws-sdk-swift").apply()
 let swiftXid = Folder(product: .package(url: "https://github.com/uatuko/swift-xid.git", exact: "0.2.1"), name: "xid", packageName: "swift-xid").apply()
+let swiftContext = Folder(product: .package(url: "https://github.com/apple/swift-service-context.git", from: "1.0.0"), name: "ServiceContextModule", packageName: "swift-service-context").apply()
 
-let x = Folder(local: "X", hasC: false, deps: [swiftLogs]).apply()
+let x = Folder(local: "X", hasC: false, deps: [swiftLogs, swiftContext]).apply()
 let byte = Folder(local: "Byte", hasC: false, deps: [x]).apply()
 let hex = Folder(local: "Hex", hasC: false, deps: [x, byte]).apply()
 let ecdsa = Folder(local: "ECDSA", hasC: true, deps: [x, hex]).apply()

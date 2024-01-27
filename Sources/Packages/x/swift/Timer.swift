@@ -8,11 +8,7 @@
 
 import Foundation
 
-public extension x {
-	typealias Timer = XTimer
-}
-
-public class XTimer {
+public class Timer {
 	let start: Date
 	let name: String
 

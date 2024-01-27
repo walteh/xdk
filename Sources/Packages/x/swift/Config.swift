@@ -7,67 +7,87 @@
 
 import Foundation
 
-// enum ConfigurationEnvironment: String {
-// 	case dev_debug = "dev.debug"
-// 	case dev_release = "dev.release"
-// }
-
-// public extension XEnvironment {
-// 	var apiGatewayHost: String {
-// 		switch self.environment {
-// 		case .dev_debug, .dev_release:
-// 			return "us-dev02.api.nugg.xyz"
-// 		}
-// 	}
-
-// 	var appsyncHost: String {
-// 		switch self.environment {
-// 		case .dev_debug, .dev_release:
-// 			return "graph.us-dev02.api.nugg.xyz"
-// 		}
-// 	}
-
-// 	var appsyncAPIKey: String {
-// 		switch self.environment {
-// 		case .dev_debug, .dev_release:
-// 			return "da2-2rnncyvmd5aenc3kn5p3t5byiq"
-// 		}
-// 	}
-
-// 	var keychainGroup: String {
-// 		switch self.environment {
-// 		case .dev_debug, .dev_release:
-// 			return "4497QJSAD3.main.keychain.group"
-// 		}
-// 	}
-// }
-
-extension x {
-	typealias Config = XConfig
+func IS_BEING_DEBUGGED() -> Bool {
+	return getppid() != 1
 }
 
-public struct XConfig {
-	let config: [String: String]
+func IS_BEING_PREVIEWED() -> Bool {
+	return (ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] ?? "0") == "1"
+}
 
-	init(name: String, config: [String: [String: String]]) {
-		guard let currentConfiguration = x.Env.readFromInfoPlist(withKey: name) else {
-			fatalError("CURRENT_ENVIRONMENT NOT DEFINED")
-		}
+public protocol ConfigAPI {
+	func get(key: String) -> Result<String, Error>
+	func get(file: String) -> Result<Data, Error>
+}
 
-		guard let values = config[currentConfiguration] else {
-			fatalError("CURRENT_ENVIRONMENT NOT DEFINED")
-		}
+func Get(key: String, using configAPI: ConfigAPI) -> Result<String, Error> {
+	return configAPI.get(key: key)
+}
 
-		var configuration: [String: String] = [:]
+func Get(file: String, using configAPI: ConfigAPI) -> Result<Data, Error> {
+	return configAPI.get(file: file)
+}
 
-		for (k, v) in values {
-			configuration[k] = x.Env.readFromInfoPlist(withKey: v)
-		}
+func GetBundleName(using configAPI: ConfigAPI) -> Result<String, Error> {
+	return configAPI.get(key: "CFBundleName")
+}
 
-		self.config = configuration
+func GetVersion(using configAPI: ConfigAPI) -> Result<String, Error> {
+	return configAPI.get(key: "CFBundleShortVersionString")
+}
+
+func GetBuild(using configAPI: ConfigAPI) -> Result<String, Error> {
+	return configAPI.get(key: "CFBundleVersion")
+}
+
+func GetBuildWithDebugFlag(using configAPI: ConfigAPI) -> Result<String, Error> {
+	var err: Error? = nil
+	guard let build = GetBuild(using: configAPI).to(&err) else {
+		return .failure(x.error("failed to get build", root: err))
 	}
 
-	public func get(_ str: String) -> String {
-		return self.config[str] ?? ""
+	return .success("\(build)\(IS_BEING_DEBUGGED() ? " [debug]" : "")")
+}
+
+func GetMinimumOSVersion(using configAPI: ConfigAPI) -> Result<String, Error> {
+	return configAPI.get(key: "MinimumOSVersion")
+}
+
+func GetCopyrightNotice(using configAPI: ConfigAPI) -> Result<String, Error> {
+	return configAPI.get(key: "NSHumanReadableCopyright")
+}
+
+func GetBundleIdentifier(using configAPI: ConfigAPI) -> Result<String, Error> {
+	return configAPI.get(key: "CFBundleIdentifier")
+}
+
+@frozen public struct BundleConfig: ConfigAPI {
+	let bundle: Bundle
+
+	init(bundle: Bundle) {
+		self.bundle = bundle
+	}
+
+	public func get(key: String) -> Result<String, Error> {
+		return .success(self.bundle.infoDictionary?[key] as? String ?? "")
+	}
+
+	public func get(file: String) -> Result<Data, Error> {
+		var err: Error? = nil
+
+		guard let ext = file.split(separator: ".").last else {
+			return .failure(x.error("unable to determine file extension").info("file", file))
+		}
+
+		// for bun in Bundle.allBundles {
+		guard let filepath = bundle.path(forResource: file, ofType: ext.string) else {
+			return .failure(x.error("file not found: could not find \(file)"))
+		}
+
+		guard let data = Result.X { try Data(contentsOf: URL(fileURLWithPath: filepath), options: .mappedIfSafe) }.to(&err) else {
+			return .failure(x.error("failed to read file", root: err).info("filepath", filepath))
+		}
+
+		return .success(data)
 	}
 }

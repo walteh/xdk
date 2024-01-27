@@ -9,13 +9,13 @@ import Foundation
 
 public extension x {
 	@discardableResult
-	static func error(_ str: String, root: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {
-		return XError(str, root: root, __file: __file, __function: __function, __line: __line)
+	static func error(_ str: String, root: (any Swift.Error)? = nil, alias: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {
+		return XError(str, root: root, alias: alias, __file: __file, __function: __function, __line: __line)
 	}
 
 	@discardableResult
-	static func error(status: OSStatus, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {
-		return XError("OSStatus[\(status)]", __file: __file, __function: __function, __line: __line)
+	static func error(status: OSStatus, alias: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {
+		return XError("OSStatus[\(status)]", alias: alias, __file: __file, __function: __function, __line: __line)
 	}
 }
 
@@ -38,6 +38,7 @@ public class XError: NSError {
 
 	let message: String
 	let selfroot: Error?
+	let alias: Error?
 
 	var meta: LogEvent
 
@@ -47,11 +48,17 @@ public class XError: NSError {
 		self.init(rawValue)
 	}
 
-	public init(_ message: String, root: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) {
+	public init(_ message: String, root: (any Swift.Error)? = nil, alias: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) {
 		if let r = root {
 			self.selfroot = r
 		} else {
 			self.selfroot = nil
+		}
+
+		if let r = alias {
+			self.alias = r
+		} else {
+			self.alias = nil
 		}
 
 		self.message = message
@@ -105,69 +112,42 @@ public extension Error {
 		return lhs.localizedDescription == rhs.localizedDescription
 	}
 
-	func contains<G: Swift.Error>(_: G) -> Bool {
-		return ((self as NSError).deepest(ofType: G.self)) == nil
+	func contains(_ g: some Swift.Error) -> Bool {
+		if let r = self as? RootListableError {
+			return r.deepest(matching: g) != nil
+		}
+		return false
+	}
+
+	func contains<G: Swift.Error>(_: G.Type) -> Bool {
+		if let r = self as? RootListableError {
+			return r.deepest(ofType: G.self) != nil
+		}
+		return false
 	}
 }
 
-func check<G: Swift.Error>(error: some Error, contains _: G) -> Bool {
-	let error = error as NSError
-	return (error.deepest(ofType: G.self)) == nil
-}
-
-// func check<G: Swift.Error>(error: some NSError, contains _: G) -> Bool {
+// func check<G: Swift.Error>(error: some Error, contains _: G) -> Bool {
+// 	let error = error as NSError
 // 	return (error.deepest(ofType: G.self)) == nil
 // }
 
-public extension NSError {
-	var root: Error? {
+public protocol RootListableError: Swift.Error {
+	var underlyingErrors: [Error] { get }
+}
+
+public protocol AliasableError: Swift.Error {
+	var alias: Swift.Error? { get }
+}
+
+extension NSError: RootListableError {}
+
+public extension RootListableError {
+	func root() -> Error? {
 		if self.underlyingErrors.count == 1 {
 			return self.underlyingErrors[0]
 		}
 		return nil
-	}
-
-	func deepest<T: Swift.Error>(ofType _: T.Type) -> T? {
-		var list = self.rootList()
-		list.reverse()
-		for i in list {
-			if let r = i as? T {
-				return r
-			}
-		}
-		return nil
-	}
-
-	func deepest<T: Swift.Error>(matching: T) -> T? {
-		var list = self.rootList()
-		list.reverse()
-		for i in list {
-			if let r = i as? T {
-				if r == matching {
-					return r
-				}
-			}
-		}
-		return nil
-	}
-
-	func rootList() -> [Swift.Error] {
-		// loop through the roots, and append each to a string backwards
-		var strs = [Swift.Error]()
-		strs += [self]
-		var root = self.root
-		while root != nil {
-			strs += [root!]
-			if let r = root as? XError {
-				root = r.selfroot
-			} else if let r = root as? NSError {
-				root = r.root
-			} else {
-				root = nil
-			}
-		}
-		strs.reverse()
-		return strs
 	}
 
 	var localizedDescription: String {
@@ -178,7 +158,6 @@ public extension NSError {
 				return ($0 as NSError).localizedDescription
 			}
 		}
-		Swift.print("HI1", strs)
 		var result = ""
 		for i in 0 ..< strs.count {
 			if i == strs.count - 1 {
@@ -191,6 +170,67 @@ public extension NSError {
 		}
 
 		return result
+	}
+
+	func rootList() -> [Swift.Error] {
+		// loop through the roots, and append each to a string backwards
+		var strs = [Swift.Error]()
+		strs += [self]
+		var _root = self.root()
+		while _root != nil {
+			strs += [self.root()!]
+			if let r = _root as? RootListableError {
+				_root = r.root()
+			} else {
+				_root = nil
+			}
+		}
+		strs.reverse()
+		return strs
+	}
+
+	func deepest<T: Swift.Error>(ofType _: T.Type) -> Swift.Error? {
+		var list = self.rootList()
+		list.reverse()
+		for i in list {
+			if let r = i as? T {
+				return r
+			}
+			if let r = i as? AliasableError {
+				if r.alias is T {
+					return i
+				}
+			}
+			if let r = i as? NSError {
+				if r.domain == i._domain, r.code == i._code {
+					return i
+				}
+			}
+		}
+		return nil
+	}
+
+	func deepest(matching: some Swift.Error) -> Swift.Error? {
+		var list = self.rootList()
+		list.reverse()
+		for i in list {
+			// if let r = i as? T {
+			if i == matching {
+				return i
+			}
+			// }
+			if let r = i as? AliasableError {
+				if r.alias != nil, r.alias! == matching {
+					return i
+				}
+			}
+			if let r = i as? NSError {
+				if r.domain == matching._domain, r.code == matching._code {
+					return i
+				}
+			}
+		}
+		return nil
 	}
 
 	func dump() -> String {
@@ -220,27 +260,9 @@ public extension NSError {
 			for i in r.userInfo {
 				stream += "\t\(i.key) = \(i.value)\n"
 			}
-//			if let r = list[i] as? XError {
-//				for i in r._event.metadata {
-//					stream += "\t\(i.key) = \(i.value)\n"
-//				}
-//			} else {
-//				let r = list[i] as NSError
-//				for i in r.userInfo {
-//					stream += "\t\(i.key) = \(i.value)\n"
-//				}
-//			}
-			stream += "\n"
-//			if i == list.count - 1 {
-//				// Dump 'self' to the stream
-//				Swift.dump(list[i], to: &stream)
-//				stream += "\n"
-//			}
-		}
 
-//
-//		// Dump 'self' to the stream
-//		Swift.dump(self, to: &stream)
+			stream += "\n"
+		}
 
 		// Finish with the closing log message
 		stream += "===========================================\n"
@@ -248,10 +270,10 @@ public extension NSError {
 		// Print the entire accumulated log
 		return stream
 	}
+}
 
-//	@discardableResult
-//	public func print() -> NSError {
-//		Swift.print(self.dump())
-//		return self
-//	}
+public extension NSError {
+	var localizedDescription: String {
+		return (self as RootListableError).localizedDescription
+	}
 }
