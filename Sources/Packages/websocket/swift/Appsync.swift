@@ -8,7 +8,7 @@
 
 import Foundation
 
-import XDKX
+import XDK
 
 public protocol AppsyncSubscriptionDelegate: NSObject {
 	func onIncoming(payload: Data)

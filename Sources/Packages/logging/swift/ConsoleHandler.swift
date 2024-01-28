@@ -7,7 +7,7 @@
 
 import Foundation
 import Logging
-import XDKX
+import XDK
 
 /// Outputs logs to a `Console`.
 public struct ConsoleLogger: LogHandler {
@@ -74,7 +74,7 @@ public struct ConsoleLogger: LogHandler {
 	) {
 		var metadata = metadata
 
-		let mainCaller = XDKX.Caller.build(file: file, function: function, line: line)
+		let mainCaller = XDK.Caller.build(file: file, function: function, line: line)
 
 		var text: ConsoleText = "[\(label)] "
 

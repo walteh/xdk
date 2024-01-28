@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import XDKX
+@testable import XDK
 
 class XDKXTests: XCTestCase {
 	override func setUpWithError() throws {

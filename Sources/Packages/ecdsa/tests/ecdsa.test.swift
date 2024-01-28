@@ -6,8 +6,8 @@
 //
 
 import XCTest
+import XDK
 import XDKHex
-import XDKX
 @testable import XDKECDSA
 
 class ecdsaTests: XCTestCase {

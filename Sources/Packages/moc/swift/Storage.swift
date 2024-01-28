@@ -10,7 +10,7 @@ import CoreData
 import Foundation
 import SwiftUI
 
-import XDKX
+import XDK
 
 open class MOCClient: NSObject, MOCAPI {
 	let container: NSPersistentContainer

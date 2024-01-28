@@ -7,9 +7,8 @@
 
 import AuthenticationServices
 import Foundation
-import XDKAppSession
+import XDK
 import XDKKeychain
-import XDKXID
 
 public struct JWT {
 	let token: String

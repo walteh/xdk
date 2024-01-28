@@ -7,6 +7,10 @@
 
 import Foundation
 
+public func Err(_ str: String, root: (any Swift.Error)? = nil, alias: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {
+	return XError(str, root: root, alias: alias, __file: __file, __function: __function, __line: __line)
+}
+
 public extension x {
 	@discardableResult
 	static func error(_ str: String, root: (any Swift.Error)? = nil, alias: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {

@@ -1,7 +1,11 @@
+//
+//  XID.swift
+//
+//
+//  Created by walter on 1/28/24.
+//
 
 import Foundation
-
-import XDKX
 import xid
 
 // var buf = XIDManager()
@@ -16,16 +20,16 @@ public struct XID {
 		return XID(fromLib: xid.NewXid())
 	}
 
-	static func rebuild(raw: Data) throws -> XID {
-		return try XID(raw: raw)
+	static func rebuild(raw: Data) -> Result<XID, Error> {
+		return Result.X { try XID(raw: raw) }
 	}
 
-	public static func rebuild(string: String) throws -> XID {
-		return try XID(string: string)
+	public static func rebuild(string: String) -> Result<XID, Error> {
+		return Result.X { try XID(string: string) }
 	}
 
-	public static func rebuild(utf8: Data) throws -> XID {
-		return try XID(utf8: utf8)
+	public static func rebuild(utf8: Data) -> Result<XID, Error> {
+		return Result.X { try XID(utf8: utf8) }
 	}
 
 	private init(fromLib: xid.Id) {
@@ -141,14 +145,14 @@ private let base32DecodeMap: Data = {
 }()
 
 // extension XID: NSSecureCoding {
-//	static var supportsSecureCoding = true
-//
-//	func encode(with coder: NSCoder) {
-//		coder.encode(self._bytes, forKey: "id")
-//	}
-//
-//	init?(coder: NSCoder) {
-//		let id = coder.decodeObject(of: NSData.self, forKey: "id") as Data
-//		try? self.init(raw: id)
-//	}
+// 	static var supportsSecureCoding = true
+
+// 	func encode(with coder: NSCoder) {
+// 		coder.encode(self._bytes, forKey: "id")
+// 	}
+
+// 	init?(coder: NSCoder) {
+// 		let id = coder.decodeObject(of: NSData.self, forKey: "id") as Data
+// 		try? self.init(raw: id)
+// 	}
 // }

@@ -116,11 +116,11 @@ extension LocalAuthenticationClient: XDK.AuthenticationAPI {
 	public func obtainAuthentication(reason: String) async -> Result<Bool, Error> {
 		var err: Error? = nil
 
-		guard let ok = self.authenticationAvailable().to(&err) else {
+		guard let _ = self.authenticationAvailable().to(&err) else {
 			return .failure(x.error("local auth not available", root: err, alias: KeychainError.auth_failed))
 		}
 
-		guard let res = await Result.X { try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: reason) }.to(&err) else {
+		guard let res = await Result.X({ try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: reason) }).to(&err) else {
 			return .failure(x.error("unable to authenticate", root: err, alias: KeychainError.auth_failed))
 		}
 

@@ -9,7 +9,7 @@
 import Foundation
 import StoreKit
 
-import XDKX
+import XDK
 
 extension mtx.Client: mtx.storekit.API {
 	public func addToQueue() {

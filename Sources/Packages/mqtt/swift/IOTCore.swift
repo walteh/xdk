@@ -7,8 +7,8 @@
 
 import Foundation
 
+import XDK
 import XDKAppSession
-import XDKX
 
 public extension mqtt {
 	static func NewIOTCoreClient(host: String, session: some XDKAppSession.AppSessionAPI, delegate: some mqtt.Delegate) -> MQTT5IOTCore {

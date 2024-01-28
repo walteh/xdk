@@ -9,11 +9,9 @@
 import AuthenticationServices
 import Foundation
 
-import XDKAppSession
+import XDK
 import XDKHex
 import XDKKeychain
-import XDKX
-import XDKXID
 
 extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 	public func remote(init type: CeremonyType, credentialID: Data? = nil) async -> Result<Challenge, Error> {
@@ -35,15 +33,15 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		guard let (_, response) = await Result.X({
 			return try await URLSession.shared.data(for: safeReq)
 		}).to(&err) else {
-			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		guard let chal = checkFor(header: "x-nugg-hex-challenge", in: response, with: 204).to(&err) else {
-			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
-		guard let res = Result.X({ try XID.rebuild(string: chal) }).to(&err) else {
-			return .failure(x.error("failed to rebuild challenge", root: err, alias: DeviceCheckError.invalidChallenge))
+		guard let res = XDK.XID.rebuild(string: chal).to(&err) else {
+			return .failure(XDK.Err("failed to rebuild challenge", root: err, alias: DeviceCheckError.invalidChallenge))
 		}
 
 		return .success(res)
@@ -56,7 +54,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 			return await self.remote(credentialAssertion: reg2)
 		}
 
-		return .failure(x.error("unexpected nil").event { $0.add("variable", "authorization.credential") })
+		return .failure(XDK.Err("unexpected nil").event { $0.add("variable", "authorization.credential") })
 	}
 
 	public func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async -> Result<JWT, Error> {
@@ -67,7 +65,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		req.httpMethod = "POST"
 
 		guard let attester = attest.rawAttestationObject else {
-			return .failure(x.error("unexpected nil").event { $0.add("variable", "attest.rawAttestationObject") })
+			return .failure(XDK.Err("unexpected nil").event { $0.add("variable", "attest.rawAttestationObject") })
 		}
 
 		req.setValue(xhex.ToHexString(attest.credentialID), forHTTPHeaderField: "X-Nugg-Hex-Credential-Id")
@@ -75,7 +73,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		req.setValue(attest.rawClientDataJSON.string!, forHTTPHeaderField: "X-Nugg-Utf-Client-Data-Json")
 
 		guard let _ = await assert(request: &req, dataToSign: attest.credentialID).to(&err) else {
-			return .failure(x.error("failed to assert", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to assert", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		let safeReq = req
@@ -83,11 +81,11 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		guard let (_, response) = await Result.X({
 			return try await URLSession.shared.data(for: safeReq)
 		}).to(&err) else {
-			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		guard let chal = checkFor(header: "x-nugg-utf-access-token", in: response, with: 204).to(&err) else {
-			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		return .success(.init(token: chal, credentialID: attest.credentialID))
@@ -112,11 +110,11 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		guard let (_, response) = await Result.X({
 			return try await URLSession.shared.data(for: safeReq)
 		}).to(&err) else {
-			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		guard let chal = checkFor(header: "x-nugg-utf-access-token", in: response, with: 204).to(&err) else {
-			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		return .success(.init(token: chal, credentialID: assert.credentialID))
@@ -142,15 +140,15 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		guard let (_, response) = await Result.X({
 			return try await URLSession.shared.data(for: safeReq)
 		}).to(&err) else {
-			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		guard let res = response as? HTTPURLResponse else {
-			return .failure(x.error("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		if res.statusCode != 204 {
-			return .failure(x.error("status code not 204").event {
+			return .failure(XDK.Err("status code not 204").event {
 				$0.add("statusCode", "\(res.statusCode)")
 					.add("response:debugDescription", response.debugDescription)
 			})
@@ -162,13 +160,13 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 
 func checkFor(header: String = "", in response: URLResponse, with _: Int) -> Result<String, Error> {
 	guard let httpResponse = response as? HTTPURLResponse else {
-		return .failure(x.error("failed to get challenge").event {
+		return .failure(XDK.Err("failed to get challenge").event {
 			$0.add("response:debugDescription", response.debugDescription)
 		})
 	}
 
 	if httpResponse.statusCode != 204 {
-		return .failure(x.error("status code not 204").event {
+		return .failure(XDK.Err("status code not 204").event {
 			$0.add("statusCode", "\(httpResponse.statusCode)")
 				.add("lookingForHeader", header)
 				.add("response:debugDescription", response.debugDescription)
@@ -178,20 +176,20 @@ func checkFor(header: String = "", in response: URLResponse, with _: Int) -> Res
 	if header == "" { return .success("") }
 
 	guard let xNuggChallenge = httpResponse.allHeaderFields[header.lowercased()] as? String else {
-		return .failure(x.error("invalid http response").event {
+		return .failure(XDK.Err("invalid http response").event {
 			$0.add("header_name", header.lowercased())
 				.add("headers", httpResponse.allHeaderFields.debugDescription)
 		})
 	}
 
 	if xNuggChallenge == "" {
-		return .failure(x.error("invalid http response: value of \(header.lowercased()) header is empty string"))
+		return .failure(XDK.Err("invalid http response: value of \(header.lowercased()) header is empty string"))
 	}
 
 	return .success(xNuggChallenge)
 }
 
-func buildHeadersFor(requestAssertion assertion: Data, challenge: XDKXID.XID, sessionID: XDKXID.XID, credentialID: Data) -> [String: String] {
+func buildHeadersFor(requestAssertion assertion: Data, challenge: XDK.XID, sessionID: XDK.XID, credentialID: Data) -> [String: String] {
 	var abc = """
 	{
 		"credential_id":"\(xhex.ToHexString(credentialID))",

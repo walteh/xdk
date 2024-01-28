@@ -8,7 +8,7 @@
 
 import Foundation
 
-import XDKX
+import XDK
 
 public extension mtx {
 	class Client: NSObject {

@@ -1,5 +1,5 @@
 import XCTest
-@testable import XDKXdk
+@testable import XDKdk
 
 final class xdkTests: XCTestCase {
 	func testExample() throws {

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import XDKX
+import XDK
 
 // MARK: - Interfaces
 

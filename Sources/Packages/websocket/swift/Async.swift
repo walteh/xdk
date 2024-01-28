@@ -8,7 +8,7 @@
 
 import Foundation
 
-import XDKX
+import XDK
 
 /// Protocol to be implemented by different websocket providers
 public protocol WSProvider: ObservableObject {

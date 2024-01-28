@@ -8,7 +8,7 @@
 import CoreData
 import Foundation
 
-import XDKX
+import XDK
 
 extension NSManagedObject {
 	func specialID(_ id: String) -> String {

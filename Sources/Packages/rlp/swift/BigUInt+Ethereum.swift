@@ -8,10 +8,10 @@
 
 import Foundation
 
+import XDK
 import XDKBig
 import XDKByte
 import XDKECDSA
-import XDKX
 
 extension big.UInt {
 	func asChecksumAddress(chainID _: EthereumChain) -> Data {

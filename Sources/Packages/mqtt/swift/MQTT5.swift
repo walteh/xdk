@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import XDKX
+import XDK
 
 /**
  * Connection State

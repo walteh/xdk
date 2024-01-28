@@ -1,8 +1,8 @@
 
 import Foundation
 
+import XDK
 import XDKKeychain
-import XDKX
 
 public enum moc {
 	public typealias API = MOCAPI

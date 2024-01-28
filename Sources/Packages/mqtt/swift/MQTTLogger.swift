@@ -9,7 +9,7 @@
 import Foundation
 import os
 
-import XDKX
+import XDK
 
 // Convenience functions
 func printDebug(_ message: String, __file: String = #fileID, __line: UInt = #line, __function: String = #function) {
