@@ -26,23 +26,23 @@ public class WebauthnNoopRemoteClient: WebauthnRemoteAPI {
 
 	public init() {}
 
-	public func remote(init _: CeremonyType, credentialID _: Data?) async throws -> Challenge {
-		return XID.build()
+	public func remote(init _: CeremonyType, credentialID _: Data?) async -> Result<Challenge, Error> {
+		return .success(XID.build())
 	}
 
-	public func remote(authorization _: ASAuthorization) async throws -> JWT {
-		return .init(token: "", credentialID: Data())
+	public func remote(authorization _: ASAuthorization) async -> Result<JWT, Error> {
+		return .success(.init(token: "", credentialID: Data()))
 	}
 
-	public func remote(credentialRegistration _: ASAuthorizationPlatformPublicKeyCredentialRegistration) async throws -> JWT {
-		return .init(token: "", credentialID: Data())
+	public func remote(credentialRegistration _: ASAuthorizationPlatformPublicKeyCredentialRegistration) async -> Result<JWT, Error> {
+		return .success(.init(token: "", credentialID: Data()))
 	}
 
-	public func remote(credentialAssertion _: ASAuthorizationPublicKeyCredentialAssertion) async throws -> JWT {
-		return .init(token: "", credentialID: Data())
+	public func remote(credentialAssertion _: ASAuthorizationPublicKeyCredentialAssertion) async -> Result<JWT, Error> {
+		return .success(.init(token: "", credentialID: Data()))
 	}
 
-	public func remote(deviceAttestation _: Data, clientDataJSON _: String, using _: Data) async throws -> Bool {
-		return false
+	public func remote(deviceAttestation _: Data, clientDataJSON _: String, using _: Data) async -> Result<Void, Error> {
+		return .success(())
 	}
 }

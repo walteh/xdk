@@ -8,7 +8,7 @@
 import Foundation
 import Logging
 
-func Log(_ level: Logging.Logger.Level = .info, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> LogEvent {
+public func Log(_ level: Logging.Logger.Level = .info, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> LogEvent {
 	return LogEvent(level, __file: __file, __function: __function, __line: __line)
 }
 
