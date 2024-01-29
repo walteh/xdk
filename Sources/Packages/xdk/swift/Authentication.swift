@@ -21,4 +21,6 @@ public class NoopAuthentication: AuthenticationAPI {
 	public func authenticationAvailable() -> Result<Bool, Error> {
 		return .success(true)
 	}
+
+	public init() {}
 }

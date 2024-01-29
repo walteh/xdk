@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Logging
 
 public func Err(_ str: String, root: (any Swift.Error)? = nil, alias: (any Swift.Error)? = nil, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> XError {
 	return XError(str, root: root, alias: alias, __file: __file, __function: __function, __line: __line)
@@ -33,20 +34,23 @@ public class XError: NSError {
 
 	override public var userInfo: [String: Any] {
 		var info = super.userInfo
-		info["caller"] = self.caller.format()
-		for i in self.meta.metadata {
-			info[i.key] = i.value
+		for i in self.metadata {
+			if case let .stringConvertible(v) = i.value {
+				info[i.key] = v
+			} else {
+				info[i.key] = "\(i.value)"
+			}
 		}
 		return info
 	}
 
-	let message: String
+	public let message: String
 	let selfroot: Error?
-	let alias: Error?
+	public let alias: Error?
 
-	var meta: LogEvent
+	public var metadata: Logging.Logger.Metadata = [:]
 
-	let caller: Caller
+	public let caller: Caller
 
 	public required convenience init(rawValue: String) {
 		self.init(rawValue)
@@ -67,7 +71,7 @@ public class XError: NSError {
 
 		self.message = message
 		self.caller = Caller(file: __file, function: __function, line: __line)
-		self.meta = LogEvent(.error)
+		self.metadata["function"] = .string(__function)
 		super.init(domain: "XError", code: -6, userInfo: [:])
 	}
 
@@ -76,7 +80,7 @@ public class XError: NSError {
 		fatalError("init(coder:) has not been implemented")
 	}
 
-	public func info(_ key: String, _ value: CustomDebugStringConvertible) -> Self {
+	public func info(_ key: String, _ value: Any) -> Self {
 		return self.info([key: value])
 	}
 
@@ -102,9 +106,13 @@ public class XError: NSError {
 		return self.info(event.metadata)
 	}
 
-	public func info(_: [String: Any]) -> Self {
-		for i in self.meta.metadata {
-			self.meta.metadata[i.key] = i.value
+	public func info(_ data: [String: Any]) -> Self {
+		for i in data {
+			if let r = i.value as? CustomStringConvertible {
+				self.metadata[i.key] = .stringConvertible(r)
+			} else {
+				self.metadata[i.key] = .stringConvertible("\(i.value)")
+			}
 		}
 		return self
 	}
@@ -145,6 +153,7 @@ public protocol AliasableError: Swift.Error {
 }
 
 extension NSError: RootListableError {}
+extension XError: AliasableError {}
 
 public extension RootListableError {
 	func root() -> Error? {
@@ -154,40 +163,14 @@ public extension RootListableError {
 		return nil
 	}
 
-	var localizedDescription: String {
-		let strs = self.rootList().map {
-			if let errd = $0 as? XError {
-				return errd.message
-			} else {
-				return ($0 as NSError).localizedDescription
-			}
-		}
-		var result = ""
-		for i in 0 ..< strs.count {
-			if i == strs.count - 1 {
-				result += strs[i]
-			} else if i == strs.count - 2 {
-				result += strs[i] + " 👉 ❌ "
-			} else {
-				result += strs[i] + " 👉 "
-			}
-		}
-
-		return result
-	}
-
 	func rootList() -> [Swift.Error] {
 		// loop through the roots, and append each to a string backwards
 		var strs = [Swift.Error]()
 		strs += [self]
-		var _root = self.root()
+		var _root: NSError? = self.root() as NSError? ?? nil
 		while _root != nil {
-			strs += [self.root()!]
-			if let r = _root as? RootListableError {
-				_root = r.root()
-			} else {
-				_root = nil
-			}
+			strs += [_root!]
+			_root = _root!.root() as NSError? ?? nil
 		}
 		strs.reverse()
 		return strs
@@ -195,7 +178,7 @@ public extension RootListableError {
 
 	func deepest<T: Swift.Error>(ofType _: T.Type) -> Swift.Error? {
 		var list = self.rootList()
-		list.reverse()
+
 		for i in list {
 			if let r = i as? T {
 				return r
@@ -216,7 +199,7 @@ public extension RootListableError {
 
 	func deepest(matching: some Swift.Error) -> Swift.Error? {
 		var list = self.rootList()
-		list.reverse()
+
 		for i in list {
 			// if let r = i as? T {
 			if i == matching {
@@ -236,48 +219,99 @@ public extension RootListableError {
 		}
 		return nil
 	}
-
-	func dump() -> String {
-		var stream = ""
-
-		let list = self.rootList()
-
-		// Start with the initial log message
-		stream += "\n\n=============== 🔻 ERROR 🔻 ===============\n\n"
-
-		for i in 0 ..< list.count {
-			if i == list.count - 1 {
-				stream += "❌ "
-			} else {
-				stream += "👇 "
-			}
-
-			if let r = list[i] as? XError {
-				stream += "XError[\(r.message)] @ \(r.caller.format())"
-			} else {
-				let r = list[i] as NSError
-				stream += "NSError[\(r)]"
-			}
-
-			stream += "\n"
-			let r = list[i] as NSError
-			for i in r.userInfo {
-				stream += "\t\(i.key) = \(i.value)\n"
-			}
-
-			stream += "\n"
-		}
-
-		// Finish with the closing log message
-		stream += "===========================================\n"
-
-		// Print the entire accumulated log
-		return stream
-	}
 }
 
 public extension NSError {
 	var localizedDescription: String {
 		return (self as RootListableError).localizedDescription
 	}
+
+	override var debugDescription: String {
+		let strs = self.rootList().map {
+			if let errd = $0 as? XError {
+				return errd.description
+			} else {
+				return ($0 as NSError).description
+			}
+		}
+		var result = ""
+		for i in 0 ..< strs.count {
+			if i == strs.count - 1 {
+				result += strs[i]
+			} else if i == strs.count - 2 {
+				result += strs[i] + " 👉 ❌ "
+			} else {
+				result += strs[i] + " 👉 "
+			}
+		}
+
+		return result
+	}
+
+	// override var description: String {
+	// 	return (self as RootListableError).localizedDescription
+	// }
+
+	override var description: String {
+		if let r = self as? XError {
+			return "XError[ message=\"\(r.message)\" caller=\"\(r.caller.format())\" ]"
+		}
+		return "NSError[ domain=\"\(self.domain)\" code=\"\(self.code)\" ]"
+	}
 }
+
+// struct DumpedError: CustomStringConvertible {
+
+// 	let error: Swift.Error
+
+// 	var description: String {
+// 		if let r = self.error as? RootListableError {
+// 			return r.dump()
+// 		} else if let r = self.error as? NSError {
+// 			return "\(r)"
+// 		}
+// 		return "\(self.error)"
+// 	}
+
+// 	func dump(err: Error) -> String {
+// 		var stream = ""
+
+// 		let list = (err as NSError).rootList()
+
+// 		stream += "\n\n"
+
+// 		// Start with the initial log message
+// 		// stream += "\n\n=============== 🔻 ERROR 🔻 ===============\n\n"
+
+// 		for i in 0 ..< list.count {
+// 			if i == list.count - 1 {
+// 				stream += "❌ "
+// 			} else {
+// 				stream += "👇 "
+// 			}
+
+// 			// if let r = list[i] as? XError {
+// 			// 	stream += "XError[\(r.message)] @ \(r.caller.format())"
+// 			// } else {
+// 			// 	let r = list[i] as NSError
+// 			// 	stream += "NSError[\(r)]"
+// 			// }
+
+// 			stream += "\(list[i])"
+
+// 			stream += "\n"
+// 			let r = list[i] as NSError
+// 			for i in r.userInfo {
+// 				stream += "\t\(i.key) = \(i.value)\n"
+// 			}
+
+// 			stream += "\n"
+// 		}
+
+// 		// Finish with the closing log message
+// 		// stream += "===========================================\n\n"
+
+// 		// Print the entire accumulated log
+// 		return stream
+// 	}
+// }

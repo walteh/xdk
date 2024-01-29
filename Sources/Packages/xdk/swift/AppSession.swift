@@ -39,6 +39,10 @@ public class AppSessionID: NSObject, NSSecureCoding {
 		let dat = coder.decodeObject(of: NSString.self, forKey: "id")! as String
 		self.id = try! XID.rebuild(string: dat).get()
 	}
+
+	override public var description: String {
+		return self.id.string()
+	}
 }
 
 public class StoredAppSession: NSObject {

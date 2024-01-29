@@ -8,10 +8,10 @@ public protocol ErrorHandler {
 	init(onError: @escaping (any Error) -> Void)
 }
 
-class NotificationCenterErrorHandler: ErrorHandler {
+public class NotificationCenterErrorHandler: ErrorHandler {
 	var oberver: NSObjectProtocol? = nil
 
-	required init(onError: @escaping (any Error) -> Void) {
+	public required init(onError: @escaping (any Error) -> Void) {
 		self.oberver = NotificationCenter.default.addObserver(forName: .Err, object: nil, queue: nil) { note in
 			if let err = note.object as? Error {
 				Log(.error).err(err).send("error notify event received")

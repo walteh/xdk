@@ -99,7 +99,11 @@ public struct ConsoleLogger: LogHandler {
 
 		if !allMetadata.isEmpty {
 			// only log metadata if not empty
-			text += " " + allMetadata.sortedDescriptionWithoutQuotes.consoleText()
+			text += " " + allMetadata.sortedDescriptionWithoutQuotes
+		}
+
+		if let err = metadata?.getAndClearDumpedError() {
+			text += "\n" + err.dump() + "\n"
 		}
 
 		_ = self.fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
@@ -158,12 +162,113 @@ let startDate = Date()
 let calendar = Calendar.current
 
 private extension Logger.Metadata {
-	var sortedDescriptionWithoutQuotes: String {
-		let contents = Array(self)
-			.sorted(by: { $0.0 < $1.0 })
-			.map { "\($0.description.consoleText(color: .palette(243)).terminalStylize())\("=".consoleText(color: .palette(240)).terminalStylize())\("\"\($1)\"".consoleText(color: .palette(196)).terminalStylize())" }
-			.joined(separator: " ")
-		return " \(contents)"
+	var sortedDescriptionWithoutQuotes: ConsoleText {
+		let contents = Array(self).sorted(by: { $0.0 < $1.0 })
+		var text = "".consoleText()
+		for (key, value) in contents {
+			text += formatKeyValue(key: key, value: value)
+			text += " "
+		}
+		return text
+	}
+}
+
+// extension Logger.Metadata {
+// 	func dump(error: xer) -> String {
+// 		var str = ""
+// 		if let err = error as? XDK.XError {
+// 			str += err.message
+// 			if let caller = err.caller {
+// 				str += "\n" + caller.format(with: ConsoleTextPrettyCallFormatter()).terminalStylize()
+// 			}
+// 		} else {
+// 			str += "\(error)"
+// 		}
+// 		return str
+// 	}
+
+// 	mutating func setCaller(_ caller: XDK.XError) {
+// 		self["caller"] = caller
+// 	}
+// }
+
+func formatKeyValue(key: String, value: CustomStringConvertible) -> ConsoleText {
+	var value = "\(value)".trimmingPrefix("\"")
+	// check the last character of the value,
+	if value.last == "\"" {
+		// if it's a quote, remove it
+		value = value.dropLast()
+	}
+
+	let quote = "\"".consoleText(color: .palette(240), isBold: true)
+
+	return formatKeyEqual(key) + quote + "\(value)".consoleText(color: .palette(196)) + quote
+}
+
+func formatKeyEqual(_ key: String) -> ConsoleText {
+	return key.description.consoleText(color: .palette(243)) + "=".consoleText(color: .palette(240))
+}
+
+extension NSError {
+	func dump() -> ConsoleText {
+		var stream = "".consoleText()
+
+		var list = self.rootList()
+
+		list.reverse()
+
+		stream += "\n"
+
+		// Start with the initial log message
+		// stream += "\n\n=============== 🔻 ERROR 🔻 ===============\n\n"
+
+		for i in 0 ..< list.count {
+			if i == list.count - 1 {
+				stream += "❌ "
+			} else {
+				stream += "👇 "
+			}
+
+			let quote = "\"".consoleText(color: .palette(240), isBold: true)
+
+			if let r = list[i] as? XError {
+				let mess = r.message.consoleText(color: .brightRed, isBold: true)
+				stream += "XError[ " + formatKeyEqual("message") + quote + mess + quote + " " + formatKeyEqual("caller") + quote + r.caller.format(with: ConsoleTextPrettyCallFormatter()) + quote + " ]"
+			} else {
+				let r = list[i] as NSError
+				let domain = r.domain.consoleText(color: .brightCyan, isBold: true)
+				let code = "\(r.code)".consoleText(color: .brightRed, isBold: true)
+				stream += "NSError[ " + formatKeyEqual("domain") + quote + domain + quote + " " + formatKeyEqual("code") + quote + code + quote + " ]".consoleText(color: .brightRed, isBold: true)
+			}
+
+			stream += "\n"
+			if let r = list[i] as? XError {
+				for (key, value) in r.userInfo {
+					if let value = value as? CustomStringConvertible {
+						stream += "\t" + formatKeyValue(key: key, value: value) + "\n"
+					} else {
+						stream += "\t" + formatKeyValue(key: key, value: "\(value)") + "\n"
+					}
+				}
+			} else {
+				let r = list[i] as NSError
+				for (key, value) in r.userInfo {
+					if let value = value as? CustomStringConvertible {
+						stream += "\t" + formatKeyValue(key: key, value: value) + "\n"
+					} else {
+						stream += "\t" + formatKeyValue(key: key, value: "\(value)") + "\n"
+					}
+				}
+			}
+
+			stream += "\n"
+		}
+
+		// Finish with the closing log message
+		// stream += "===========================================\n\n"
+
+		// Print the entire accumulated log
+		return stream
 	}
 }
 

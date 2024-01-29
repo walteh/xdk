@@ -92,7 +92,7 @@ public class LogEvent {
 		return self.info(key, string)
 	}
 
-	public func add(_ key: String, any: Any) -> Self {
+	public func add(_ key: String, any: CustomStringConvertible) -> Self {
 		return self.info(key, any: any)
 	}
 
@@ -105,11 +105,12 @@ public class LogEvent {
 		return self
 	}
 
-	public func info(_ key: String, any: Any) -> Self {
-		self[metadataKey: key] = .string(String(reflecting: any))
+	public func info(_ key: String, any: CustomStringConvertible) -> Self {
+		self[metadataKey: key] = .stringConvertible(any)
 		return self
 	}
 
+	@inlinable
 	public func info(_ key: String, _ s: some CustomDebugStringConvertible) -> Self {
 		self[metadataKey: key] = .string(s.debugDescription)
 		return self
@@ -117,17 +118,30 @@ public class LogEvent {
 
 	@inlinable
 	public func send(_ str: some CustomDebugStringConvertible) {
-		if self.error == nil {
-			GetContext().logger.log(level: self.level, .init(stringLiteral: str.debugDescription), metadata: self.metadata, source: self.caller, file: self.__file, function: self.__function, line: self.__line)
-		} else {
-			var errStr = ""
-			if let err = self.error as? RootListableError {
-				errStr = err.dump()
-			} else if let err = self.error as? NSError {
-				errStr = "\(err)"
-			}
-			self[metadataKey: "note"] = .string(str.debugDescription)
-			GetContext().logger.log(level: self.level, .init(stringLiteral: errStr), metadata: self.metadata, source: self.caller, file: self.__file, function: self.__function, line: self.__line)
+		if let err = self.error {
+			self.metadata.setDumpedError(err)
 		}
+		GetContext().logger.log(level: self.level, .init(stringLiteral: str.debugDescription), metadata: self.metadata, source: self.caller, file: self.__file, function: self.__function, line: self.__line)
+	}
+}
+
+let dumpedErrorKey = "dumped_error"
+
+public extension Logger.Metadata {
+	@usableFromInline internal mutating func setDumpedError(_ input: Error) {
+		self[dumpedErrorKey] = .stringConvertible(input as NSError)
+		return
+	}
+
+	mutating func getAndClearDumpedError() -> NSError? {
+		if let val = self[dumpedErrorKey] {
+			self[dumpedErrorKey] = nil
+			if case let .stringConvertible(str) = val {
+				if let err = str as? NSError {
+					return err
+				}
+			}
+		}
+		return nil
 	}
 }

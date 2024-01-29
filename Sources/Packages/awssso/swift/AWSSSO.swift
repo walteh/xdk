@@ -89,10 +89,10 @@ class RoleCredentials: NSObject, NSSecureCoding {
 		self.sessionToken = sessionToken
 	}
 
-	public convenience init(_ aws: SSOClientTypes.RoleCredentials) {
+	public convenience init(_ aws: AWSSSO.SSOClientTypes.RoleCredentials) {
 		self.init(
 			accessKeyID: aws.accessKeyId ?? "",
-			expiresAt: Date(timeIntervalSince1970: Double(aws.expiration)),
+			expiresAt: Date(timeIntervalSince1970: Double(aws.expiration / 1000)),
 			secretAccessKey: aws.secretAccessKey ?? "",
 			sessionToken: aws.sessionToken ?? ""
 		)
@@ -103,7 +103,7 @@ class RoleCredentials: NSObject, NSSecureCoding {
 	public static var supportsSecureCoding: Bool { true }
 
 	public required init?(coder: NSCoder) {
-		guard let accessKeyID = coder.decodeObject(of: NSString.self, forKey: "accessKeyId") as String?,
+		guard let accessKeyID = coder.decodeObject(of: NSString.self, forKey: "accessKeyID") as String?,
 		      let secretAccessKey = coder.decodeObject(of: NSString.self, forKey: "secretAccessKey") as String?,
 		      let sessionToken = coder.decodeObject(of: NSString.self, forKey: "sessionToken") as String?,
 		      let expiresAt = coder.decodeObject(of: NSDate.self, forKey: "expiresAt") as Date?
@@ -118,10 +118,18 @@ class RoleCredentials: NSObject, NSSecureCoding {
 	}
 
 	func encode(with coder: NSCoder) {
-		coder.encode(self.accessKeyID, forKey: "accessKeyId")
+		coder.encode(self.accessKeyID, forKey: "accessKeyID")
 		coder.encode(self.secretAccessKey, forKey: "secretAccessKey")
 		coder.encode(self.expiresAt, forKey: "expiresAt")
 		coder.encode(self.sessionToken, forKey: "sessionToken")
+	}
+
+	func expiresIn() -> TimeInterval {
+		return self.expiresAt.timeIntervalSince(Date())
+	}
+
+	func isExpired() -> Bool {
+		return self.expiresIn() < 0
 	}
 }
 
@@ -148,13 +156,14 @@ public struct AccountRole: Hashable, Equatable {
 		// dereference err1
 
 		if let curr {
-			if curr.expiresAt > Date().addingTimeInterval(60 * 5) {
+			if curr.expiresIn() > 60 * 5, curr.expiresIn() < 60 * 60 * 24 * 7 {
+				XDK.Log(.debug).info("creds", curr.accessKeyID).info("account", self.accountID).info("role", self.role).info("expiresAt", curr.expiresAt).send("using cached creds")
 				return .success(curr)
 			}
 		}
 
 		// into this at compile time
-		guard let creds = await Result.X { try await client.getRoleCredentials(input: .init(accessToken: accessToken.accessToken, accountId: self.accountID, roleName: self.role)) }.to(&err) else {
+		guard let creds = await Result.X({ try await client.getRoleCredentials(input: .init(accessToken: accessToken.accessToken, accountId: self.accountID, roleName: self.role)) }).to(&err) else {
 			return .failure(x.error("error fetching role creds", root: err))
 		}
 
@@ -162,10 +171,17 @@ public struct AccountRole: Hashable, Equatable {
 			return .failure(x.error("roleCredentials does not exist"))
 		}
 
+		XDK.Log(.info).info("sessioTokenFromAWS", rolecreds.sessionToken).info("account", self.accountID).info("role", self.role).send("fetched role creds")
+
 		let rcreds = RoleCredentials(rolecreds)
-		if let _ = XDK.Write(using: storageAPI, rcreds, overwrite: true, differentiator: self.name).to(&err) {
+
+		XDK.Log(.debug).info("savedSessionToken", rcreds.sessionToken).info("account", self.accountID).info("role", self.role).send("saving role creds")
+
+		guard let _ = XDK.Write(using: storageAPI, rcreds, overwrite: true, differentiator: self.name).to(&err) else {
 			return .failure(x.error("error writing role creds to keychain", root: err))
 		}
+
+		XDK.Log(.debug).info("creds", rcreds.accessKeyID).info("account", self.accountID).info("role", self.role).info("expiresAt", rcreds.expiresAt).send("cached creds")
 
 		return .success(rcreds)
 	}
@@ -178,7 +194,7 @@ struct SessionData: Encodable {
 }
 
 struct SessionInfo: Encodable {
-	var sessionID: String
+	var sessionId: String
 	var sessionKey: String
 	var sessionToken: String
 }
@@ -342,7 +358,7 @@ public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, storageAPI: so
 
 	x.log(.debug).send("A")
 
-	guard let client = Result.X { try AWSSSO.SSOClient(region: region) }.to(&err) else {
+	guard let client = Result.X({ try AWSSSO.SSOClient(region: region) }).to(&err) else {
 		return .failure(x.error("error creating client", root: err))
 	}
 
@@ -352,25 +368,21 @@ public func loadAWSConsole(userSession: any AWSSSOUserSessionAPI, storageAPI: so
 		return .failure(x.error("error fetching role creds", root: err))
 	}
 
-	guard let federationURL = constructFederationURL(with: creds, region: region) else {
-		return .failure(x.error("Failed to construct federation URL"))
+	guard let federationURL = constructFederationURL(with: creds, region: region).to(&err) else {
+		return .failure(x.error("Failed to construct federation URL", root: err))
 	}
 
 	x.log(.debug).send("D")
 
 	guard let signInTokenResult = await fetchSignInToken(from: federationURL).to(&err) else {
-		return .failure(x.error("error fetching signInToken", root: err))
+		return .failure(XDK.Err("error fetching signInToken", root: err).info("url", federationURL))
 	}
 
 	x.log(.debug).add("sign in result", signInTokenResult).send("we right here")
 
-	let consoleHomeURL = region.starts(with: "us-gov-") ?
-		"https://console.amazonaws-us-gov.com/console/home?region=\(region)" :
-		"https://\(region).console.aws.amazon.com/console/home?region=\(region)"
+	let consoleHomeURL = constructConsoleURL(from: userSession)!
 
-	let destinationURL = URL(string: consoleHomeURL)!
-
-	return constructLoginURL(with: signInTokenResult, federationURL: federationURL.url!, destinationURL: destinationURL)
+	return constructLoginURL(with: signInTokenResult, federationURL: federationURL.url!, destinationURL: consoleHomeURL)
 }
 
 public func constructConsoleURL(from session: any AWSSSOUserSessionAPI) -> URL? {
@@ -381,43 +393,53 @@ public func constructConsoleURL(from session: any AWSSSOUserSessionAPI) -> URL? 
 		return nil
 	}
 
+	let consoleHomeURL = region.starts(with: "us-gov-") ?
+		"https://console.amazonaws-us-gov.com" :
+		"https://\(region).console.aws.amazon.com"
+
+	let dest = consoleHomeURL + "/\(service.lowercased())/home?region=\(region)"
+
 	// Construct the URL based on the service, region, and account
 	// This is a simplified example and might need to be adjusted
-	let urlString = "https://\(region).console.aws.amazon.com/\(service.lowercased())/home?region=\(region)"
-	return URL(string: urlString)
+	// let urlString = "https://\(region).console.aws.amazon.com/\(service.lowercased())/home?region=\(region)"
+	return URL(string: dest)
 }
 
-func constructFederationURL(with credentials: RoleCredentials, region: String) -> URLRequest? {
+func constructFederationURL(with credentials: RoleCredentials, region: String) -> Result<URLRequest, Error> {
+	var err: Error? = nil
+
 	let federationBaseURL = region.starts(with: "us-gov-") ?
 		"https://signin.amazonaws-us-gov.com/federation" :
 		"https://signin.aws.amazon.com/federation"
 
-	guard let sessionStringJSON = try? JSONEncoder().encode(SessionData(
-		Action: "getSignInToken",
-		sessionDuration: 3200,
-		Session: SessionInfo(
-			sessionID: credentials.accessKeyID,
-			sessionKey: credentials.secretAccessKey,
-			sessionToken: credentials.sessionToken
-		)
-	)) else {
-		return nil
+	guard let sessionStringJSON = Result.X({ try JSONEncoder().encode(SessionInfo(
+		sessionId: credentials.accessKeyID,
+		sessionKey: credentials.secretAccessKey,
+		sessionToken: credentials.sessionToken.toggleBase64URLSafe(on: true)
+	)) }).to(&err) else {
+		return .failure(x.error("error encoding session info", root: err))
 	}
 
-//	let sessionString = String(data: sessionStringJSON, encoding: .utf8)!
-//	let encodedSessionString = sessionString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
+	XDK.Log(.debug).add("sessionStringJSON", String(data: sessionStringJSON, encoding: .ascii)!).send("constructFederationURL")
 
-//	let federationURLString = "\(federationBaseURL)?Action=getSigninToken&sessionDuration=3200&Session=\(sessionStringJSON.string!)"
-	var req = URLRequest(url: URL(string: federationBaseURL)!)
-	req.httpBody = sessionStringJSON
-	req.httpMethod = "POST"
-	return req
+	let queryItems = [
+		URLQueryItem(name: "Action", value: "getSigninToken"),
+		URLQueryItem(name: "sessionDuration", value: "3200"),
+		URLQueryItem(name: "Session", value: String(data: sessionStringJSON, encoding: .utf8)!),
+	]
+
+	var components = URLComponents(url: URL(string: federationBaseURL)!, resolvingAgainstBaseURL: false)!
+	components.queryItems = queryItems
+	var req = URLRequest(url: components.url!)
+	req.httpMethod = "GET"
+	req.addValue("en-US", forHTTPHeaderField: "accept-language")
+	return .success(req)
 }
 
 func fetchSignInToken(from url: URLRequest) async -> Result<String, Error> {
 	var err: Error? = nil
 
-	guard let (data, response) = await Result.X { try await URLSession.shared.data(for: url) }.to(&err) else {
+	guard let (data, response) = await Result.X({ try await URLSession.shared.data(for: url) }).to(&err) else {
 		return .failure(x.error("error fetching sign in token", root: err))
 	}
 
@@ -427,11 +449,11 @@ func fetchSignInToken(from url: URLRequest) async -> Result<String, Error> {
 
 	if httpResponse.statusCode != 200 {
 		// add info but only the first 10 and last 10 chars
-		let lastfirst = String(data: data, encoding: .utf8)!.prefix(10) + "..." + String(data: data, encoding: .utf8)!.suffix(10)
+		let lastfirst = String(data: data, encoding: .utf8)!.prefix(10) + "..." + String(data: data, encoding: .utf8)!.suffix(10).replacingOccurrences(of: "\n", with: "")
 		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst))
 	}
 
-	guard let jsonResult = Result.X { try JSONSerialization.jsonObject(with: data) as? [String: Any] }.to(&err) else {
+	guard let jsonResult = Result.X({ try JSONSerialization.jsonObject(with: data) as? [String: Any] }).to(&err) else {
 		return .failure(x.error("error parsing json", root: err))
 	}
 
@@ -453,7 +475,7 @@ func constructLoginURL(with signInToken: String, federationURL: URL, destination
 
 	components.queryItems = [
 		URLQueryItem(name: "Action", value: "login"),
-		URLQueryItem(name: "Issuer", value: "Leapp"),
+		URLQueryItem(name: "Issuer", value: "signin.aws.amazon.com"),
 		URLQueryItem(name: "Destination", value: destinationURL.absoluteString),
 		URLQueryItem(name: "SigninToken", value: signInToken),
 	]

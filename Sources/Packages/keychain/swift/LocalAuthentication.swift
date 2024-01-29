@@ -28,7 +28,7 @@ public class LocalAuthenticationClient: NSObject, ObservableObject {
 	let group: String
 	let _version: String
 
-	init(group: String, version: String) {
+	public init(group: String, version: String) {
 		self.group = group
 		self._version = version
 	}
@@ -57,10 +57,16 @@ extension LocalAuthenticationClient: XDK.StorageAPI {
 
 		guard status == errSecSuccess else {
 			if status == errSecDuplicateItem, overwriting {
-				SecItemDelete(query as CFDictionary)
-				status = SecItemAdd(query as CFDictionary, nil)
+				status = SecItemDelete(query as CFDictionary)
 				if status == errSecSuccess {
-					return .success(())
+					status = SecItemAdd(query as CFDictionary, nil)
+					if status == errSecSuccess {
+						return .success(())
+					} else {
+						return .failure(x.error("unable to overwrite", root: KeychainError.errSecParam))
+					}
+				} else {
+					return .failure(x.error("unable to delete"))
 				}
 			}
 

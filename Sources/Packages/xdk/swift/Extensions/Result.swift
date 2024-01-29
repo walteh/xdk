@@ -50,7 +50,6 @@ public extension Result where Failure == Error, Success == Void {
 
 // public extension Result where Failure == Error {
 // 	static func X(catch: inout Error?, _ body: @escaping () throws -> Success, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> Success? {
-// 		return Result.X(body, __file: __file, __function: __function, __line: __line).to(&`catch`)
 // 	}
 
 // 	static func X(catch: inout Error?, _ body: @escaping @Sendable () async throws -> Success, __file: String = #fileID, __function: String = #function, __line: UInt = #line) async -> Success? {
@@ -150,12 +149,12 @@ public extension Result {
 }
 
 public extension Result {
-	func to(_ e: inout Error?) -> (Success?) {
+	func to(_ err: inout Error?) -> (Success?) {
 		switch self {
 		case let .success(value):
 			return value
 		case let .failure(error):
-			e = error
+			err = error
 			return nil
 		}
 	}
