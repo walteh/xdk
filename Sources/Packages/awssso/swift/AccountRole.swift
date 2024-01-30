@@ -8,6 +8,7 @@ import AWSSSO
 import AWSSSOOIDC
 import Combine
 import Foundation
+import WebKit
 import XDK
 
 public struct AccountRole: Hashable, Equatable {
@@ -35,6 +36,62 @@ public struct AccountRole: Hashable, Equatable {
 	}
 }
 
+func createWebView() -> WKWebView {
+	let webViewConfig = WKWebViewConfiguration()
+	webViewConfig.websiteDataStore = WKWebsiteDataStore.nonPersistent()
+	let webView = WKWebView(frame: .zero, configuration: webViewConfig)
+	return webView
+}
+
+public class AWSSSOAccountRoleSession: ObservableObject {
+	let accountRole: AccountRole
+
+	@Published public var region: String? = nil
+	@Published public var resource: String? = nil
+	
+	public let webview = createWebView()
+
+	public init(account: AccountRole) {
+		self.accountRole = account
+	}
+
+	func configureCookies(accessToken: SecureAWSSSOAccessToken) -> Result<Void, Error> {
+		if let cookie = HTTPCookie(properties: [
+			.domain: "aws.amazon.com",
+			.path: "/",
+			.name: "AWSALB", // Adjust the name based on the actual cookie name required by AWS
+			.value: accessToken.accessToken,
+			.secure: true,
+			.expires: accessToken.expiresAt,
+		]) {
+			DispatchQueue.main.async {
+				self.webview.configuration.websiteDataStore.httpCookieStore.setCookie(cookie)
+			}
+			return .success(())
+		} else {
+			return .failure(x.error("error creating cookie"))
+		}
+	}
+
+	public func goto(_ userSession: any AWSSSOUserSessionAPI, storageAPI: any XDK.StorageAPI) async -> Result<Void, Error> {
+		var err: Error? = nil
+
+		guard let url = await XDKAWSSSO.generateAWSConsoleURL(session: userSession, storageAPI: storageAPI).to(&err) else {
+			return .failure(x.error("error generating console url", root: err))
+		}
+
+		if let accessToken = userSession.accessToken {
+			guard let _ = self.configureCookies(accessToken: accessToken).to(&err) else {
+				return .failure(x.error("error configuring cookies", root: err))
+			}
+
+			await self.webview.load(URLRequest(url: url))
+		}
+
+		return .success(())
+	}
+}
+
 func listAccounts(_ client: AWSSSO.SSOClient, accessToken: SecureAWSSSOAccessToken) async -> Result<[AccountRole], Error> {
 	var err: Error? = nil
 
@@ -49,7 +106,7 @@ func listAccounts(_ client: AWSSSO.SSOClient, accessToken: SecureAWSSSOAccessTok
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {
 		// sleep for 1 second to avoid throttling
-		sleep(1)
+		// sleep(1)
 		guard let roles = await listRolesForAccount(client, accessToken: accessToken, account: account).to(&err) else {
 			return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!).info("accountName", account.accountName!))
 		}

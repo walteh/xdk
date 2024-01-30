@@ -32,7 +32,7 @@ private struct LoggerMetadataContextKey: ContextKey {
 	typealias Value = Logger.Metadata
 }
 
-public func AddLoggerMetadataToContext(_ ok: (LogEvent) -> LogEvent) -> Context {
+public func AddLoggerMetadataToContext(_ ok: (LogEvent) -> LogEvent) {
 	var ctx = GetContext()
 	var metadata = ctx[LoggerMetadataContextKey.self] ?? [:]
 	let event = ok(LogEvent(.trace))
@@ -40,13 +40,11 @@ public func AddLoggerMetadataToContext(_ ok: (LogEvent) -> LogEvent) -> Context 
 		metadata[k] = v
 	}
 	ctx[LoggerMetadataContextKey.self] = metadata
-	return ctx
 }
 
-public func AddLoggerToContext(ctx: Context, logger: Logger) -> Context {
-	var ctx = ctx
+public func AddLoggerToContext(logger: Logger) {
+	var ctx = GetContext()
 	ctx[LoggerContextKey.self] = logger
-	return ctx
 }
 
 let xlogger = Logger(label: "x")

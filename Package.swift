@@ -20,7 +20,7 @@ let package = Package(
 
 let mainTarget = Target.target(
 	name: "XDKModule",
-	path: "./Sources/XDKModule/swift"
+	path: "./Sources/XDKModule"
 )
 
 let swiftLogs = Git(module: "Logging", version: "1.5.4", url: "https://github.com/apple/swift-log.git").apply()

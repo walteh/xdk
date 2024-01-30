@@ -162,76 +162,6 @@ public class AWSSSOUserSession: ObservableObject, AWSSSOUserSessionAPI {
 	}
 }
 
-public class AWSSSOAccountRoleSession: ObservableObject {
-	let accountRole: AccountRole
-
-	@Published public var region: String? = nil
-	@Published public var resource: String? = nil
-
-	public let webview = WKWebView()
-
-	public init(account: AccountRole) {
-		self.accountRole = account
-	}
-
-	// public func refresh(_ userSession: any AWSSSOUserSessionAPI, storageAPI: any XDK.StorageAPI) async -> Result<Void, Error> {
-	// 	var err: Error? = nil
-
-	// 	guard let url = await generateAWSConsoleURL(
-	// 		session: userSession,
-	// 		storageAPI: storageAPI
-	// 	).to(&err) else {
-	// 		return .failure(x.error("error generating console url", root: err))
-	// 	}
-
-	// 	if let accessToken = userSession.accessToken {
-	// 		guard let _ = self.configureCookies(accessToken: accessToken).to(&err) else {
-	// 			return .failure(x.error("error configuring cookies", root: err))
-	// 		}
-
-	// 		await self.webview.load(URLRequest(url: url))
-	// 	}
-
-	// 	return .success(())
-	// }
-
-	func configureCookies(accessToken: SecureAWSSSOAccessToken) -> Result<Void, Error> {
-		if let cookie = HTTPCookie(properties: [
-			.domain: "aws.amazon.com",
-			.path: "/",
-			.name: "AWSALB", // Adjust the name based on the actual cookie name required by AWS
-			.value: accessToken.accessToken,
-			.secure: true,
-			.expires: NSDate(timeIntervalSinceNow: 3600),
-		]) {
-			DispatchQueue.main.async {
-				self.webview.configuration.websiteDataStore.httpCookieStore.setCookie(cookie)
-			}
-			return .success(())
-		} else {
-			return .failure(x.error("error creating cookie"))
-		}
-	}
-
-	public func goto(_ userSession: any AWSSSOUserSessionAPI, storageAPI: any XDK.StorageAPI) async -> Result<Void, Error> {
-		var err: Error? = nil
-
-		guard let url = await XDKAWSSSO.generateAWSConsoleURL(session: userSession, storageAPI: storageAPI).to(&err) else {
-			return .failure(x.error("error generating console url", root: err))
-		}
-
-		if let accessToken = userSession.accessToken {
-			guard let _ = self.configureCookies(accessToken: accessToken).to(&err) else {
-				return .failure(x.error("error configuring cookies", root: err))
-			}
-
-			await self.webview.load(URLRequest(url: url))
-		}
-
-		return .success(())
-	}
-}
-
 struct SessionData: Encodable {
 	var Action: String
 	var sessionDuration: Int
@@ -273,6 +203,10 @@ public func generateAWSConsoleURL(session: any AWSSSOUserSessionAPI, storageAPI:
 		return .failure(x.error("accessToken not set"))
 	}
 
+	// XDK.AddLoggerMetadataToContext {
+	// 	$0.info("account", account.accountID).info("role", account.role).info("region", region).info("service", service)
+	// }
+
 	guard let client = Result.X({ try AWSSSO.SSOClient(region: region) }).to(&err) else {
 		return .failure(x.error("error creating client", root: err))
 	}
@@ -287,17 +221,15 @@ public func generateAWSConsoleURL(session: any AWSSSOUserSessionAPI, storageAPI:
 				return .failure(x.error("error invalidating role creds", root: err))
 			}
 
+			XDK.Log(.debug).send("retrying generateAWSConsoleURL")
+
 			return await generateAWSConsoleURL(session: session, storageAPI: storageAPI, retry: true)
 		}
-
-		// guard let signInTokenResult = await fetchSignInToken(with: creds, region: region).to(&err) else {
-		// 	return .failure(x.error("error fetching signInToken", root: err))
-		// }
 
 		return .failure(XDK.Err("error fetching signInToken", root: err))
 	}
 
-	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds, region: region, service: service).to(&err) else {
+	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds, region: region, service: service, account: account.accountID).to(&err) else {
 		return .failure(XDK.Err("error constructing console url", root: err))
 	}
 
@@ -319,7 +251,7 @@ func constructFederationURLRequest(with credentials: RoleCredentials, region: St
 		return .failure(x.error("error encoding session info", root: err))
 	}
 
-	XDK.Log(.debug).add("sessionStringJSON", String(data: sessionStringJSON, encoding: .ascii)!).send("constructFederationURLRequest")
+	// XDK.Log(.debug).add("sessionStringJSON", String(data: sessionStringJSON, encoding: .ascii)!).send("constructFederationURLRequest")
 
 	let queryItems = [
 		URLQueryItem(name: "Action", value: "getSigninToken"),
@@ -374,7 +306,7 @@ func fetchSignInToken(with credentials: RoleCredentials, region: String) async -
 	}
 }
 
-func constructLoginURL(with signInToken: String, credentials: RoleCredentials, region: String, service: String?) -> Result<URL, Error> {
+func constructLoginURL(with signInToken: String, credentials: RoleCredentials, region: String, service: String?, account: String) -> Result<URL, Error> {
 	var err: Error? = nil
 
 	guard let request = constructFederationURLRequest(with: credentials, region: region).to(&err) else {
@@ -397,7 +329,7 @@ func constructLoginURL(with signInToken: String, credentials: RoleCredentials, r
 
 	components.queryItems = [
 		URLQueryItem(name: "Action", value: "login"),
-		URLQueryItem(name: "Issuer", value: "signin.aws.amazon.com"),
+		URLQueryItem(name: "Issuer", value: "\(Bundle.main.bundleIdentifier ?? "XDK")_\(region)_\(account)"),
 		URLQueryItem(name: "Destination", value: consoleHomeURL),
 		URLQueryItem(name: "SigninToken", value: signInToken),
 	]
