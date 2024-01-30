@@ -150,6 +150,10 @@ public extension Result {
 
 public extension Result {
 	func to(_ err: inout Error?) -> (Success?) {
+		return self.err(&err)
+	}
+
+	func err(_ err: inout Error?) -> (Success?) {
 		switch self {
 		case let .success(value):
 			return value
@@ -158,4 +162,5 @@ public extension Result {
 			return nil
 		}
 	}
+
 }

@@ -7,6 +7,11 @@
 
 import Foundation
 
+public protocol ConfigAPI {
+	func get(key: String) -> Result<String, Error>
+	func get(file: String) -> Result<Data, Error>
+}
+
 public func IS_BEING_UNIT_TESTED() -> Bool {
 	return NSClassFromString("XCTestCase") != nil
 }
@@ -17,11 +22,6 @@ public func IS_BEING_DEBUGGED() -> Bool {
 
 public func IS_BEING_PREVIEWED() -> Bool {
 	return (ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] ?? "0") == "1"
-}
-
-public protocol ConfigAPI {
-	func get(key: String) -> Result<String, Error>
-	func get(file: String) -> Result<Data, Error>
 }
 
 public func Get(key: String, using configAPI: ConfigAPI) -> Result<String, Error> {
@@ -65,15 +65,37 @@ public func GetBundleIdentifier(using configAPI: ConfigAPI) -> Result<String, Er
 	return configAPI.get(key: "CFBundleIdentifier")
 }
 
+@frozen public struct NoopConfig: ConfigAPI {
+	let inMemoryConfig: [String: String]
+	let inMemoryFiles: [String: Data]
+
+	public init(inMemoryConfig: [String: String] = [:], inMemoryFiles: [String: Data] = [:]) {
+		self.inMemoryConfig = inMemoryConfig
+		self.inMemoryFiles = inMemoryFiles
+	}
+
+	public func get(key: String) -> Result<String, Error> {
+		return .success(self.inMemoryConfig[key] ?? "")
+	}
+
+	public func get(file: String) -> Result<Data, Error> {
+		return .success(self.inMemoryFiles[file] ?? Data())
+	}
+}
+
 @frozen public struct BundleConfig: ConfigAPI {
 	let bundle: Bundle
 
-	init(bundle: Bundle) {
+	public init(bundle: Bundle) {
 		self.bundle = bundle
 	}
 
 	public func get(key: String) -> Result<String, Error> {
-		return .success(self.bundle.infoDictionary?[key] as? String ?? "")
+		let res = self.bundle.infoDictionary?[key] as? String ?? ""
+		if res.isEmpty {
+			return .failure(x.error("key not found").info("key", key))
+		}
+		return .success(res)
 	}
 
 	public func get(file: String) -> Result<Data, Error> {

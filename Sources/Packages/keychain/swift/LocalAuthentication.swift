@@ -105,6 +105,27 @@ extension LocalAuthenticationClient: XDK.StorageAPI {
 			return .failure(x.error(status: status))
 		}
 	}
+
+	/// Deletes the stored credentials for the given server.
+	public func delete(unsafe key: String) -> Result<Void, Error> {
+		var query: [String: Any] = [:]
+		query[kSecClass as String] = kSecClassGenericPassword
+		query[kSecAttrSynchronizable as String] = true
+		query[kSecAttrAccessGroup as String] = self.group
+		query[kSecAttrAccount as String] = key
+		query[kSecUseAuthenticationContext as String] = self.authenticationContext
+
+		let status = SecItemDelete(query as CFDictionary)
+
+		switch status {
+		case errSecSuccess:
+			return .success(())
+		case errSecItemNotFound:
+			return .success(())
+		default:
+			return .failure(x.error(status: status))
+		}
+	}
 }
 
 extension LocalAuthenticationClient: XDK.AuthenticationAPI {

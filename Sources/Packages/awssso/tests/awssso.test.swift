@@ -22,7 +22,7 @@ class big_tests: XCTestCase {
 	}
 
 	func testExample() async throws {
-		let keychain = XDK.InMemoryStorage()
+		let storageAPI = XDK.InMemoryStorage() as StorageAPI
 		let selectedRegion = "us-east-1"
 
 		let val = "https://nuggxyz.awsapps.com/start#/"
@@ -38,24 +38,24 @@ class big_tests: XCTestCase {
 		}
 
 		var promptURL: XDKAWSSSO.UserSignInData? = nil
-		guard let resp = await XDKAWSSSO.signInWithSSO(awsssoAPI: client, storageAPI: keychain, ssoRegion: selectedRegion, startURL: startURI) { url in
+		guard let resp = await XDKAWSSSO.signInWithSSO(awsssoAPI: client, storageAPI: storageAPI, ssoRegion: selectedRegion, startURL: startURI) { url in
 			promptURL = url
 		}.to(&err) else {
 			XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}
 
-		let sess = AWSSSOUserSession(
-			account: AccountRole(accountID: "324802912585", role: "AWSAdministratorAccess"),
-			region: "us-east-1",
-			service: "s3",
-			resource: nil,
+		let sess = try await AWSSSOUserSession(
+			account: AccountRole(accountID: "324802912585", accountName: "hi", role: "AWSAdministratorAccess", accountEmail: "xyz@xyz.com"),
+			// region: "us-east-1",
+			// service: "s3",
+			// resource: nil,
 			accessToken: resp
 		)
 
 		XCTAssertNotNil(promptURL)
 
-		guard let url = await XDKAWSSSO.loadAWSConsole(userSession: sess, storageAPI: keychain).to(&err) else {
+		guard let url = await XDKAWSSSO.generateAWSConsoleURL(consoleAccountRole: sess.account!, consoleRegion: sess.region!, consoleService: sess.service!, ssoAccessToken: sess.accessToken!, storageAPI: storageAPI).to(&err) else {
 			XCTFail("failed to load console" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}

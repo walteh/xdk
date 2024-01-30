@@ -5,6 +5,7 @@ public protocol StorageAPI {
 	func version() -> String
 	func read(unsafe: String) -> Result<Data?, Error>
 	func write(unsafe: String, overwriting: Bool, as value: Data) -> Result<Void, Error>
+	func delete(unsafe: String) -> Result<Void, Error>
 }
 
 // class Keyed<T>: NSObject, NSSecureCoding where T: NSObject, T: NSSecureCoding {
@@ -69,6 +70,18 @@ public func Write<T>(using storageAPI: StorageAPI, _ object: T, overwrite: Bool 
 	return .success(())
 }
 
+public func Delete<T>(using storageAPI: StorageAPI, _: T.Type, differentiator: String = "") -> Result<Void, Error> where T: NSObject, T: NSSecureCoding {
+	var err: Error? = nil
+
+	let storageKey = "\(T.description())_\(storageAPI.version())_\(differentiator)"
+
+	guard let _ = storageAPI.delete(unsafe: storageKey).to(&err) else {
+		return .failure(x.error("failed to delete object", root: err).info("storageKey", storageKey))
+	}
+
+	return .success(())
+}
+
 public class NoopStorage: StorageAPI {
 	public func version() -> String {
 		return "noop"
@@ -79,6 +92,10 @@ public class NoopStorage: StorageAPI {
 	}
 
 	public func write(unsafe _: String, overwriting _: Bool, as _: Data) -> Result<Void, Error> {
+		return .success(())
+	}
+
+	public func delete(unsafe _: String) -> Result<Void, Error> {
 		return .success(())
 	}
 
@@ -102,6 +119,12 @@ public class InMemoryStorage: StorageAPI {
 		}
 
 		self.storage[key] = value
+
+		return .success(())
+	}
+
+	public func delete(unsafe key: String) -> Result<Void, Error> {
+		self.storage[key] = nil
 
 		return .success(())
 	}

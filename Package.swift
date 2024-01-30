@@ -166,3 +166,5 @@ extension Local: Dep {
 		return .byName(name: self.module())
 	}
 }
+
+complete()
