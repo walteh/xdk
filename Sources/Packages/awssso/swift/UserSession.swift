@@ -1,5 +1,5 @@
 //
-//  AWSSSO.swift
+//  UserSession.swift
 //
 //  Created by walter on 1/21/24.
 //
@@ -12,34 +12,7 @@ import SwiftUI
 import WebKit
 import XDK
 
-public protocol AWSSSOUserSessionAPI: ObservableObject {
-	var accessToken: SecureAWSSSOAccessToken? { get set }
-	var account: AccountRole? { get }
-	var accounts: [AccountRole: AWSSSOAccountRoleSession] { get }
-	var accountsList: [AccountRole] { get }
-	var region: String? { get }
-	var service: String? { get }
-
-	func refresh(accessToken: SecureAWSSSOAccessToken?, storageAPI: any XDK.StorageAPI) async -> Result<Void, Error>
-
-	// func refresh(_ storageAPI: any XDK.StorageAPI) async -> Result<Void, Error>
-
-	var accessTokenPublisher: Published<SecureAWSSSOAccessToken?>.Publisher { get }
-}
-
-public extension AWSSSOUserSessionAPI {
-	func currentAccountRoleSession() -> AWSSSOAccountRoleSession? {
-		guard let account = self.account else {
-			return nil
-		}
-
-		return self.accounts[account]
-	}
-}
-
-public class AWSSSOUserSession: ObservableObject, AWSSSOUserSessionAPI {
-	@Published public var isSignedIn = false // This will be toggled when sign-in is successful
-
+public class AWSSSOUserSession: ObservableObject {
 	@Published public var account: AccountRole? = nil
 	@Published public var region: String? = nil
 	@Published public var service: String? = nil
@@ -49,38 +22,16 @@ public class AWSSSOUserSession: ObservableObject, AWSSSOUserSessionAPI {
 	@Published public var accessToken: SecureAWSSSOAccessToken? = nil
 	@Published public var ssoClient: SSOClient? = nil
 	@Published public var accounts: [AccountRole: AWSSSOAccountRoleSession] = [:]
-	@Published public var accountsList: [AccountRole] = []
+	@Published public var accountsList: AccountRoleList = .init(roles: [])
 
 	public init(account: AccountRole? = nil) {
 		self.account = account
 	}
 
-	// public func refresh(_ storageAPI: any XDK.StorageAPI) async -> Result<Void, Error> {
-	// 	var err: Error? = nil
-
-	// 	for account in self.accounts.keys {
-	// 		guard let url = await generateAWSConsoleURL(
-	// 			session: self,
-	// 			storageAPI: storageAPI
-	// 		).to(&err) else {
-	// 			return .failure(x.error("error generating console url", root: err))
-	// 		}
-	// 		DispatchQueue.main.async {
-	// 			self.accounts[account]!.webview.load(URLRequest(url: url))
-	// 		}
-	// 	}
-
-	// 	return .success(())
-	// }
-
-	public func refresh(accessToken: SecureAWSSSOAccessToken?, storageAPI _: XDK.StorageAPI) async -> Result<Void, Error> {
+	public func refresh(accessToken: SecureAWSSSOAccessToken?, storageAPI: XDK.StorageAPI) async -> Result<Void, Error> {
 		var err: Error? = nil
 
-		if let at = accessToken {
-			self.accessToken = at
-		}
-
-		guard let accessToken = self.accessToken else {
+		guard let accessToken = accessToken ?? self.accessToken else {
 			return .failure(x.error("accessToken not set"))
 		}
 
@@ -88,7 +39,7 @@ public class AWSSSOUserSession: ObservableObject, AWSSSOUserSessionAPI {
 			return .failure(x.error("error updating sso client", root: err))
 		}
 
-		guard let accounts = await listAccounts(client, accessToken: accessToken).to(&err) else {
+		guard let accounts = await getAccountsRoleList(storage: storageAPI, client, accessToken: accessToken).to(&err) else {
 			return .failure(x.error("error updating accounts", root: err))
 		}
 
@@ -110,30 +61,6 @@ public class AWSSSOUserSession: ObservableObject, AWSSSOUserSessionAPI {
 			self.accountsList = accounts
 		}
 
-		// for account in self.accounts {
-		// 	guard let _ = await account.value.refresh(self, storageAPI: storageAPI).to(&err) else {
-		// 		return .failure(x.error("error refreshing account", root: err))
-		// 	}
-		// }
-
-		// for account in self.accounts.keys {
-		// 	guard let url = await generateAWSConsoleURL(
-		// 		session: self,
-		// 		storageAPI: storageAPI
-		// 	).to(&err) else {
-		// 		return .failure(x.error("error generating console url", root: err))
-		// 	}
-		// 	DispatchQueue.main.async {
-		// 		self.accounts[account]!.webview.load(URLRequest(url: url))
-		// 	}
-		// }
-
-		// for (_, account) in self.accounts {
-		// 	guard let _ = await account.refresh(self, storageAPI: storageAPI).to(&err) else {
-		// 		return .failure(x.error("error refreshing account", root: err))
-		// 	}
-		// }
-
 		return .success(())
 	}
 
@@ -146,32 +73,6 @@ public class AWSSSOUserSession: ObservableObject, AWSSSOUserSessionAPI {
 
 		return .success(client)
 	}
-
-	private func updateAccounts(accessToken: SecureAWSSSOAccessToken, client _: SSOClient) async -> Result<[AccountRole], Error> {
-		var err: Error? = nil
-
-		guard let client = self.ssoClient else {
-			return .failure(x.error("awsSSO client not set"))
-		}
-
-		guard let fetchedAccounts = await listAccounts(client, accessToken: accessToken).to(&err) else {
-			return .failure(x.error("problem fetching accounts", root: err))
-		}
-
-		return .success(fetchedAccounts)
-	}
-}
-
-struct SessionData: Encodable {
-	var Action: String
-	var sessionDuration: Int
-	var Session: SessionInfo
-}
-
-struct SessionInfo: Encodable {
-	var sessionId: String
-	var sessionKey: String
-	var sessionToken: String
 }
 
 public struct UserSignInData: Equatable {
@@ -184,7 +85,7 @@ public struct UserSignInData: Equatable {
 	}
 }
 
-public func generateAWSConsoleURL(session: any AWSSSOUserSessionAPI, storageAPI: some XDK.StorageAPI, retry: Bool = false) async -> Result<URL, Error> {
+public func generateAWSConsoleURL(session: AWSSSOUserSession, storageAPI: some XDK.StorageAPI, retry: Bool = false) async -> Result<URL, Error> {
 	var err: Error? = nil
 
 	guard let account = session.account else {
@@ -202,10 +103,6 @@ public func generateAWSConsoleURL(session: any AWSSSOUserSessionAPI, storageAPI:
 	guard let accessToken = session.accessToken else {
 		return .failure(x.error("accessToken not set"))
 	}
-
-	// XDK.AddLoggerMetadataToContext {
-	// 	$0.info("account", account.accountID).info("role", account.role).info("region", region).info("service", service)
-	// }
 
 	guard let client = Result.X({ try AWSSSO.SSOClient(region: region) }).to(&err) else {
 		return .failure(x.error("error creating client", root: err))
@@ -243,15 +140,13 @@ func constructFederationURLRequest(with credentials: RoleCredentials, region: St
 		"https://signin.amazonaws-us-gov.com/federation" :
 		"https://signin.aws.amazon.com/federation"
 
-	guard let sessionStringJSON = Result.X({ try JSONEncoder().encode(SessionInfo(
-		sessionId: credentials.accessKeyID,
-		sessionKey: credentials.secretAccessKey,
-		sessionToken: credentials.sessionToken.toggleBase64URLSafe(on: true)
-	)) }).to(&err) else {
+	guard let sessionStringJSON = Result.X({ try JSONEncoder().encode([
+		"sessionId": credentials.accessKeyID,
+		"sessionKey": credentials.secretAccessKey,
+		"sessionToken": credentials.sessionToken.toggleBase64URLSafe(on: true),
+	]) }).to(&err) else {
 		return .failure(x.error("error encoding session info", root: err))
 	}
-
-	// XDK.Log(.debug).add("sessionStringJSON", String(data: sessionStringJSON, encoding: .ascii)!).send("constructFederationURLRequest")
 
 	let queryItems = [
 		URLQueryItem(name: "Action", value: "getSigninToken"),
@@ -264,6 +159,7 @@ func constructFederationURLRequest(with credentials: RoleCredentials, region: St
 	var req = URLRequest(url: components.url!)
 	req.httpMethod = "GET"
 	req.addValue("en-US", forHTTPHeaderField: "accept-language")
+
 	return .success(req)
 }
 
@@ -286,9 +182,7 @@ func fetchSignInToken(with credentials: RoleCredentials, region: String) async -
 		// add info but only the first 10 and last 10 chars
 		let lastfirst = String(data: data, encoding: .utf8)!.prefix(10) + "..." + String(data: data, encoding: .utf8)!.suffix(10).replacingOccurrences(of: "\n", with: "")
 
-		// try to refresh credentials
-
-		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst))
+		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst).info("url", request.url?.absoluteString))
 	}
 
 	guard let jsonResult = Result.X({ try JSONSerialization.jsonObject(with: data) as? [String: Any] }).to(&err) else {
@@ -298,6 +192,8 @@ func fetchSignInToken(with credentials: RoleCredentials, region: String) async -
 	if jsonResult == nil {
 		return .failure(x.error("no json data returned"))
 	}
+
+	XDK.Log(.debug).info("jsonResult", jsonResult!).send("fetchSignInToken")
 
 	if let signInToken = jsonResult!["SigninToken"] as? String {
 		return .success(signInToken)

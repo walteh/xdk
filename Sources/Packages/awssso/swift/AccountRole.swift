@@ -11,7 +11,7 @@ import Foundation
 import WebKit
 import XDK
 
-public struct AccountRole: Hashable, Equatable {
+public class AccountRole: NSObject, NSSecureCoding {
 	public let accountID: String
 	public let role: String
 	public let accountName: String
@@ -21,7 +21,7 @@ public struct AccountRole: Hashable, Equatable {
 		return "\(self.accountID) - \(self.role)"
 	}
 
-	init(accountID: String, accountName: String, role: String, accountEmail: String) {
+	public init(accountID: String, accountName: String, role: String, accountEmail: String) {
 		self.accountID = accountID
 		self.role = role
 		self.accountName = accountName
@@ -33,6 +33,53 @@ public struct AccountRole: Hashable, Equatable {
 		self.role = role.roleName ?? ""
 		self.accountName = account.accountName ?? ""
 		self.accountEmail = account.emailAddress ?? ""
+	}
+
+	// MARK: - NSSecureCoding
+
+	// implement the NSSecureCoding protocol
+	public static var supportsSecureCoding: Bool = true
+
+	public required init?(coder: NSCoder) {
+		self.accountID = coder.decodeObject(of: NSString.self, forKey: "accountID") as String? ?? ""
+		self.role = coder.decodeObject(of: NSString.self, forKey: "role") as? String ?? ""
+		self.accountName = coder.decodeObject(of: NSString.self, forKey: "accountName") as? String ?? ""
+		self.accountEmail = coder.decodeObject(of: NSString.self, forKey: "accountEmail") as? String ?? ""
+	}
+
+	public func encode(with coder: NSCoder) {
+		coder.encode(self.accountID, forKey: "accountID")
+		coder.encode(self.role, forKey: "role")
+		coder.encode(self.accountName, forKey: "accountName")
+		coder.encode(self.accountEmail, forKey: "accountEmail")
+	}
+}
+
+//  make an account role list struct with the right array protocols
+public class AccountRoleList: NSObject, Sequence, NSSecureCoding {
+	public var roles: [AccountRole]
+
+	public init(roles: [AccountRole]) {
+		self.roles = roles
+	}
+
+	public func makeIterator() -> IndexingIterator<[AccountRole]> {
+		return self.roles.makeIterator()
+	}
+
+	// MARK: - NSSecureCoding
+
+	public static var supportsSecureCoding: Bool = true
+
+	public required init?(coder: NSCoder) {
+		guard let decodedArray = coder.decodeObject(of: [NSArray.self, AccountRole.self], forKey: "roles") as? [AccountRole] else {
+			return nil
+		}
+		self.roles = decodedArray
+	}
+
+	public func encode(with coder: NSCoder) {
+		coder.encode(self.roles as NSArray, forKey: "roles")
 	}
 }
 
@@ -48,7 +95,7 @@ public class AWSSSOAccountRoleSession: ObservableObject {
 
 	@Published public var region: String? = nil
 	@Published public var resource: String? = nil
-	
+
 	public let webview = createWebView()
 
 	public init(account: AccountRole) {
@@ -73,7 +120,7 @@ public class AWSSSOAccountRoleSession: ObservableObject {
 		}
 	}
 
-	public func goto(_ userSession: any AWSSSOUserSessionAPI, storageAPI: any XDK.StorageAPI) async -> Result<Void, Error> {
+	public func goto(_ userSession: AWSSSOUserSession, storageAPI: any XDK.StorageAPI) async -> Result<Void, Error> {
 		var err: Error? = nil
 
 		guard let url = await XDKAWSSSO.generateAWSConsoleURL(session: userSession, storageAPI: storageAPI).to(&err) else {
@@ -85,6 +132,8 @@ public class AWSSSOAccountRoleSession: ObservableObject {
 				return .failure(x.error("error configuring cookies", root: err))
 			}
 
+			XDK.Log(.info).info("url", url).send("attempting to send webview to new place")
+
 			await self.webview.load(URLRequest(url: url))
 		}
 
@@ -92,27 +141,45 @@ public class AWSSSOAccountRoleSession: ObservableObject {
 	}
 }
 
-func listAccounts(_ client: AWSSSO.SSOClient, accessToken: SecureAWSSSOAccessToken) async -> Result<[AccountRole], Error> {
+func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> {
+	return XDK.Delete(using: storage, AccountRoleList.self)
+}
+
+func getAccountsRoleList(storage: XDK.StorageAPI, _ client: AWSSSO.SSOClient, accessToken: SecureAWSSSOAccessToken) async -> Result<AccountRoleList, Error> {
 	var err: Error? = nil
+
+	// check storage
+	guard let cached = XDK.Read(using: storage, AccountRoleList.self).to(&err) else {
+		return .failure(x.error("error loading accounts from storage", root: err))
+	}
+
+	if let cached {
+		return .success(cached)
+	}
 
 	guard let response = await Result.X({ try await client.listAccounts(input: .init(accessToken: accessToken.accessToken)) }).to(&err) else {
 		return .failure(x.error("error fetching accounts", root: err))
 	}
 
-	var accounts = [AccountRole]()
 	guard let accountList = response.accountList else {
 		return .failure(x.error("response.accountList does not exist"))
 	}
+
+	let accounts = AccountRoleList(roles: [])
+
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {
-		// sleep for 1 second to avoid throttling
-		// sleep(1)
 		guard let roles = await listRolesForAccount(client, accessToken: accessToken, account: account).to(&err) else {
 			return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!).info("accountName", account.accountName!))
 		}
 		for role in roles {
-			accounts.append(role)
+			accounts.roles.append(role)
 		}
+	}
+
+	// save to storage
+	guard let _ = XDK.Write(using: storage, accounts).to(&err) else {
+		return .failure(x.error("error saving accounts to storage", root: err))
 	}
 
 	return .success(accounts)

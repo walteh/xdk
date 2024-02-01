@@ -32,7 +32,7 @@ class big_tests: XCTestCase {
 
 		var err: Error? = nil
 
-		guard let client = Result.X { try AWSSSOOIDC.SSOOIDCClient(region: "us-east-1") }.to(&err) else {
+		guard let client = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: "us-east-1") }).to(&err) else {
 			XCTFail("failed to create client" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}
@@ -45,17 +45,22 @@ class big_tests: XCTestCase {
 			return
 		}
 
-		let sess = try await AWSSSOUserSession(
-			account: AccountRole(accountID: "324802912585", accountName: "hi", role: "AWSAdministratorAccess", accountEmail: "xyz@xyz.com"),
+		let sess = AWSSSOUserSession(
+			account: AccountRole(accountID: "324802912585", accountName: "hi", role: "AWSAdministratorAccess", accountEmail: "xyz@xyz.com")
 			// region: "us-east-1",
 			// service: "s3",
 			// resource: nil,
-			accessToken: resp
+			// accessToken: resp
 		)
+
+		guard let _ = await sess.refresh(accessToken: resp, storageAPI: storageAPI).to(&err) else {
+			XCTFail("failed to refresh" + (err?.localizedDescription ?? "unknown error"))
+			return
+		}
 
 		XCTAssertNotNil(promptURL)
 
-		guard let url = await XDKAWSSSO.generateAWSConsoleURL(consoleAccountRole: sess.account!, consoleRegion: sess.region!, consoleService: sess.service!, ssoAccessToken: sess.accessToken!, storageAPI: storageAPI).to(&err) else {
+		guard let url = await XDKAWSSSO.generateAWSConsoleURL(session: sess, storageAPI: storageAPI).to(&err) else {
 			XCTFail("failed to load console" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}

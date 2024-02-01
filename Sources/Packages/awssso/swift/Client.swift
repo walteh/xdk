@@ -99,8 +99,8 @@ public class SecureAWSSSOAccessToken: NSObject, NSSecureCoding {
 	}
 }
 
-public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI: some XDK.StorageAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAWSSSOAccessToken, Error> {
-	var err: Error? = nil
+public func signInFromStorage(storageAPI: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessToken?, Error> {
+	var err: Error?
 
 	guard let current = XDK.Read(using: storageAPI, SecureAWSSSOAccessToken.self).to(&err) else {
 		return .failure(x.error("error loading access token", root: err))
@@ -112,13 +112,31 @@ public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, storageAP
 		}
 	}
 
-	guard let registration = await registerClientIfNeeded(awsssoAPI: awsssoAPI, storageAPI: storageAPI).to(&err) else {
+	return .success(nil)
+}
+
+public func signInWithSSO(storageAPI: some XDK.StorageAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAWSSSOAccessToken, Error> {
+	var err: Error? = nil
+
+	guard let token = signInFromStorage(storageAPI: storageAPI).to(&err) else {
+		return .failure(x.error("error loading access token", root: err))
+	}
+
+	if let token {
+		return .success(token)
+	}
+
+	guard let client = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: ssoRegion) }).to(&err) else {
+		return .failure(XDK.Err("probolem creating sso oidc client", root: err))
+	}
+
+	guard let registration = await registerClientIfNeeded(awsssoAPI: client, storageAPI: storageAPI).to(&err) else {
 		return .failure(x.error("error registering client", root: err))
 	}
 
 	let input = AWSSSOOIDC.StartDeviceAuthorizationInput(clientId: registration.clientID, clientSecret: registration.clientSecret, startUrl: startURL.absoluteString)
 
-	guard let deviceAuth = await Result.X({ try await awsssoAPI.startDeviceAuthorization(input: input) }).to(&err) else {
+	guard let deviceAuth = await Result.X({ try await client.startDeviceAuthorization(input: input) }).to(&err) else {
 		return .failure(x.error("error starting device auth", root: err))
 	}
 
@@ -126,7 +144,7 @@ public func signInWithSSO(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, storageAP
 
 	callback(data)
 
-	guard let tok = await pollForToken(awsssoAPI, registration: registration, deviceAuth: data, pollInterval: 1.0, expirationTime: 60.0).to(&err) else {
+	guard let tok = await pollForToken(client, registration: registration, deviceAuth: data, pollInterval: 1.0, expirationTime: 60.0).to(&err) else {
 		return .failure(x.error("error polling for token", root: err))
 	}
 

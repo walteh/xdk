@@ -2,11 +2,11 @@
 import Logging
 import ServiceContextModule
 
-public typealias Context = ServiceContext
-public typealias ContextKey = ServiceContextKey
+// public typealias Context = ServiceContext
+// public typealias ContextKey = ServiceContextKey
 
-@inlinable public func GetContext() -> Context {
-	return Context.current ?? Context.TODO("you should set a context")
+@inlinable public func GetContext() -> ServiceContext {
+	return ServiceContext.current ?? ServiceContext.TODO("you should set a context")
 }
 
 // create a context key

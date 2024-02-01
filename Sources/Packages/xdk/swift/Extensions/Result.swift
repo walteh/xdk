@@ -162,5 +162,4 @@ public extension Result {
 			return nil
 		}
 	}
-
 }

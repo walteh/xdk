@@ -7,6 +7,7 @@
 
 import Foundation
 import Logging
+import ServiceContextModule
 
 public func Log(_ level: Logging.Logger.Level = .info, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> LogEvent {
 	return LogEvent(level, __file: __file, __function: __function, __line: __line)
@@ -18,17 +19,17 @@ public extension x {
 	}
 }
 
-public extension Context {
+public extension ServiceContext {
 	var logger: Logging.Logger {
 		return self[LoggerContextKey.self] ?? xlogger
 	}
 }
 
-private struct LoggerContextKey: ContextKey {
+private struct LoggerContextKey: ServiceContextKey {
 	typealias Value = Logger
 }
 
-private struct LoggerMetadataContextKey: ContextKey {
+private struct LoggerMetadataContextKey: ServiceContextKey {
 	typealias Value = Logger.Metadata
 }
 
