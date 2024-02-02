@@ -5,6 +5,7 @@
 //  Created by walter on 3/3/23.
 //
 
+import AWSSSO
 import AWSSSOOIDC
 import XCTest
 import XDK
@@ -32,25 +33,31 @@ class big_tests: XCTestCase {
 
 		var err: Error? = nil
 
-		guard let client = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: "us-east-1") }).to(&err) else {
+		guard let oidc = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: "us-east-1") }).to(&err) else {
+			XCTFail("failed to create client" + (err?.localizedDescription ?? "unknown error"))
+			return
+		}
+
+		guard let sso = Result.X({ try AWSSSO.SSOClient(region: "us-east-1") }).to(&err) else {
 			XCTFail("failed to create client" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}
 
 		var promptURL: XDKAWSSSO.UserSignInData? = nil
-		guard let resp = await XDKAWSSSO.signInWithSSO(awsssoAPI: client, storageAPI: storageAPI, ssoRegion: selectedRegion, startURL: startURI) { url in
+		guard let resp = await XDKAWSSSO.signin(ssooidc: oidc, storageAPI: storageAPI, ssoRegion: selectedRegion, startURL: startURI) { url in
 			promptURL = url
 		}.to(&err) else {
 			XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}
 
+		let role = RoleInfo(roleName: "admin", accountID: "324802912585")
+
+		let account = AccountInfo(accountID: "324802912585", accountName: "hi", roles: [role], accountEmail: "xyz@xyz.com")
+
 		let sess = AWSSSOUserSession(
-			account: AccountRole(accountID: "324802912585", accountName: "hi", role: "AWSAdministratorAccess", accountEmail: "xyz@xyz.com")
-			// region: "us-east-1",
-			// service: "s3",
-			// resource: nil,
-			// accessToken: resp
+			storageAPI: storageAPI,
+			account: account
 		)
 
 		guard let _ = await sess.refresh(accessToken: resp, storageAPI: storageAPI).to(&err) else {
@@ -60,7 +67,7 @@ class big_tests: XCTestCase {
 
 		XCTAssertNotNil(promptURL)
 
-		guard let url = await XDKAWSSSO.generateAWSConsoleURL(session: sess, storageAPI: storageAPI).to(&err) else {
+		guard let url = await XDKAWSSSO.generateAWSConsoleURL(sso: sso, account: account, managedRegion: sess, storageAPI: storageAPI, accessToken: resp).to(&err) else {
 			XCTFail("failed to load console" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}

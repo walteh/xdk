@@ -32,7 +32,7 @@ public class Viewer: NSObject, ObservableObject, WKNavigationDelegate {
 		self.rebuildURL = {
 			var err: Error? = nil
 
-			guard let url = await XDKAWSSSO.generateAWSConsoleURL(account: session.currentAccount!, managedRegion: session, storageAPI: storageAPI, accessToken: session.accessToken!).to(&err) else {
+			guard let url = await XDKAWSSSO.generateAWSConsoleURL(sso: session.ssoClient!, account: session.currentAccount!, managedRegion: session, storageAPI: storageAPI, accessToken: session.accessToken!).to(&err) else {
 				XDK.Log(.error).err(err).send("error generating console url")
 				return
 			}
@@ -79,6 +79,7 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 	public var accessTokenPublisher: Published<SecureAWSSSOAccessToken?>.Publisher { self.$accessToken }
 	@Published public var accessToken: SecureAWSSSOAccessToken? = nil
 	@Published public var ssoClient: SSOClient? = nil
+	@Published public var ssooidcClient: SSOOIDCClient? = nil
 	@Published public var accountsList: AccountInfoList = .init(accounts: [])
 
 	@Published public var accounts: [AccountInfo: Viewer] = [:]
@@ -122,6 +123,10 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 			return .failure(x.error("error updating sso client", root: err))
 		}
 
+		guard let ssooidcClient = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: accessToken.region) }).to(&err) else {
+			return .failure(x.error("error updating ssooidc client", root: err))
+		}
+
 		guard let accounts = await getAccountsRoleList(storage: storageAPI, client, accessToken: accessToken).to(&err) else {
 			return .failure(x.error("error updating accounts", root: err))
 		}
@@ -129,6 +134,7 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 		DispatchQueue.main.async {
 			self.accessToken = accessToken
 			self.ssoClient = client
+			self.ssooidcClient = ssooidcClient
 			self.accountsList = accounts
 		}
 
@@ -174,15 +180,11 @@ public struct UserSignInData: Equatable {
 	}
 }
 
-public func generateAWSConsoleURL(account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retry: Bool = false) async -> Result<URL, Error> {
+public func generateAWSConsoleURL(sso client: AWSSSO.SSOClientProtocol, account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retry: Bool = false) async -> Result<URL, Error> {
 	var err: Error? = nil
 
 	guard let role = account.role else {
 		return .failure(x.error("role not set"))
-	}
-
-	guard let ssoClient = Result.X({ try AWSSSO.SSOClient(region: accessToken.region) }).to(&err) else {
-		return .failure(x.error("session.ssoClient not set"))
 	}
 
 	// guard let accessToken = session.accessToken else {
@@ -192,7 +194,7 @@ public func generateAWSConsoleURL(account: AccountInfo, managedRegion: ManagedRe
 	let region = managedRegion.region ?? accessToken.region
 	let service = managedRegion.service ?? ""
 
-	guard let creds = await getRoleCredentials(ssoClient, storageAPI: storageAPI, accessToken: accessToken, account: role).to(&err) else {
+	guard let creds = await getRoleCredentials(client, storageAPI: storageAPI, accessToken: accessToken, account: role).to(&err) else {
 		return .failure(x.error("error fetching role creds", root: err))
 	}
 
@@ -204,7 +206,7 @@ public func generateAWSConsoleURL(account: AccountInfo, managedRegion: ManagedRe
 
 			XDK.Log(.debug).send("retrying generateAWSConsoleURL")
 
-			return await generateAWSConsoleURL(account: account, managedRegion: managedRegion, storageAPI: storageAPI, accessToken: accessToken, retry: true)
+			return await generateAWSConsoleURL(sso: client, account: account, managedRegion: managedRegion, storageAPI: storageAPI, accessToken: accessToken, retry: true)
 		}
 
 		return .failure(XDK.Err("error fetching signInToken", root: err))

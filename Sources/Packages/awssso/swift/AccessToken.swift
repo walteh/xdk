@@ -115,7 +115,7 @@ public func signInFromStorage(storageAPI: some XDK.StorageAPI) -> Result<SecureA
 	return .success(nil)
 }
 
-public func signInWithSSO(storageAPI: some XDK.StorageAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAWSSSOAccessToken, Error> {
+public func signin(ssooidc client: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI: some XDK.StorageAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAWSSSOAccessToken, Error> {
 	var err: Error? = nil
 
 	guard let token = signInFromStorage(storageAPI: storageAPI).to(&err) else {
@@ -124,10 +124,6 @@ public func signInWithSSO(storageAPI: some XDK.StorageAPI, ssoRegion: String, st
 
 	if let token {
 		return .success(token)
-	}
-
-	guard let client = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: ssoRegion) }).to(&err) else {
-		return .failure(XDK.Err("probolem creating sso oidc client", root: err))
 	}
 
 	guard let registration = await registerClientIfNeeded(awsssoAPI: client, storageAPI: storageAPI).to(&err) else {

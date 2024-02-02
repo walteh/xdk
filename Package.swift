@@ -23,7 +23,7 @@ let mainTarget = Target.target(
 	path: "./Sources/XDKModule"
 )
 
-let swiftLogs = Git(module: "Logging", version: "1.5.4", url: "https://github.com/apple/swift-log.git").apply()
+let swiftLogs = Git(module: "Logging", version: "1.0.0", url: "https://github.com/apple/swift-log.git").apply()
 // let swiftAtomics = Git(module: "Atomics", version: "1.2.0", url: "https://github.com/apple/swift-atomics.git").apply()
 let awssdk = Git(module: "AWS", version: "0.34.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply()
 let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply()
@@ -62,7 +62,7 @@ class Git {
 	init(module: String, version: String, url: String) {
 		self.name = url.split(separator: "/").last!.replacingOccurrences(of: ".git", with: "")
 		self.module = module
-		self.product = .package(url: url, exact: Version(stringLiteral: version))
+		self.product = .package(url: url, from: Version(stringLiteral: version))
 	}
 
 	init(name: String, module: String, product: Package.Dependency) {
