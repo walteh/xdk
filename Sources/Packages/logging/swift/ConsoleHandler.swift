@@ -13,10 +13,6 @@ import XDK
 public struct ConsoleLogger: LogHandler {
 	public let label: String
 
-	public let fileLogger: FileDestination
-
-	public let url: URL
-
 	/// See `LogHandler.metadata`.
 	public var metadata: Logger.Metadata
 
@@ -25,6 +21,23 @@ public struct ConsoleLogger: LogHandler {
 
 	/// See `LogHandler.logLevel`.
 	public var logLevel: Logger.Level
+
+	struct OutputFile {
+		let url: URL
+		public let fileLogger: FileDestination
+
+		init() {
+			let url: URL = .cachesDirectory.appending(component: "\(Bundle.main.bundleIdentifier ?? "unknown").logs.log")
+			self.url = url
+			self.fileLogger = FileDestination(logFileURL: url)
+
+			print("\n================ to view logs =================\n" +
+				"tail -f -n100 \(self.url.relativeString.replacingOccurrences(of: "file://", with: ""))\n" +
+				"===================================================")
+		}
+	}
+
+	static let outputFile = OutputFile()
 
 	/// The conosle that the messages will get logged to.
 	/// Creates a new `ConsoleLogger` instance.
@@ -40,19 +53,6 @@ public struct ConsoleLogger: LogHandler {
 		self.metadata = metadata
 		self.logLevel = level
 		self.metadataProvider = metadataProvider
-		let url: URL = .cachesDirectory.appending(component: "\(Bundle.main.bundleIdentifier ?? "unknown").logs.log")
-		self.url = url
-		self.fileLogger = .init(logFileURL: url)
-
-		var stream = ""
-
-		stream += "\n"
-		stream += "=================== to view logs ==================\n"
-		stream += "tail -f -n100 \(url.relativeString.replacingOccurrences(of: "file://", with: ""))\n"
-		stream += "===================================================\n"
-		stream += "\n"
-
-		print(stream)
 	}
 
 	/// See `LogHandler[metadataKey:]`.
@@ -106,7 +106,7 @@ public struct ConsoleLogger: LogHandler {
 			text += "\n" + err.dump() + "\n"
 		}
 
-		_ = self.fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
+		_ = ConsoleLogger.outputFile.fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
 	}
 }
 

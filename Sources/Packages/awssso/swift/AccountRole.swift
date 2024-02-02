@@ -11,26 +11,65 @@ import Foundation
 import WebKit
 import XDK
 
-public class AccountRole: NSObject, NSSecureCoding {
+public class RoleInfo: NSObject, NSSecureCoding {
+	public let roleName: String
 	public let accountID: String
-	public let role: String
+
+	init(_ aws: AWSSSO.SSOClientTypes.RoleInfo) {
+		self.roleName = aws.roleName ?? ""
+		self.accountID = aws.accountId ?? ""
+	}
+
+	public init(roleName: String, accountID: String) {
+		self.roleName = roleName
+		self.accountID = accountID
+	}
+
+	var uniqueID: String {
+		return "\(self.accountID)_\(self.roleName)"
+	}
+
+	// MARK: - NSSecureCoding
+
+	public static var supportsSecureCoding: Bool = true
+
+	public required init?(coder: NSCoder) {
+		self.roleName = coder.decodeObject(of: NSString.self, forKey: "roleName") as String? ?? ""
+		self.accountID = coder.decodeObject(of: NSString.self, forKey: "accountID") as String? ?? ""
+	}
+
+	public func encode(with coder: NSCoder) {
+		coder.encode(self.roleName, forKey: "roleName")
+		coder.encode(self.accountID, forKey: "accountID")
+	}
+}
+
+public class AccountInfo: NSObject, NSSecureCoding, ObservableObject {
+	public let accountID: String
+	public let roles: [RoleInfo]
+	@Published public var role: RoleInfo?
 	public let accountName: String
 	public let accountEmail: String
 
-	var uniqueId: String {
-		return "\(self.accountID) - \(self.role)"
+	// this doesn't need to be here, but we can use it centralize the region
+	// @Published public var region: String?
+
+	var currentRoleUniqueId: String {
+		return "\(self.accountID)_\(self.role?.roleName ?? "none")"
 	}
 
-	public init(accountID: String, accountName: String, role: String, accountEmail: String) {
+	public init(accountID: String, accountName: String, roles: [RoleInfo], accountEmail: String) {
 		self.accountID = accountID
-		self.role = role
 		self.accountName = accountName
 		self.accountEmail = accountEmail
+		self.roles = roles
+		self.role = roles.first
 	}
 
-	init(role: AWSSSO.SSOClientTypes.RoleInfo, account: AWSSSO.SSOClientTypes.AccountInfo) {
+	init(role: [AWSSSO.SSOClientTypes.RoleInfo], account: AWSSSO.SSOClientTypes.AccountInfo) {
 		self.accountID = account.accountId ?? ""
-		self.role = role.roleName ?? ""
+		self.roles = role.map { RoleInfo($0) }
+		self.role = self.roles.first ?? nil
 		self.accountName = account.accountName ?? ""
 		self.accountEmail = account.emailAddress ?? ""
 	}
@@ -42,7 +81,8 @@ public class AccountRole: NSObject, NSSecureCoding {
 
 	public required init?(coder: NSCoder) {
 		self.accountID = coder.decodeObject(of: NSString.self, forKey: "accountID") as String? ?? ""
-		self.role = coder.decodeObject(of: NSString.self, forKey: "role") as? String ?? ""
+		self.role = coder.decodeObject(of: [RoleInfo.self], forKey: "role") as? RoleInfo ?? nil
+		self.roles = coder.decodeObject(of: [NSArray.self, RoleInfo.self], forKey: "roles") as? [RoleInfo] ?? []
 		self.accountName = coder.decodeObject(of: NSString.self, forKey: "accountName") as? String ?? ""
 		self.accountEmail = coder.decodeObject(of: NSString.self, forKey: "accountEmail") as? String ?? ""
 	}
@@ -50,29 +90,29 @@ public class AccountRole: NSObject, NSSecureCoding {
 	public func encode(with coder: NSCoder) {
 		coder.encode(self.accountID, forKey: "accountID")
 		coder.encode(self.role, forKey: "role")
+		coder.encode(self.roles as NSArray, forKey: "roles")
 		coder.encode(self.accountName, forKey: "accountName")
 		coder.encode(self.accountEmail, forKey: "accountEmail")
 	}
 }
 
-//  make an account role list struct with the right array protocols
-public class AccountRoleList: NSObject, Sequence, NSSecureCoding {
-	public var roles: [AccountRole]
+public class RoleInfoList: NSObject, Sequence, NSSecureCoding {
+	public var roles: [RoleInfo]
 
-	public init(roles: [AccountRole]) {
+	public init(roles: [RoleInfo]) {
 		self.roles = roles
 	}
 
-	public func makeIterator() -> IndexingIterator<[AccountRole]> {
+	public func makeIterator() -> IndexingIterator<[RoleInfo]> {
 		return self.roles.makeIterator()
 	}
 
 	// MARK: - NSSecureCoding
 
-	public static var supportsSecureCoding: Bool = true
+	public static var supportsSecureCoding = true
 
 	public required init?(coder: NSCoder) {
-		guard let decodedArray = coder.decodeObject(of: [NSArray.self, AccountRole.self], forKey: "roles") as? [AccountRole] else {
+		guard let decodedArray = coder.decodeObject(of: [NSArray.self, RoleInfo.self], forKey: "roles") as? [RoleInfo] else {
 			return nil
 		}
 		self.roles = decodedArray
@@ -83,6 +123,33 @@ public class AccountRoleList: NSObject, Sequence, NSSecureCoding {
 	}
 }
 
+public class AccountInfoList: NSObject, Sequence, NSSecureCoding {
+	public var accounts: [AccountInfo]
+
+	public init(accounts: [AccountInfo]) {
+		self.accounts = accounts
+	}
+
+	public func makeIterator() -> IndexingIterator<[AccountInfo]> {
+		return self.accounts.makeIterator()
+	}
+
+	// MARK: - NSSecureCoding
+
+	public static var supportsSecureCoding = true
+
+	public required init?(coder: NSCoder) {
+		guard let decodedArray = coder.decodeObject(of: [NSArray.self, AccountInfo.self], forKey: "accounts") as? [AccountInfo] else {
+			return nil
+		}
+		self.accounts = decodedArray
+	}
+
+	public func encode(with coder: NSCoder) {
+		coder.encode(self.accounts as NSArray, forKey: "accounts")
+	}
+}
+
 func createWebView() -> WKWebView {
 	let webViewConfig = WKWebViewConfiguration()
 	webViewConfig.websiteDataStore = WKWebsiteDataStore.nonPersistent()
@@ -90,66 +157,15 @@ func createWebView() -> WKWebView {
 	return webView
 }
 
-public class AWSSSOAccountRoleSession: ObservableObject {
-	let accountRole: AccountRole
-
-	@Published public var region: String? = nil
-	@Published public var resource: String? = nil
-
-	public let webview = createWebView()
-
-	public init(account: AccountRole) {
-		self.accountRole = account
-	}
-
-	func configureCookies(accessToken: SecureAWSSSOAccessToken) -> Result<Void, Error> {
-		if let cookie = HTTPCookie(properties: [
-			.domain: "aws.amazon.com",
-			.path: "/",
-			.name: "AWSALB", // Adjust the name based on the actual cookie name required by AWS
-			.value: accessToken.accessToken,
-			.secure: true,
-			.expires: accessToken.expiresAt,
-		]) {
-			DispatchQueue.main.async {
-				self.webview.configuration.websiteDataStore.httpCookieStore.setCookie(cookie)
-			}
-			return .success(())
-		} else {
-			return .failure(x.error("error creating cookie"))
-		}
-	}
-
-	public func goto(_ userSession: AWSSSOUserSession, storageAPI: any XDK.StorageAPI) async -> Result<Void, Error> {
-		var err: Error? = nil
-
-		guard let url = await XDKAWSSSO.generateAWSConsoleURL(session: userSession, storageAPI: storageAPI).to(&err) else {
-			return .failure(x.error("error generating console url", root: err))
-		}
-
-		if let accessToken = userSession.accessToken {
-			guard let _ = self.configureCookies(accessToken: accessToken).to(&err) else {
-				return .failure(x.error("error configuring cookies", root: err))
-			}
-
-			XDK.Log(.info).info("url", url).send("attempting to send webview to new place")
-
-			await self.webview.load(URLRequest(url: url))
-		}
-
-		return .success(())
-	}
-}
-
 func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> {
-	return XDK.Delete(using: storage, AccountRoleList.self)
+	return XDK.Delete(using: storage, AccountInfoList.self)
 }
 
-func getAccountsRoleList(storage: XDK.StorageAPI, _ client: AWSSSO.SSOClient, accessToken: SecureAWSSSOAccessToken) async -> Result<AccountRoleList, Error> {
+func getAccountsRoleList(storage: XDK.StorageAPI, _ client: AWSSSO.SSOClient, accessToken: SecureAWSSSOAccessToken) async -> Result<AccountInfoList, Error> {
 	var err: Error? = nil
 
 	// check storage
-	guard let cached = XDK.Read(using: storage, AccountRoleList.self).to(&err) else {
+	guard let cached = XDK.Read(using: storage, AccountInfoList.self).to(&err) else {
 		return .failure(x.error("error loading accounts from storage", root: err))
 	}
 
@@ -165,7 +181,7 @@ func getAccountsRoleList(storage: XDK.StorageAPI, _ client: AWSSSO.SSOClient, ac
 		return .failure(x.error("response.accountList does not exist"))
 	}
 
-	let accounts = AccountRoleList(roles: [])
+	let list = AccountInfoList(accounts: [])
 
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {
@@ -173,33 +189,31 @@ func getAccountsRoleList(storage: XDK.StorageAPI, _ client: AWSSSO.SSOClient, ac
 			return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!).info("accountName", account.accountName!))
 		}
 		for role in roles {
-			accounts.roles.append(role)
+			list.accounts.append(role)
 		}
 	}
 
 	// save to storage
-	guard let _ = XDK.Write(using: storage, accounts).to(&err) else {
+	guard let _ = XDK.Write(using: storage, list).to(&err) else {
 		return .failure(x.error("error saving accounts to storage", root: err))
 	}
 
-	return .success(accounts)
+	return .success(list)
 }
 
-func listRolesForAccount(_ client: AWSSSO.SSOClient, accessToken: SecureAWSSSOAccessToken, account: AWSSSO.SSOClientTypes.AccountInfo) async -> Result<[AccountRole], Error> {
+func listRolesForAccount(_ client: AWSSSO.SSOClient, accessToken: SecureAWSSSOAccessToken, account: AWSSSO.SSOClientTypes.AccountInfo) async -> Result<[AccountInfo], Error> {
 	// List roles for the given account
 	let _rolesResponse = await Result.X {
 		try await client.listAccountRoles(input: .init(accessToken: accessToken.accessToken, accountId: account.accountId!))
 	}
 	guard let rolesResponse = _rolesResponse.value else { return .failure(_rolesResponse.error!) }
 
-	var roles = [AccountRole]()
+	var list = [AccountInfo]()
 	if let roleList = rolesResponse.roleList {
-		for role in roleList {
-			roles.append(AccountRole(role: role, account: account))
-		}
+		list.append(AccountInfo(role: roleList, account: account))
 	} else {
-		return .failure(x.error("No roles found for account").info("accountID", account.accountId).info("accountName", account.accountName))
+		return .failure(x.error("No roles found for account").info("accountID", account.accountId ?? "nil").info("accountName", account.accountName ?? "nil"))
 	}
 
-	return .success(roles)
+	return .success(list)
 }
