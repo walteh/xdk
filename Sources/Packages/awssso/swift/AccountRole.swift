@@ -161,7 +161,7 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 	return XDK.Delete(using: storage, AccountInfoList.self)
 }
 
-func getAccountsRoleList(storage: XDK.StorageAPI, _ client: any AWSSSO.SSOClientProtocol, accessToken: SecureAWSSSOAccessToken) async -> Result<AccountInfoList, Error> {
+func getAccountsRoleList(client: AWSClient, storage: XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken) async -> Result<AccountInfoList, Error> {
 	var err: Error? = nil
 
 	// check storage
@@ -173,7 +173,7 @@ func getAccountsRoleList(storage: XDK.StorageAPI, _ client: any AWSSSO.SSOClient
 		return .success(cached)
 	}
 
-	guard let response = await Result.X({ try await client.listAccounts(input: .init(accessToken: accessToken.accessToken)) }).to(&err) else {
+	guard let response = await client.listAccounts(input: .init(accessToken: accessToken.accessToken)).to(&err) else {
 		return .failure(x.error("error fetching accounts", root: err))
 	}
 
@@ -185,7 +185,7 @@ func getAccountsRoleList(storage: XDK.StorageAPI, _ client: any AWSSSO.SSOClient
 
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {
-		guard let roles = await listRolesForAccount(client, accessToken: accessToken, account: account).to(&err) else {
+		guard let roles = await listRolesForAccount(client: client, accessToken: accessToken, account: account).to(&err) else {
 			return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!).info("accountName", account.accountName!))
 		}
 		for role in roles {
@@ -201,12 +201,13 @@ func getAccountsRoleList(storage: XDK.StorageAPI, _ client: any AWSSSO.SSOClient
 	return .success(list)
 }
 
-func listRolesForAccount(_ client: any AWSSSO.SSOClientProtocol, accessToken: SecureAWSSSOAccessToken, account: AWSSSO.SSOClientTypes.AccountInfo) async -> Result<[AccountInfo], Error> {
+func listRolesForAccount(client: AWSClient, accessToken: SecureAWSSSOAccessToken, account: AWSSSO.SSOClientTypes.AccountInfo) async -> Result<[AccountInfo], Error> {
 	// List roles for the given account
-	let _rolesResponse = await Result.X {
-		try await client.listAccountRoles(input: .init(accessToken: accessToken.accessToken, accountId: account.accountId!))
+	var err: Error? = nil
+
+	guard let rolesResponse = await client.listAccountRoles(input: .init(accessToken: accessToken.accessToken, accountId: account.accountId!)).err(&err) else {
+		return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!).info("accountName", account.accountName!))
 	}
-	guard let rolesResponse = _rolesResponse.value else { return .failure(_rolesResponse.error!) }
 
 	var list = [AccountInfo]()
 	if let roleList = rolesResponse.roleList {

@@ -78,7 +78,7 @@ public class Viewer: NSObject, ObservableObject, WKNavigationDelegate {
 public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 	public var accessTokenPublisher: Published<SecureAWSSSOAccessToken?>.Publisher { self.$accessToken }
 	@Published public var accessToken: SecureAWSSSOAccessToken? = nil
-	@Published public var ssoClient: SSOClient? = nil
+	@Published public var awsClient: AWSClient
 	@Published public var ssooidcClient: SSOOIDCClient? = nil
 	@Published public var accountsList: AccountInfoList = .init(accounts: [])
 
@@ -107,7 +107,7 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 		return wv
 	}
 
-	public init(storageAPI: any XDK.StorageAPI, account: AccountInfo? = nil) {
+	public init(storageAPI: any XDK.StorageAPI, account: AccountInfo? = nil) throws {
 		self.currentAccount = account
 		self.storageAPI = storageAPI
 	}
@@ -119,6 +119,10 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 			return .failure(x.error("accessToken not set"))
 		}
 
+		guard let accounts = await getAccountsRoleList(client: client, storage: storageAPI, accessToken: accessToken).to(&err) else {
+			return .failure(x.error("error updating accounts", root: err))
+		}
+
 		guard let client = Result.X({ try AWSSSO.SSOClient(region: accessToken.region) }).to(&err) else {
 			return .failure(x.error("error updating sso client", root: err))
 		}
@@ -127,19 +131,38 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 			return .failure(x.error("error updating ssooidc client", root: err))
 		}
 
-		guard let accounts = await getAccountsRoleList(storage: storageAPI, client, accessToken: accessToken).to(&err) else {
-			return .failure(x.error("error updating accounts", root: err))
-		}
-
 		DispatchQueue.main.async {
 			self.accessToken = accessToken
-			self.ssoClient = client
-			self.ssooidcClient = ssooidcClient
 			self.accountsList = accounts
 		}
 
 		return .success(())
 	}
+
+	// 	public func initialize(accessToken: SecureAWSSSOAccessToken?, storageAPI: XDK.StorageAPI)  -> Result<Void, Error> {
+	// 	var err: Error? = nil
+
+	// 	guard let accessToken = accessToken ?? self.accessToken else {
+	// 		return .failure(x.error("accessToken not set"))
+	// 	}
+
+	// 	guard let client = Result.X({ try AWSSSO.SSOClient(region: accessToken.region) }).to(&err) else {
+	// 		return .failure(x.error("error updating sso client", root: err))
+	// 	}
+
+	// 	guard let ssooidcClient = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: accessToken.region) }).to(&err) else {
+	// 		return .failure(x.error("error updating ssooidc client", root: err))
+	// 	}
+
+	// 	DispatchQueue.main.async {
+	// 		self.accessToken = accessToken
+	// 		self.ssoClient = client
+	// 		self.ssooidcClient = ssooidcClient
+	// 		self.accountsList = accounts
+	// 	}
+
+	// 	return .success(())
+	// }
 
 	private func buildSSOClient(accessToken: SecureAWSSSOAccessToken) async -> Result<AWSSSO.SSOClient, Error> {
 		var err: Error? = nil
@@ -180,7 +203,7 @@ public struct UserSignInData: Equatable {
 	}
 }
 
-public func generateAWSConsoleURL(sso client: AWSSSO.SSOClientProtocol, account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retry: Bool = false) async -> Result<URL, Error> {
+public func generateAWSConsoleURL(client: AWSClient, account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retry: Bool = false) async -> Result<URL, Error> {
 	var err: Error? = nil
 
 	guard let role = account.role else {
@@ -206,7 +229,7 @@ public func generateAWSConsoleURL(sso client: AWSSSO.SSOClientProtocol, account:
 
 			XDK.Log(.debug).send("retrying generateAWSConsoleURL")
 
-			return await generateAWSConsoleURL(sso: client, account: account, managedRegion: managedRegion, storageAPI: storageAPI, accessToken: accessToken, retry: true)
+			return await generateAWSConsoleURL(client: client, account: account, managedRegion: managedRegion, storageAPI: storageAPI, accessToken: accessToken, retry: true)
 		}
 
 		return .failure(XDK.Err("error fetching signInToken", root: err))

@@ -23,7 +23,7 @@ let mainTarget = Target.target(
 	path: "./Sources/XDKModule"
 )
 
-let swiftLogs = Git(module: "Logging", version: "1.0.0", url: "https://github.com/apple/swift-log.git").apply()
+let swiftLogs = Git(module: "Logging", version: "1.5.4", url: "https://github.com/apple/swift-log.git").apply()
 // let swiftAtomics = Git(module: "Atomics", version: "1.2.0", url: "https://github.com/apple/swift-atomics.git").apply()
 let awssdk = Git(module: "AWS", version: "0.34.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply()
 let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply()
@@ -44,7 +44,7 @@ let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply()
 let moc = Local(name: "MOC").with(deps: [x, keychain]).apply()
 // let mqtt = Local(name: "MQTT").with( deps: [x, byte, appsession]).apply()
 let webauthn = Local(name: "Webauthn").with(deps: [x, ecdsa, byte, hex, big, keychain]).apply()
-let awssso = Local(name: "AWSSSO").with(deps: [x, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply()
+let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply()
 
 func complete() {
 	package.targets.append(mainTarget)
@@ -62,7 +62,7 @@ class Git {
 	init(module: String, version: String, url: String) {
 		self.name = url.split(separator: "/").last!.replacingOccurrences(of: ".git", with: "")
 		self.module = module
-		self.product = .package(url: url, from: Version(stringLiteral: version))
+		self.product = .package(url: url, exact: Version(stringLiteral: version))
 	}
 
 	init(name: String, module: String, product: Package.Dependency) {

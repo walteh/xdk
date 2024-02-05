@@ -7,14 +7,25 @@
 
 import AWSSSO
 import AWSSSOOIDC
+import Logging
 import XCTest
 import XDK
-import XDKKeychain
+import XDKLogging
 
 @testable import XDKAWSSSO
 
 class big_tests: XCTestCase {
 	override func setUpWithError() throws {
+		LoggingSystem.bootstrap { label in
+			var level: Logger.Level = .trace
+			switch label {
+			case "URLSessionHTTPClient", "SSOClient", "SSOOIDCClient":
+				level = .error
+			default:
+				level = .trace
+			}
+			return XDKLogging.ConsoleLogger(label: label, level: level, metadata: .init())
+		}
 		// Put setup code here. This method is called before the invocation of each test method in the class.
 	}
 
@@ -23,6 +34,8 @@ class big_tests: XCTestCase {
 	}
 
 	func testExample() async throws {
+
+
 		let storageAPI = XDK.InMemoryStorage() as StorageAPI
 		let selectedRegion = "us-east-1"
 

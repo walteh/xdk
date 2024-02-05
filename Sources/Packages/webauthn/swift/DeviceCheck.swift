@@ -13,7 +13,6 @@ import Foundation
 import os
 
 import XDK
-import XDKAppSession
 
 struct AssertionResult {
 	let challenge: String

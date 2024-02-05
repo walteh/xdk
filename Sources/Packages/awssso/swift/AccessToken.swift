@@ -10,35 +10,12 @@ import Combine
 import Foundation
 import XDK
 
-public class SecureAWSSSOClientRegistrationInfo: NSObject, NSSecureCoding {
-	public static var supportsSecureCoding: Bool = true
-
-	let clientID: String
-	let clientSecret: String
-
-	init(clientID: String, clientSecret: String) {
-		self.clientID = clientID
-		self.clientSecret = clientSecret
-	}
-
-	// MARK: - NSSecureCoding
-
-	public required init?(coder: NSCoder) {
-		self.clientID = coder.decodeObject(forKey: "clientId") as? String ?? ""
-		self.clientSecret = coder.decodeObject(forKey: "clientSecret") as? String ?? ""
-	}
-
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.clientID, forKey: "clientId")
-		coder.encode(self.clientSecret, forKey: "clientSecret")
-	}
-
-	static func fromAWS(_ input: AWSSSOOIDC.RegisterClientOutput) -> Result<SecureAWSSSOClientRegistrationInfo, Error> {
-		if let clientID = input.clientId, let clientSecret = input.clientSecret {
-			return .success(SecureAWSSSOClientRegistrationInfo(clientID: clientID, clientSecret: clientSecret))
-		}
-		return .failure(x.error("missing values"))
-	}
+public protocol AccessToken {
+	var accessToken: String { get }
+	var refreshToken: String { get }
+	var expiresAt: Date { get }
+	var region: String { get }
+	var startURL: URL { get }
 }
 
 public class SecureAWSSSOAccessToken: NSObject, NSSecureCoding {
@@ -99,10 +76,10 @@ public class SecureAWSSSOAccessToken: NSObject, NSSecureCoding {
 	}
 }
 
-public func signInFromStorage(storageAPI: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessToken?, Error> {
+public func signin(storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessToken?, Error> {
 	var err: Error?
 
-	guard let current = XDK.Read(using: storageAPI, SecureAWSSSOAccessToken.self).to(&err) else {
+	guard let current = XDK.Read(using: storage, SecureAWSSSOAccessToken.self).to(&err) else {
 		return .failure(x.error("error loading access token", root: err))
 	}
 
