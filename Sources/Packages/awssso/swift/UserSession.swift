@@ -32,7 +32,12 @@ public class Viewer: NSObject, ObservableObject, WKNavigationDelegate {
 		self.rebuildURL = {
 			var err: Error? = nil
 
-			guard let url = await XDKAWSSSO.generateAWSConsoleURL(sso: session.ssoClient!, account: session.currentAccount!, managedRegion: session, storageAPI: storageAPI, accessToken: session.accessToken!).to(&err) else {
+			guard let awsClient = XDKAWSSSO.newAWSClient(ssoRegion: session.accessToken!.region).to(&err) else {
+				XDK.Log(.error).err(err).send("error generating console url")
+				return
+			}
+
+			guard let url = await XDKAWSSSO.generateAWSConsoleURL(client: awsClient, account: session.currentAccount!, managedRegion: session, storageAPI: storageAPI, accessToken: session.accessToken!).to(&err) else {
 				XDK.Log(.error).err(err).send("error generating console url")
 				return
 			}
@@ -78,8 +83,8 @@ public class Viewer: NSObject, ObservableObject, WKNavigationDelegate {
 public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 	public var accessTokenPublisher: Published<SecureAWSSSOAccessToken?>.Publisher { self.$accessToken }
 	@Published public var accessToken: SecureAWSSSOAccessToken? = nil
-	@Published public var awsClient: AWSClient
-	@Published public var ssooidcClient: SSOOIDCClient? = nil
+//	@Published public var awsClient: AWSClient
+//	@Published public var ssooidcClient: SSOOIDCClient? = nil
 	@Published public var accountsList: AccountInfoList = .init(accounts: [])
 
 	@Published public var accounts: [AccountInfo: Viewer] = [:]
@@ -107,7 +112,7 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 		return wv
 	}
 
-	public init(storageAPI: any XDK.StorageAPI, account: AccountInfo? = nil) throws {
+	public init(storageAPI: any XDK.StorageAPI, account: AccountInfo? = nil) {
 		self.currentAccount = account
 		self.storageAPI = storageAPI
 	}
@@ -119,7 +124,11 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 			return .failure(x.error("accessToken not set"))
 		}
 
-		guard let accounts = await getAccountsRoleList(client: client, storage: storageAPI, accessToken: accessToken).to(&err) else {
+		guard let awsClient = XDKAWSSSO.newAWSClient(ssoRegion: accessToken.region).to(&err) else {
+			return .failure(x.error("creating aws client", root: err))
+		}
+
+		guard let accounts = await getAccountsRoleList(client: awsClient, storage: storageAPI, accessToken: accessToken).to(&err) else {
 			return .failure(x.error("error updating accounts", root: err))
 		}
 
@@ -131,13 +140,17 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 			return .failure(x.error("error updating ssooidc client", root: err))
 		}
 
+
 		DispatchQueue.main.async {
 			self.accessToken = accessToken
 			self.accountsList = accounts
+//			self.ssooidcClient = ssooidcClient
 		}
 
 		return .success(())
 	}
+
+
 
 	// 	public func initialize(accessToken: SecureAWSSSOAccessToken?, storageAPI: XDK.StorageAPI)  -> Result<Void, Error> {
 	// 	var err: Error? = nil
@@ -201,6 +214,16 @@ public struct UserSignInData: Equatable {
 	static func fromAWS(_ input: AWSSSOOIDC.StartDeviceAuthorizationOutput) -> UserSignInData {
 		return UserSignInData(activationURL: URL(string: input.verificationUri!)!, activationURLWithCode: URL(string: input.verificationUriComplete!)!, code: input.deviceCode!)
 	}
+}
+
+public func buildSSOOIDCClient(region: String) async -> Result<AWSSSOOIDC.SSOOIDCClient, Error> {
+	var err: Error? = nil
+
+	guard let client = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: region) }).to(&err) else {
+		return .failure(x.error("error creating client", root: err))
+	}
+
+	return .success(client)
 }
 
 public func generateAWSConsoleURL(client: AWSClient, account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retry: Bool = false) async -> Result<URL, Error> {
@@ -315,11 +338,11 @@ func constructSimpleConsoleURL(region: String, service: String? = nil) -> Result
 	var consoleHomeURL = region.starts(with: "us-gov-") ?
 		"https://console.amazonaws-us-gov.com" :
 		"https://\(region).console.aws.amazon.com"
-
-	if let service {
-		consoleHomeURL = consoleHomeURL + "/\(service.lowercased())/home?region=\(region)"
-	} else {
+	
+	if service == nil || service == "" {
 		consoleHomeURL = consoleHomeURL + "/home?region=\(region)"
+	} else {
+		consoleHomeURL = consoleHomeURL + "/\(service!.lowercased())/home?region=\(region)"
 	}
 
 	guard let url = URL(string: consoleHomeURL) else {

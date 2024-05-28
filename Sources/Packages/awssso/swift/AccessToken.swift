@@ -95,14 +95,14 @@ public func signin(storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessTok
 public func signin(ssooidc client: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI: some XDK.StorageAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAWSSSOAccessToken, Error> {
 	var err: Error? = nil
 
-	guard let token = signInFromStorage(storageAPI: storageAPI).to(&err) else {
+	guard let token = signin(storage: storageAPI).to(&err) else {
 		return .failure(x.error("error loading access token", root: err))
 	}
 
 	if let token {
 		return .success(token)
 	}
-
+	
 	guard let registration = await registerClientIfNeeded(awsssoAPI: client, storageAPI: storageAPI).to(&err) else {
 		return .failure(x.error("error registering client", root: err))
 	}

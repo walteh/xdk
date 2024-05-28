@@ -45,6 +45,10 @@ class AWSSSOClientImpl: AWSClient {
 	}
 }
 
+public func newAWSClient(ssoRegion: String) -> Result<AWSClient, Error> {
+	return Result.X { try AWSSSOClientImpl(ssoRegion: ssoRegion) }
+}
+
 public class SecureAWSSSOClientRegistrationInfo: NSObject, NSSecureCoding {
 	public static var supportsSecureCoding: Bool = true
 
