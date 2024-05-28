@@ -140,7 +140,6 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 			return .failure(x.error("error updating ssooidc client", root: err))
 		}
 
-
 		DispatchQueue.main.async {
 			self.accessToken = accessToken
 			self.accountsList = accounts
@@ -149,8 +148,6 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 
 		return .success(())
 	}
-
-
 
 	// 	public func initialize(accessToken: SecureAWSSSOAccessToken?, storageAPI: XDK.StorageAPI)  -> Result<Void, Error> {
 	// 	var err: Error? = nil

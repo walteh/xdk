@@ -34,8 +34,6 @@ class big_tests: XCTestCase {
 	}
 
 	func testExample() async throws {
-
-
 		let storageAPI = XDK.InMemoryStorage() as StorageAPI
 		let selectedRegion = "us-east-1"
 
@@ -46,7 +44,7 @@ class big_tests: XCTestCase {
 
 		var err: Error? = nil
 
-	    let client: AWSSSOClientImpl = try! AWSSSOClientImpl(ssoRegion: selectedRegion)
+		let client: AWSSSOClientImpl = try! AWSSSOClientImpl(ssoRegion: selectedRegion)
 
 		var promptURL: XDKAWSSSO.UserSignInData? = nil
 		guard let resp = await XDKAWSSSO.signin(client: client, storageAPI: storageAPI, ssoRegion: selectedRegion, startURL: startURI, callback: { url in
