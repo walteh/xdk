@@ -32,7 +32,7 @@ public class Viewer: NSObject, ObservableObject, WKNavigationDelegate {
 		self.rebuildURL = {
 			var err: Error? = nil
 
-			guard let awsClient = XDKAWSSSO.newAWSClient(ssoRegion: session.accessToken!.region).to(&err) else {
+			guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: session.accessToken!.region).to(&err) else {
 				XDK.Log(.error).err(err).send("error generating console url")
 				return
 			}
@@ -124,7 +124,7 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 			return .failure(x.error("accessToken not set"))
 		}
 
-		guard let awsClient = XDKAWSSSO.newAWSClient(ssoRegion: accessToken.region).to(&err) else {
+		guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.region).to(&err) else {
 			return .failure(x.error("creating aws client", root: err))
 		}
 
@@ -226,7 +226,7 @@ public func buildSSOOIDCClient(region: String) async -> Result<AWSSSOOIDC.SSOOID
 	return .success(client)
 }
 
-public func generateAWSConsoleURL(client: AWSClient, account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retry: Bool = false) async -> Result<URL, Error> {
+public func generateAWSConsoleURL(client: AWSSSOSDKProtocolWrapped, account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retry: Bool = false) async -> Result<URL, Error> {
 	var err: Error? = nil
 
 	guard let role = account.role else {
@@ -265,12 +265,12 @@ public func generateAWSConsoleURL(client: AWSClient, account: AccountInfo, manag
 	return .success(consoleHomeURL)
 }
 
-func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<URLRequest, Error> {
+func constructFederationURLRequest(with credentials: RoleCredentials, region: String) -> Result<URLRequest, Error> {
 	var err: Error? = nil
 
 	let federationBaseURL = credentials.stsRegion.starts(with: "us-gov-") ?
 		"https://signin.amazonaws-us-gov.com/federation" :
-		"https://signin.aws.amazon.com/federation"
+		"https://\(region).signin.aws.amazon.com/federation"
 
 	guard let sessionStringJSON = Result.X({ try JSONEncoder().encode([
 		"sessionId": credentials.accessKeyID,
@@ -298,7 +298,7 @@ func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<
 func fetchSignInToken(with credentials: RoleCredentials) async -> Result<String, Error> {
 	var err: Error? = nil
 
-	guard let request = constructFederationURLRequest(with: credentials).to(&err) else {
+	guard let request = constructFederationURLRequest(with: credentials, region: credentials.stsRegion).to(&err) else {
 		return .failure(x.error("error constructing federation url", root: err))
 	}
 
@@ -338,9 +338,9 @@ func constructSimpleConsoleURL(region: String, service: String? = nil) -> Result
 	var consoleHomeURL = region.starts(with: "us-gov-") ?
 		"https://console.amazonaws-us-gov.com" :
 		"https://\(region).console.aws.amazon.com"
-	
+
 	if service == nil || service == "" {
-		consoleHomeURL = consoleHomeURL + "/home?region=\(region)"
+		consoleHomeURL = consoleHomeURL + "/console/home?region=\(region)"
 	} else {
 		consoleHomeURL = consoleHomeURL + "/\(service!.lowercased())/home?region=\(region)"
 	}
@@ -355,7 +355,7 @@ func constructSimpleConsoleURL(region: String, service: String? = nil) -> Result
 func constructLoginURL(with signInToken: String, credentials: RoleCredentials, region: String, service: String?) -> Result<URL, Error> {
 	var err: Error? = nil
 
-	guard let request = constructFederationURLRequest(with: credentials).to(&err) else {
+	guard let request = constructFederationURLRequest(with: credentials, region: region).to(&err) else {
 		return .failure(x.error("error constructing federation url", root: err))
 	}
 

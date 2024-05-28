@@ -161,7 +161,7 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 	return XDK.Delete(using: storage, AccountInfoList.self)
 }
 
-func getAccountsRoleList(client: AWSClient, storage: XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken) async -> Result<AccountInfoList, Error> {
+func getAccountsRoleList(client: AWSSSOSDKProtocolWrapped, storage: XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken) async -> Result<AccountInfoList, Error> {
 	var err: Error? = nil
 
 	// check storage
@@ -201,7 +201,7 @@ func getAccountsRoleList(client: AWSClient, storage: XDK.StorageAPI, accessToken
 	return .success(list)
 }
 
-func listRolesForAccount(client: AWSClient, accessToken: SecureAWSSSOAccessToken, account: AWSSSO.SSOClientTypes.AccountInfo) async -> Result<[AccountInfo], Error> {
+func listRolesForAccount(client: AWSSSOSDKProtocolWrapped, accessToken: SecureAWSSSOAccessToken, account: AWSSSO.SSOClientTypes.AccountInfo) async -> Result<[AccountInfo], Error> {
 	// List roles for the given account
 	var err: Error? = nil
 

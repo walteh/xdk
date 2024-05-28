@@ -86,7 +86,7 @@ func invalidateRoleCredentials(_ storageAPI: some StorageAPI, account: RoleInfo)
 	return .success(true)
 }
 
-func invalidateAndGetRoleCredentials(_ client: any AWSClient, storageAPI: some StorageAPI, accessToken: SecureAWSSSOAccessToken, account: RoleInfo) async -> Result<RoleCredentials, Error> {
+func invalidateAndGetRoleCredentials(_ client: any AWSSSOSDKProtocolWrapped, storageAPI: some StorageAPI, accessToken: SecureAWSSSOAccessToken, account: RoleInfo) async -> Result<RoleCredentials, Error> {
 	var err: Error? = nil
 
 	guard let _ = invalidateRoleCredentials(storageAPI, account: account).to(&err) else {
@@ -96,7 +96,7 @@ func invalidateAndGetRoleCredentials(_ client: any AWSClient, storageAPI: some S
 	return await getRoleCredentials(client, storageAPI: storageAPI, accessToken: accessToken, account: account)
 }
 
-func getRoleCredentials(_ client: any AWSClient, storageAPI: some StorageAPI, accessToken: SecureAWSSSOAccessToken, account: RoleInfo) async -> Result<RoleCredentials, Error> {
+func getRoleCredentials(_ client: any AWSSSOSDKProtocolWrapped, storageAPI: some StorageAPI, accessToken: SecureAWSSSOAccessToken, account: RoleInfo) async -> Result<RoleCredentials, Error> {
 	var err: Error? = nil
 
 	guard let curr = XDK.Read(using: storageAPI, RoleCredentials.self, differentiator: account.uniqueID).to(&err) else {

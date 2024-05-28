@@ -46,20 +46,12 @@ class big_tests: XCTestCase {
 
 		var err: Error? = nil
 
-		guard let oidc = Result.X({ try AWSSSOOIDC.SSOOIDCClient(region: "us-east-1") }).to(&err) else {
-			XCTFail("failed to create client" + (err?.localizedDescription ?? "unknown error"))
-			return
-		}
-
-		guard let sso = Result.X({ try AWSSSO.SSOClient(region: "us-east-1") }).to(&err) else {
-			XCTFail("failed to create client" + (err?.localizedDescription ?? "unknown error"))
-			return
-		}
+	    let client: AWSSSOClientImpl = try! AWSSSOClientImpl(ssoRegion: selectedRegion)
 
 		var promptURL: XDKAWSSSO.UserSignInData? = nil
-		guard let resp = await XDKAWSSSO.signin(ssooidc: oidc, storageAPI: storageAPI, ssoRegion: selectedRegion, startURL: startURI) { url in
+		guard let resp = await XDKAWSSSO.signin(client: client, storageAPI: storageAPI, ssoRegion: selectedRegion, startURL: startURI, callback: { url in
 			promptURL = url
-		}.to(&err) else {
+		}).to(&err) else {
 			XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}
@@ -80,7 +72,7 @@ class big_tests: XCTestCase {
 
 		XCTAssertNotNil(promptURL)
 
-		guard let url = await XDKAWSSSO.generateAWSConsoleURL(sso: sso, account: account, managedRegion: sess, storageAPI: storageAPI, accessToken: resp).to(&err) else {
+		guard let url = await XDKAWSSSO.generateAWSConsoleURL(client: client, account: account, managedRegion: sess, storageAPI: storageAPI, accessToken: resp).to(&err) else {
 			XCTFail("failed to load console" + (err?.localizedDescription ?? "unknown error"))
 			return
 		}

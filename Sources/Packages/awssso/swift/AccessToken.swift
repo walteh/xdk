@@ -92,7 +92,7 @@ public func signin(storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessTok
 	return .success(nil)
 }
 
-public func signin(ssooidc client: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI: some XDK.StorageAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAWSSSOAccessToken, Error> {
+public func signin(client: AWSSSOSDKProtocolWrapped, storageAPI: some XDK.StorageAPI, ssoRegion: String, startURL: URL, callback: @escaping (_ url: UserSignInData) -> Void) async -> Result<SecureAWSSSOAccessToken, Error> {
 	var err: Error? = nil
 
 	guard let token = signin(storage: storageAPI).to(&err) else {
@@ -102,14 +102,14 @@ public func signin(ssooidc client: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI:
 	if let token {
 		return .success(token)
 	}
-	
+
 	guard let registration = await registerClientIfNeeded(awsssoAPI: client, storageAPI: storageAPI).to(&err) else {
 		return .failure(x.error("error registering client", root: err))
 	}
 
 	let input = AWSSSOOIDC.StartDeviceAuthorizationInput(clientId: registration.clientID, clientSecret: registration.clientSecret, startUrl: startURL.absoluteString)
 
-	guard let deviceAuth = await Result.X({ try await client.startDeviceAuthorization(input: input) }).to(&err) else {
+	guard let deviceAuth = await client.startDeviceAuthorization(input: input).to(&err) else {
 		return .failure(x.error("error starting device auth", root: err))
 	}
 
@@ -132,36 +132,37 @@ public func signin(ssooidc client: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI:
 	return .success(work)
 }
 
-func pollForToken(_ client: AWSSSOOIDC.SSOOIDCClientProtocol, registration: SecureAWSSSOClientRegistrationInfo, deviceAuth: UserSignInData, pollInterval: TimeInterval, expirationTime: TimeInterval) async -> Result<AWSSSOOIDC.CreateTokenOutput, Error> {
+func pollForToken(_ client: AWSSSOSDKProtocolWrapped, registration: SecureAWSSSOClientRegistrationInfo, deviceAuth: UserSignInData, pollInterval: TimeInterval, expirationTime: TimeInterval) async -> Result<AWSSSOOIDC.CreateTokenOutput, Error> {
 	// Calculate the expiration time as a Date
 	let expirationDate = Date().addingTimeInterval(expirationTime)
 
 	while Date() < expirationDate {
-		do {
-			// Attempt to create a token
-			let tokenOutput = try await client.createToken(input: .init(
+		var err: Error? = nil
+		guard let tokenOutput = await client.createToken(input: .init(
 				clientId: registration.clientID,
 				clientSecret: registration.clientSecret,
 				deviceCode: deviceAuth.code,
 				grantType: "urn:ietf:params:oauth:grant-type:device_code"
-			))
-			// Success, return the token
-			return .success(tokenOutput)
-		} catch _ as AWSSSOOIDC.AuthorizationPendingException {
-			// If the error is "AuthorizationPending", wait for the pollInterval and then try again
-			print("SSO login still pending, continuing polling")
-			try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
-		} catch {
-			// For any other error, return failure
-			return .failure(x.error("SSO Login failed", root: error))
-		}
+			)).to(&err) else {
+				if err is AWSSSOOIDC.AuthorizationPendingException {
+					// If the error is "AuthorizationPending", wait for the pollInterval and then try again
+					print("SSO login still pending, continuing polling")
+					try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+					continue
+				} else {
+					// For any other error, return failure
+					return .failure(x.error("SSO Login failed", root: err))
+				}
+			}
+
+		return .success(tokenOutput)
 	}
 
 	// If the loop exits because the expiration time is reached, return a timeout error
 	return .failure(NSError(domain: "SSOService", code: -1, userInfo: [NSLocalizedDescriptionKey: "SSO login timed out"]))
 }
 
-func registerClientIfNeeded(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, storageAPI: some XDK.StorageAPI) async -> Result<SecureAWSSSOClientRegistrationInfo, Error> {
+func registerClientIfNeeded(awsssoAPI: AWSSSOSDKProtocolWrapped, storageAPI: some XDK.StorageAPI) async -> Result<SecureAWSSSOClientRegistrationInfo, Error> {
 	// Check if client is already registered and saved in secure storage (Keychain)
 
 	var err: Error? = nil
@@ -177,7 +178,7 @@ func registerClientIfNeeded(awsssoAPI: AWSSSOOIDC.SSOOIDCClientProtocol, storage
 	let regClientInput = AWSSSOOIDC.RegisterClientInput(clientName: "spatial-aws-basic", clientType: "public", scopes: [])
 
 	// No registration found, register a new client
-	guard let regd = await Result.X({ try await awsssoAPI.registerClient(input: regClientInput) }).to(&err) else {
+	guard let regd = await awsssoAPI.registerClient(input: regClientInput).to(&err) else {
 		return .failure(x.error("error registering client", root: err))
 	}
 
