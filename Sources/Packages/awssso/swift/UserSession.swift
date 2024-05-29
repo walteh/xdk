@@ -21,23 +21,25 @@ public class Viewer: NSObject, ObservableObject, WKNavigationDelegate {
 	public var currentURL: URL? = nil
 
 	public let managedRegion: ManagedRegion
+	public let account: AccountInfo
 	public let webview: WKWebView
 
 	public let rebuildURL: () async -> Void
 
-	public init(webview: WKWebView, session: AWSSSOUserSession, storageAPI: some XDK.StorageAPI) {
+	public init(webview: WKWebView, session: AWSSSOUserSession, storageAPI: some XDK.StorageAPI, account: AccountInfo) {
 		self.webview = webview
 		self.managedRegion = session
-
+		self.account = account
 		self.rebuildURL = {
 			var err: Error? = nil
+
 
 			guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: session.accessToken!.region).to(&err) else {
 				XDK.Log(.error).err(err).send("error generating console url")
 				return
 			}
 
-			guard let url = await XDKAWSSSO.generateAWSConsoleURL(client: awsClient, account: session.currentAccount!, managedRegion: session, storageAPI: storageAPI, accessToken: session.accessToken!).to(&err) else {
+			guard let url = await XDKAWSSSO.generateAWSConsoleURL(client: awsClient, account: account, managedRegion: session, storageAPI: storageAPI, accessToken: session.accessToken!).to(&err) else {
 				XDK.Log(.error).err(err).send("error generating console url")
 				return
 			}
@@ -45,6 +47,8 @@ public class Viewer: NSObject, ObservableObject, WKNavigationDelegate {
 				XDK.Log(.error).err(err).send("error configuring cookies")
 				return
 			}
+
+
 //			DispatchQueue.main.async {
 			guard let _ = await webview.load(URLRequest(url: url)) else {
 				XDK.Log(.error).send("error loading webview")
@@ -89,9 +93,30 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 
 	@Published public var accounts: [AccountInfo: Viewer] = [:]
 
-	@Published public var region: String?
 
-	@Published public var service: String? = nil
+	@Published public var region: String?  {
+		didSet {
+			DispatchQueue.main.async {
+				for (_, viewer) in self.accounts {
+					Task {
+						await viewer.rebuildURL()
+					}
+				}
+			}
+		}
+	}
+
+	@Published public var service: String? = nil {
+		didSet {
+			DispatchQueue.main.async {
+				for (_, viewer) in self.accounts {
+					Task {
+						await viewer.rebuildURL()
+					}
+				}
+			}
+		}
+	}
 
 	let storageAPI: any XDK.StorageAPI
 
@@ -102,7 +127,8 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 			if let wk = self.accounts[currentAccount] {
 				return wk.webview
 			} else {
-				self.accounts[currentAccount] = Viewer(webview: createWebView(), session: self, storageAPI: self.storageAPI)
+				let viewer = Viewer(webview: createWebView(), session: self, storageAPI: self.storageAPI, account: currentAccount)
+				self.accounts[currentAccount] = viewer
 				return self.accounts[currentAccount]!.webview
 			}
 		}
@@ -262,12 +288,12 @@ public func generateAWSConsoleURL(client: AWSSSOSDKProtocolWrapped, account: Acc
 	return .success(consoleHomeURL)
 }
 
-func constructFederationURLRequest(with credentials: RoleCredentials, region: String) -> Result<URLRequest, Error> {
+func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<URLRequest, Error> {
 	var err: Error? = nil
 
 	let federationBaseURL = credentials.stsRegion.starts(with: "us-gov-") ?
 		"https://signin.amazonaws-us-gov.com/federation" :
-		"https://\(region).signin.aws.amazon.com/federation"
+	"https://\(credentials.stsRegion).signin.aws.amazon.com/federation"
 
 	guard let sessionStringJSON = Result.X({ try JSONEncoder().encode([
 		"sessionId": credentials.accessKeyID,
@@ -295,7 +321,7 @@ func constructFederationURLRequest(with credentials: RoleCredentials, region: St
 func fetchSignInToken(with credentials: RoleCredentials) async -> Result<String, Error> {
 	var err: Error? = nil
 
-	guard let request = constructFederationURLRequest(with: credentials, region: credentials.stsRegion).to(&err) else {
+	guard let request = constructFederationURLRequest(with: credentials).to(&err) else {
 		return .failure(x.error("error constructing federation url", root: err))
 	}
 
@@ -352,7 +378,7 @@ func constructSimpleConsoleURL(region: String, service: String? = nil) -> Result
 func constructLoginURL(with signInToken: String, credentials: RoleCredentials, region: String, service: String?) -> Result<URL, Error> {
 	var err: Error? = nil
 
-	guard let request = constructFederationURLRequest(with: credentials, region: region).to(&err) else {
+	guard let request = constructFederationURLRequest(with: credentials).to(&err) else {
 		return .failure(x.error("error constructing federation url", root: err))
 	}
 
