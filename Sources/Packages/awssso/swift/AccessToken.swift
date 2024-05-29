@@ -144,12 +144,14 @@ func pollForToken(_ client: AWSSSOSDKProtocolWrapped, registration: SecureAWSSSO
 			deviceCode: deviceAuth.code,
 			grantType: "urn:ietf:params:oauth:grant-type:device_code"
 		)).to(&err) else {
-			if err is AWSSSOOIDC.AuthorizationPendingException {
+			let errd = err as! XError
+			if errd.root() is AWSSSOOIDC.AuthorizationPendingException {
 				// If the error is "AuthorizationPending", wait for the pollInterval and then try again
 				print("SSO login still pending, continuing polling")
 				try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
 				continue
 			} else {
+				print("the type of err is \(err! is AWSSSOOIDC.AuthorizationPendingException.Type) \(errd.root())")
 				// For any other error, return failure
 				return .failure(x.error("SSO Login failed", root: err))
 			}

@@ -117,3 +117,28 @@ public func GetBundleIdentifier(using configAPI: ConfigAPI) -> Result<String, Er
 		return .success(data)
 	}
 }
+
+public func getTeamID() -> String? {
+    var code: SecCode?
+    let status = SecCodeCopySelf(SecCSFlags(), &code)
+
+    guard status == errSecSuccess, let code = code else {
+        return nil
+    }
+
+    var staticCode: SecStaticCode?
+    let staticCodeStatus = SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode)
+
+    guard staticCodeStatus == errSecSuccess, let staticCode = staticCode else {
+        return nil
+    }
+
+    var info: CFDictionary?
+    let signingStatus = SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &info)
+
+    if signingStatus == errSecSuccess, let info = info as? [String: Any],
+       let teamID = info[kSecCodeInfoTeamIdentifier as String] as? String {
+        return teamID
+    }
+    return nil
+}
