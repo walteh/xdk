@@ -249,7 +249,7 @@ public func buildSSOOIDCClient(region: String) async -> Result<AWSSSOOIDC.SSOOID
 	return .success(client)
 }
 
-public func generateAWSConsoleURL(client: AWSSSOSDKProtocolWrapped, account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retry: Bool = false) async -> Result<URL, Error> {
+public func generateAWSConsoleURL(client: AWSSSOSDKProtocolWrapped, account: AccountInfo, managedRegion: ManagedRegion, storageAPI: some XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken, retryNumber: Int = 0) async -> Result<URL, Error> {
 	var err: Error? = nil
 
 	guard let role = account.role else {
@@ -268,14 +268,16 @@ public func generateAWSConsoleURL(client: AWSSSOSDKProtocolWrapped, account: Acc
 	}
 
 	guard let signInTokenResult = await fetchSignInToken(with: creds).to(&err) else {
-		if !retry {
+		if retryNumber < 5 {
+
+			XDK.Log(.debug).err(err).add("count", any: retryNumber).send("retrying generateAWSConsoleURL")
+
 			guard let _ = invalidateRoleCredentials(storageAPI, account: role).to(&err) else {
 				return .failure(x.error("error invalidating role creds", root: err))
 			}
 
-			XDK.Log(.debug).send("retrying generateAWSConsoleURL")
 
-			return await generateAWSConsoleURL(client: client, account: account, managedRegion: managedRegion, storageAPI: storageAPI, accessToken: accessToken, retry: true)
+			return await generateAWSConsoleURL(client: client, account: account, managedRegion: managedRegion, storageAPI: storageAPI, accessToken: accessToken, retryNumber: retryNumber + 1)
 		}
 
 		return .failure(XDK.Err("error fetching signInToken", root: err))
@@ -339,6 +341,10 @@ func fetchSignInToken(with credentials: RoleCredentials) async -> Result<String,
 
 		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst).info("url", request.url?.absoluteString ?? "none"))
 	}
+
+	//  else {
+	// 	XDK.Log(.debug).add("request_url", request.url?.absoluteString ?? "none").send("success on fetchSignInToken")
+	// }
 
 	guard let jsonResult = Result.X({ try JSONSerialization.jsonObject(with: data) as? [String: Any] }).to(&err) else {
 		return .failure(x.error("error parsing json", root: err))

@@ -37,7 +37,7 @@ class RoleCredentials: NSObject, NSSecureCoding {
 	public convenience init(_ aws: AWSSSO.SSOClientTypes.RoleCredentials, _ role: RoleInfo, stsRegion: String) {
 		self.init(
 			accessKeyID: aws.accessKeyId ?? "",
-			expiresAt: Date(timeIntervalSince1970: Double(aws.expiration / 1000)),
+			expiresAt: Date(timeIntervalSince1970: Double(Double(aws.expiration) / 1000)),
 			secretAccessKey: aws.secretAccessKey ?? "",
 			sessionToken: aws.sessionToken ?? "",
 			role: role,
@@ -52,7 +52,7 @@ class RoleCredentials: NSObject, NSSecureCoding {
 	public required init?(coder: NSCoder) {
 		self.accessKeyID = coder.decodeObject(of: NSString.self, forKey: "accessKeyID") as String? ?? ""
 		self.role = coder.decodeObject(of: [RoleInfo.self], forKey: "role") as? RoleInfo ?? RoleInfo(roleName: "", accountID: "")
-		self.expiresAt = coder.decodeObject(of: NSDate.self, forKey: "roles") as? Date ?? Date()
+		self.expiresAt = coder.decodeObject(of: NSDate.self, forKey: "expiresAt") as? Date ?? Date()
 		self.secretAccessKey = coder.decodeObject(of: NSString.self, forKey: "secretAccessKey") as? String ?? ""
 		self.sessionToken = coder.decodeObject(of: NSString.self, forKey: "sessionToken") as? String ?? ""
 		self.stsRegion = coder.decodeObject(of: NSString.self, forKey: "stsRegion") as? String ?? ""
@@ -68,7 +68,7 @@ class RoleCredentials: NSObject, NSSecureCoding {
 	}
 
 	func expiresIn() -> TimeInterval {
-		return self.expiresAt.timeIntervalSince(Date())
+		return expiresAt.timeIntervalSinceNow
 	}
 
 	func isExpired() -> Bool {
@@ -109,6 +109,8 @@ func getRoleCredentials(_ client: any AWSSSOSDKProtocolWrapped, storageAPI: some
 		if curr.expiresIn() > 60 * 5, curr.expiresIn() < 60 * 60 * 24 * 7 {
 			XDK.Log(.debug).info("creds", curr.accessKeyID).info("account", account.accountID).info("role", account.roleName).info("expiresIn", curr.expiresIn()).send("using cached creds")
 			return .success(curr)
+		} else {
+			XDK.Log(.debug).add("expires_in", any: curr.expiresIn().seconds()).add("expires_at", curr.expiresAt).send("creds are expired, creating new ones")
 		}
 	}
 
