@@ -11,6 +11,11 @@ import Foundation
 import WebKit
 import XDK
 
+public protocol ManagedRegionService {
+	var region: String? { get set }
+	var service: String? { get set }
+}
+
 public class RoleInfo: NSObject, NSSecureCoding {
 	public let roleName: String
 	public let accountID: String
@@ -154,7 +159,7 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 	return XDK.Delete(using: storage, AccountInfoList.self)
 }
 
-func getAccountsRoleList(
+public func getAccountsRoleList(
 	client: AWSSSOSDKProtocolWrapped,
 	storage: XDK.StorageAPI,
 	accessToken: SecureAWSSSOAccessToken

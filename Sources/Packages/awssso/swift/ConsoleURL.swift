@@ -4,10 +4,37 @@ import Combine
 import Foundation
 import XDK
 
+
+
+
+public func generateAWSConsoleURLWithDefaultClient(
+	account: AccountInfo,
+	managedRegion: ManagedRegionService,
+	storageAPI: some XDK.StorageAPI,
+	accessToken: SecureAWSSSOAccessToken,
+	isSignedIn: Bool
+) async -> Result<URL, Error> {
+
+		var err = Error?.none
+
+		guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.region).to(&err) else {
+			return .failure(XDK.Err("creating aws client", root: err))
+		}
+
+		return await generateAWSConsoleURL(
+			client: awsClient,
+			account: account,
+			managedRegion: managedRegion,
+			storageAPI: storageAPI,
+			accessToken: accessToken,
+			isSignedIn: isSignedIn
+		)
+}
+
 public func generateAWSConsoleURL(
 	client: AWSSSOSDKProtocolWrapped,
 	account: AccountInfo,
-	managedRegion: ManagedRegion,
+	managedRegion: ManagedRegionService,
 	storageAPI: some XDK.StorageAPI,
 	accessToken: SecureAWSSSOAccessToken,
 	isSignedIn: Bool,
@@ -54,6 +81,8 @@ public func generateAWSConsoleURL(
 		return .failure(XDK.Err("error fetching signInToken", root: err))
 	}
 
+
+
 	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).to(&err) else {
 		return .failure(XDK.Err("error constructing console url", root: err))
 	}
@@ -62,28 +91,31 @@ public func generateAWSConsoleURL(
 }
 
 func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<URLRequest, Error> {
-	var err: Error? = nil
 
 	let federationBaseURL = credentials.stsRegion.starts(with: "us-gov-") ?
 		"https://signin.amazonaws-us-gov.com/federation" :
 		"https://\(credentials.stsRegion).signin.aws.amazon.com/federation"
 
-	guard let sessionStringJSON = Result.X({ try JSONEncoder().encode([
-		"sessionId": credentials.accessKeyID,
-		"sessionKey": credentials.secretAccessKey,
-		"sessionToken": credentials.sessionToken.toggleBase64URLSafe(on: true),
-	]) }).to(&err) else {
-		return .failure(x.error("error encoding session info", root: err))
-	}
+	// log out secretAccessKey and sessionToken
+	XDK.Log(.debug).info("accessKeyID", credentials.accessKeyID).info("secretAccessKey", credentials.secretAccessKey).info("sessionToken", credentials.sessionToken).send("constructing federation request")
 
-	let queryItems = [
-		URLQueryItem(name: "Action", value: "getSigninToken"),
-		URLQueryItem(name: "sessionDuration", value: "3200"),
-		URLQueryItem(name: "Session", value: String(data: sessionStringJSON, encoding: .utf8)!),
-	]
+	// https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html#STSConsoleLink_manual
+	let sessionStringJSON = """
+	{
+		"sessionId": "\(credentials.accessKeyID)",
+		"sessionKey": "\(credentials.secretAccessKey.toggleBase64URLSafe(on: false))",
+		"sessionToken": "\(credentials.sessionToken.toggleBase64URLSafe(on: true))"
+	}
+	"""
 
 	var components = URLComponents(url: URL(string: federationBaseURL)!, resolvingAgainstBaseURL: false)!
-	components.queryItems = queryItems
+
+	// the default encoding does not encode the potential "+" inside the sessionKey form above, so we need to do it manually
+	components.percentEncodedQueryItems = [
+		URLQueryItem(name: "Action", value: "getSigninToken".urlPercentEncoding()),
+		URLQueryItem(name: "sessionDuration", value: "3200".urlPercentEncoding()),
+		URLQueryItem(name: "Session", value: sessionStringJSON.urlPercentEncoding())
+	]
 	var req = URLRequest(url: components.url!)
 	req.httpMethod = "GET"
 	req.addValue("en-US", forHTTPHeaderField: "accept-language")

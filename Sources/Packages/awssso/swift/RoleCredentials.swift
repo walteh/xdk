@@ -248,11 +248,9 @@ func fetchSignInToken(with credentials: RoleCredentials, retryNumber: Int = 0) a
 		let lastfirst = String(data: data, encoding: .utf8)!.prefix(10) + "..." + String(data: data, encoding: .utf8)!.suffix(10).replacingOccurrences(of: "\n", with: "")
 
 		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst).info("url", request.url?.absoluteString ?? "none"))
+	} else {
+		XDK.Log(.debug).add("request_url", request.url?.absoluteString ?? "none").send("success on fetchSignInToken")
 	}
-
-	//  else {
-	// 	XDK.Log(.debug).add("request_url", request.url?.absoluteString ?? "none").send("success on fetchSignInToken")
-	// }
 
 	guard let jsonResult = Result.X({ try JSONSerialization.jsonObject(with: data) as? [String: Any] }).to(&err) else {
 		return .failure(x.error("error parsing json", root: err))
