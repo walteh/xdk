@@ -126,66 +126,65 @@ public func GetDeviceFamily(using configAPI: ConfigAPI) -> Result<String, Error>
 	}
 }
 
-#if(os(macOS))
+#if os(macOS)
 
-public func getTeamID() -> String? {
-    var code: SecCode?
-    let status = SecCodeCopySelf(SecCSFlags(), &code)
+	public func getTeamID() -> String? {
+		var code: SecCode?
+		let status = SecCodeCopySelf(SecCSFlags(), &code)
 
-    guard status == errSecSuccess, let code = code else {
-        return nil
-    }
+		guard status == errSecSuccess, let code else {
+			return nil
+		}
 
-    var staticCode: SecStaticCode?
-    let staticCodeStatus = SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode)
+		var staticCode: SecStaticCode?
+		let staticCodeStatus = SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode)
 
-    guard staticCodeStatus == errSecSuccess, let staticCode = staticCode else {
-        return nil
-    }
+		guard staticCodeStatus == errSecSuccess, let staticCode else {
+			return nil
+		}
 
-    var info: CFDictionary?
-    let signingStatus = SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &info)
+		var info: CFDictionary?
+		let signingStatus = SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &info)
 
-    if signingStatus == errSecSuccess, let info = info as? [String: Any],
-       let teamID = info[kSecCodeInfoTeamIdentifier as String] as? String {
-        return teamID
-    }
-    return nil
-}
+		if signingStatus == errSecSuccess, let info = info as? [String: Any],
+		   let teamID = info[kSecCodeInfoTeamIdentifier as String] as? String
+		{
+			return teamID
+		}
+		return nil
+	}
 
 #else
 
-public func getTeamID() -> String? {
-        let queryLoad: [String: AnyObject] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: "bundleSeedID" as AnyObject,
-            kSecAttrService as String: "" as AnyObject,
-            kSecReturnAttributes as String: kCFBooleanTrue
-        ]
+	public func getTeamID() -> String? {
+		let queryLoad: [String: AnyObject] = [
+			kSecClass as String: kSecClassGenericPassword,
+			kSecAttrAccount as String: "bundleSeedID" as AnyObject,
+			kSecAttrService as String: "" as AnyObject,
+			kSecReturnAttributes as String: kCFBooleanTrue,
+		]
 
-        var result : AnyObject?
-        var status = withUnsafeMutablePointer(to: &result) {
-            SecItemCopyMatching(queryLoad as CFDictionary, UnsafeMutablePointer($0))
-        }
+		var result: AnyObject?
+		var status = withUnsafeMutablePointer(to: &result) {
+			SecItemCopyMatching(queryLoad as CFDictionary, UnsafeMutablePointer($0))
+		}
 
-        if status == errSecItemNotFound {
-            status = withUnsafeMutablePointer(to: &result) {
-                SecItemAdd(queryLoad as CFDictionary, UnsafeMutablePointer($0))
-            }
-        }
+		if status == errSecItemNotFound {
+			status = withUnsafeMutablePointer(to: &result) {
+				SecItemAdd(queryLoad as CFDictionary, UnsafeMutablePointer($0))
+			}
+		}
 
-        if status == noErr {
-            if let resultDict = result as? [String: Any], let accessGroup = resultDict[kSecAttrAccessGroup as String] as? String {
-                let components = accessGroup.components(separatedBy: ".")
-                return components.first
-            }else {
-                return nil
-            }
-        } else {
-            print("Error getting bundleSeedID to Keychain")
-            return nil
-        }
-    }
+		if status == noErr {
+			if let resultDict = result as? [String: Any], let accessGroup = resultDict[kSecAttrAccessGroup as String] as? String {
+				let components = accessGroup.components(separatedBy: ".")
+				return components.first
+			} else {
+				return nil
+			}
+		} else {
+			print("Error getting bundleSeedID to Keychain")
+			return nil
+		}
+	}
 #endif
-
-

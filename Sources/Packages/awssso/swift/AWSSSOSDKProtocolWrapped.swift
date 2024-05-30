@@ -33,7 +33,9 @@ class AWSSSOSDKProtocolWrappedImpl: AWSSSOSDKProtocolWrapped {
 		return await Result.X { try await self.sso.getRoleCredentials(input: input) }
 	}
 
-	func startDeviceAuthorization(input: AWSSSOOIDC.StartDeviceAuthorizationInput) async -> Result<AWSSSOOIDC.StartDeviceAuthorizationOutput, Error> {
+	func startDeviceAuthorization(input: AWSSSOOIDC
+		.StartDeviceAuthorizationInput) async -> Result<AWSSSOOIDC.StartDeviceAuthorizationOutput, Error>
+	{
 		return await Result.X { try await self.ssoOIDC.startDeviceAuthorization(input: input) }
 	}
 
