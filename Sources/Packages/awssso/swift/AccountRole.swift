@@ -11,6 +11,11 @@ import Foundation
 import WebKit
 import XDK
 
+public protocol ManagedRegionService {
+	var region: String? { get set }
+	var service: String? { get set }
+}
+
 public class RoleInfo: NSObject, NSSecureCoding {
 	public let roleName: String
 	public let accountID: String
@@ -150,18 +155,15 @@ public class AccountInfoList: NSObject, Sequence, NSSecureCoding {
 	}
 }
 
-func createWebView() -> WKWebView {
-	let webViewConfig = WKWebViewConfiguration()
-	webViewConfig.websiteDataStore = WKWebsiteDataStore.nonPersistent()
-	let webView = WKWebView(frame: .zero, configuration: webViewConfig)
-	return webView
-}
-
 func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> {
 	return XDK.Delete(using: storage, AccountInfoList.self)
 }
 
-func getAccountsRoleList(client: AWSSSOSDKProtocolWrapped, storage: XDK.StorageAPI, accessToken: SecureAWSSSOAccessToken) async -> Result<AccountInfoList, Error> {
+public func getAccountsRoleList(
+	client: AWSSSOSDKProtocolWrapped,
+	storage: XDK.StorageAPI,
+	accessToken: SecureAWSSSOAccessToken
+) async -> Result<AccountInfoList, Error> {
 	var err: Error? = nil
 
 	// check storage
@@ -186,7 +188,8 @@ func getAccountsRoleList(client: AWSSSOSDKProtocolWrapped, storage: XDK.StorageA
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {
 		guard let roles = await listRolesForAccount(client: client, accessToken: accessToken, account: account).to(&err) else {
-			return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!).info("accountName", account.accountName!))
+			return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!)
+				.info("accountName", account.accountName!))
 		}
 		for role in roles {
 			list.accounts.append(role)
@@ -201,19 +204,27 @@ func getAccountsRoleList(client: AWSSSOSDKProtocolWrapped, storage: XDK.StorageA
 	return .success(list)
 }
 
-func listRolesForAccount(client: AWSSSOSDKProtocolWrapped, accessToken: SecureAWSSSOAccessToken, account: AWSSSO.SSOClientTypes.AccountInfo) async -> Result<[AccountInfo], Error> {
+func listRolesForAccount(
+	client: AWSSSOSDKProtocolWrapped,
+	accessToken: SecureAWSSSOAccessToken,
+	account: AWSSSO.SSOClientTypes.AccountInfo
+) async -> Result<[AccountInfo], Error> {
 	// List roles for the given account
 	var err: Error? = nil
 
-	guard let rolesResponse = await client.listAccountRoles(input: .init(accessToken: accessToken.accessToken, accountId: account.accountId!)).err(&err) else {
-		return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!).info("accountName", account.accountName!))
+	guard let rolesResponse = await client.listAccountRoles(input: .init(accessToken: accessToken.accessToken, accountId: account.accountId!))
+		.err(&err)
+	else {
+		return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!)
+			.info("accountName", account.accountName!))
 	}
 
 	var list = [AccountInfo]()
 	if let roleList = rolesResponse.roleList {
 		list.append(AccountInfo(role: roleList, account: account))
 	} else {
-		return .failure(x.error("No roles found for account").info("accountID", account.accountId ?? "nil").info("accountName", account.accountName ?? "nil"))
+		return .failure(x.error("No roles found for account").info("accountID", account.accountId ?? "nil")
+			.info("accountName", account.accountName ?? "nil"))
 	}
 
 	return .success(list)

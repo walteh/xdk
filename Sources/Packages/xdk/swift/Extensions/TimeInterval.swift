@@ -3,10 +3,11 @@
 import Foundation
 
 public extension TimeInterval {
-    func seconds() -> Int {
-        return Int(self.rounded())
-    }
+	func seconds() -> Int {
+		return Int(self.rounded())
+	}
+
 	func milliseconds() -> Int {
-        return Int(self * 1_000)
-    }
+		return Int(self * 1000)
+	}
 }

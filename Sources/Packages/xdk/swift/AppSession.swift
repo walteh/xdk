@@ -59,7 +59,7 @@ public class StoredAppSession: NSObject {
 		if idres.error != nil {
 			throw x.error("failed to read app session id", root: idres.error)
 		}
-		
+
 		var id = idres.value!
 
 		if id == nil {
@@ -72,7 +72,6 @@ public class StoredAppSession: NSObject {
 			Log(.info).info("sessionID", id).send("idk")
 			self.appSessionID = id!
 		}
-
 
 		super.init()
 	}
