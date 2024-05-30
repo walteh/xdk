@@ -184,7 +184,6 @@ func pollForToken(
 				try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
 				continue
 			} else {
-				print("the type of err is \(err! is AWSSSOOIDC.AuthorizationPendingException.Type) \(errd.root())")
 				// For any other error, return failure
 				return .failure(x.error("SSO Login failed", root: err))
 			}
