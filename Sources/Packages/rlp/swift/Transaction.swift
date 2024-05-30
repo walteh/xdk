@@ -9,7 +9,7 @@
 import Foundation
 
 import XDKBig
-import XDKECDSA
+import MicroDeterministicECDSA
 import XDKHex
 
 struct EthereumTransaction {
@@ -45,7 +45,7 @@ extension EthereumTransaction {
 		return res
 	}
 
-	private func rlp(signature: ecdsa.Signature) throws -> Data {
+	private func rlp(signature: Signature) throws -> Data {
 		var start = self.rlpPrefix
 		start.append(signature.v == 0 ? Data() : Data([signature.v]))
 		start.append(signature.r)
