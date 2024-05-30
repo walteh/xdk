@@ -23,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/walteh/micro-deterministic-ecdsa.git",
       "state" : {
-        "revision" : "bc42dd595f9c9c9a7efc80c96a0bc5e74c9e0baa",
-        "version" : "0.6.0"
+        "revision" : "a59a22c9876766ab4170ae5e6aa4ca429b0b7be0",
+        "version" : "0.7.0"
       }
     },
     {
