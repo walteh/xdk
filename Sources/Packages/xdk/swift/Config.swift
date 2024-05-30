@@ -65,6 +65,14 @@ public func GetBundleIdentifier(using configAPI: ConfigAPI) -> Result<String, Er
 	return configAPI.get(key: "CFBundleIdentifier")
 }
 
+public func GetTeamID() -> String? {
+	return getTeamID()
+}
+
+public func GetDeviceFamily(using configAPI: ConfigAPI) -> Result<String, Error> {
+	return configAPI.get(key: "UIDeviceFamily")
+}
+
 @frozen public struct NoopConfig: ConfigAPI {
 	let inMemoryConfig: [String: String]
 	let inMemoryFiles: [String: Data]
@@ -118,6 +126,8 @@ public func GetBundleIdentifier(using configAPI: ConfigAPI) -> Result<String, Er
 	}
 }
 
+#if(os(macOS))
+
 public func getTeamID() -> String? {
     var code: SecCode?
     let status = SecCodeCopySelf(SecCSFlags(), &code)
@@ -142,3 +152,40 @@ public func getTeamID() -> String? {
     }
     return nil
 }
+
+#else
+
+public func getTeamID() -> String? {
+        let queryLoad: [String: AnyObject] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: "bundleSeedID" as AnyObject,
+            kSecAttrService as String: "" as AnyObject,
+            kSecReturnAttributes as String: kCFBooleanTrue
+        ]
+
+        var result : AnyObject?
+        var status = withUnsafeMutablePointer(to: &result) {
+            SecItemCopyMatching(queryLoad as CFDictionary, UnsafeMutablePointer($0))
+        }
+
+        if status == errSecItemNotFound {
+            status = withUnsafeMutablePointer(to: &result) {
+                SecItemAdd(queryLoad as CFDictionary, UnsafeMutablePointer($0))
+            }
+        }
+
+        if status == noErr {
+            if let resultDict = result as? [String: Any], let accessGroup = resultDict[kSecAttrAccessGroup as String] as? String {
+                let components = accessGroup.components(separatedBy: ".")
+                return components.first
+            }else {
+                return nil
+            }
+        } else {
+            print("Error getting bundleSeedID to Keychain")
+            return nil
+        }
+    }
+#endif
+
+

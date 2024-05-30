@@ -48,7 +48,7 @@ public func AddLoggerToContext(logger: Logger) {
 	ctx[LoggerContextKey.self] = logger
 }
 
-let xlogger = Logger(label: "x")
+let xlogger = Logger(label: Bundle.main.bundleIdentifier ?? "xdk")
 
 public class LogEvent {
 	public let level: Logging.Logger.Level

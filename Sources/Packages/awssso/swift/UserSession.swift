@@ -128,8 +128,10 @@ public class AWSSSOUserSession: ObservableObject, ManagedRegion {
 				return wk.webview
 			} else {
 				let viewer = Viewer(webview: createWebView(), session: self, storageAPI: self.storageAPI, account: currentAccount)
-				self.accounts[currentAccount] = viewer
-				return self.accounts[currentAccount]!.webview
+				DispatchQueue.main.async {
+					self.accounts[currentAccount] = viewer
+				}
+				return viewer.webview
 			}
 		}
 		let wv = createWebView()

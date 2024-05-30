@@ -55,21 +55,24 @@ public class StoredAppSession: NSObject {
 
 		self.storageAPI = storageAPI
 
-		guard var id = XDK.Read(using: storageAPI, AppSessionID.self).to(&err) else {
-			throw x.error("failed to read app session id", root: err)
+		var idres = XDK.Read(using: storageAPI, AppSessionID.self)
+		if idres.error != nil {
+			throw x.error("failed to read app session id", root: idres.error)
 		}
+		
+		var id = idres.value!
 
 		if id == nil {
 			let tmpid = AppSessionID(id: XID.build())
 			guard let _ = XDK.Write(using: storageAPI, tmpid).to(&err) else {
 				throw x.error("failed to write app session id", root: err)
 			}
-			id = tmpid
+			self.appSessionID = tmpid
+		} else {
+			Log(.info).info("sessionID", id).send("idk")
+			self.appSessionID = id!
 		}
 
-		Log(.info).info("sessionID", id!.description).send("idk")
-
-		self.appSessionID = id!
 
 		super.init()
 	}
