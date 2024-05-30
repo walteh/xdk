@@ -9,7 +9,7 @@
 import Foundation
 
 import XDKBig
-import XDKECDSA
+import MicroDeterministicECDSA
 import XDKHex
 
 struct EthereumTransaction {
@@ -45,7 +45,7 @@ extension EthereumTransaction {
 		return res
 	}
 
-	private func rlp(signature: ecdsa.Signature) throws -> Data {
+	private func rlp(signature: Signature) throws -> Data {
 		var start = self.rlpPrefix
 		start.append(signature.v == 0 ? Data() : Data([signature.v]))
 		start.append(signature.r)
@@ -56,12 +56,12 @@ extension EthereumTransaction {
 	}
 
 	// jack-o-lanturn nugg
-	private func sign(privateKey: Data) throws -> ecdsa.Signature {
-		return try sign_raw(.secp256k1, .recoverable, message: self.rlp(), privateKey: privateKey)
+	private func sign(privateKey: Data) throws -> MicroDeterministicECDSA.Signature {
+		return try MicroDeterministicECDSA.sign(message: self.rlp(), privateKey: privateKey, on: .secp256k1, as: .EthereumRecoverable)
 	}
 
 	public func sign(privateKey: Data) throws -> Data {
-		let sig: ecdsa.Signature = try self.sign(privateKey: privateKey)
+		let sig: MicroDeterministicECDSA.Signature = try self.sign(privateKey: privateKey)
 
 		print(sig.serialize().hexEncodedString())
 		return try RLP.encode(self.rlp(signature: sig))

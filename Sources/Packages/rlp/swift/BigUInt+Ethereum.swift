@@ -11,7 +11,7 @@ import Foundation
 import XDK
 import XDKBig
 import XDKByte
-import XDKECDSA
+import MicroDeterministicECDSA
 
 extension big.UInt {
 	func asChecksumAddress(chainID _: EthereumChain) -> Data {
@@ -24,7 +24,7 @@ extension big.UInt {
 			dat[dat.count - i - 1] = u
 		}
 
-		let hash = Data(dat).sha3(.ethereum)
+		let hash = MicroDeterministicECDSA.hash(.Keccak256, 256, Data(dat))
 		var checksum: [UInt8] = .init(repeating: 0, count: 20)
 
 		for (i, u) in dat.enumerated() {

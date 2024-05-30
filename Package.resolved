@@ -19,6 +19,15 @@
       }
     },
     {
+      "identity" : "micro-deterministic-ecdsa",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/walteh/micro-deterministic-ecdsa.git",
+      "state" : {
+        "revision" : "53a1d3a9588cb008de7472f64fd8b7b244645286",
+        "version" : "0.8.0"
+      }
+    },
+    {
       "identity" : "smithy-swift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/smithy-lang/smithy-swift",

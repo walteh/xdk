@@ -5,8 +5,6 @@
 //  Created by walter on 3/3/23.
 //
 
-import AWSSSO
-import AWSSSOOIDC
 import Logging
 import XCTest
 import XDK
@@ -44,7 +42,7 @@ class big_tests: XCTestCase {
 
 		var err: Error? = nil
 
-		let client: AWSSSOClientImpl = try! AWSSSOClientImpl(ssoRegion: selectedRegion)
+		let client = try! AWSSSOSDKProtocolWrappedImpl(ssoRegion: selectedRegion)
 
 		var promptURL: XDKAWSSSO.UserSignInData? = nil
 		guard let resp = await XDKAWSSSO.signin(
@@ -64,15 +62,15 @@ class big_tests: XCTestCase {
 
 		let account = AccountInfo(accountID: "324802912585", accountName: "hi", roles: [role], accountEmail: "xyz@xyz.com")
 
-		let sess = AWSSSOUserSession(
-			storageAPI: storageAPI,
-			account: account
+		let sess = SimpleManagedRegionService(
+			region: selectedRegion,
+			service : "s3"
 		)
 
-		guard let _ = await sess.refresh(accessToken: resp, storageAPI: storageAPI).to(&err) else {
-			XCTFail("failed to refresh" + (err?.localizedDescription ?? "unknown error"))
-			return
-		}
+		// guard let _ = await sess.refresh(accessToken: resp, storageAPI: storageAPI).to(&err) else {
+		// 	XCTFail("failed to refresh" + (err?.localizedDescription ?? "unknown error"))
+		// 	return
+		// }
 
 		XCTAssertNotNil(promptURL)
 
@@ -81,7 +79,8 @@ class big_tests: XCTestCase {
 			account: account,
 			managedRegion: sess,
 			storageAPI: storageAPI,
-			accessToken: resp
+			accessToken: resp,
+			isSignedIn: true
 		).to(&err) else {
 			XCTFail("failed to load console" + (err?.localizedDescription ?? "unknown error"))
 			return

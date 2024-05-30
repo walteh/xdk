@@ -16,6 +16,16 @@ public protocol ManagedRegionService {
 	var service: String? { get set }
 }
 
+public class SimpleManagedRegionService: ManagedRegionService {
+	public var region: String?
+	public var service: String?
+
+	public init(region: String, service: String) {
+		self.region = region
+		self.service = service
+	}
+}
+
 public class RoleInfo: NSObject, NSSecureCoding {
 	public let roleName: String
 	public let accountID: String
