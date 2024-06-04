@@ -25,7 +25,7 @@ let mainTarget = Target.target(
 
 let swiftLogs = Git(module: "Logging", version: "1.5.4", url: "https://github.com/apple/swift-log.git").apply()
 // let swiftAtomics = Git(module: "Atomics", version: "1.2.0", url: "https://github.com/apple/swift-atomics.git").apply()
-let awssdk = Git(module: "AWS", version: "0.34.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply()
+let awssdk = Git(module: "AWS", version: "0.44.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply()
 let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply()
 let ecdsa = Git(module: "MicroDeterministicECDSA", version: "0.8.0", url: "https://github.com/walteh/micro-deterministic-ecdsa.git").apply()
 let swiftContext = Git(module: "ServiceContextModule", version: "1.0.0", url: "https://github.com/apple/swift-service-context.git").apply()
