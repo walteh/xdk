@@ -237,7 +237,7 @@ func fetchSignInToken(with credentials: RoleCredentials, retryNumber: Int = 0) a
 	}
 
 	if httpResponse.statusCode == 400 {
-		if retryNumber < 5 && retryNumber >= 0 {
+		if retryNumber < 5, retryNumber >= 0 {
 			XDK.Log(.debug).add("account", credentials.role.accountID).add("count", any: retryNumber).send("retrying fetchSignInToken")
 			return await fetchSignInToken(with: credentials, retryNumber: retryNumber + 1)
 		}

@@ -8,8 +8,8 @@
 
 import Foundation
 
-import XDKBig
 import MicroDeterministicECDSA
+import XDKBig
 import XDKHex
 
 struct EthereumTransaction {

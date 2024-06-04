@@ -40,7 +40,7 @@ let mtx = Local(name: "MTX").with(deps: [x, hex]).apply()
 let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, big]).apply()
 let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply()
 let moc = Local(name: "MOC").with(deps: [x, keychain]).apply()
-let webauthn = Local(name: "Webauthn").with(deps: [x,  byte, hex, big, keychain]).apply()
+let webauthn = Local(name: "Webauthn").with(deps: [x, byte, hex, big, keychain]).apply()
 let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply()
 
 func complete() {

@@ -4,9 +4,6 @@ import Combine
 import Foundation
 import XDK
 
-
-
-
 public func generateAWSConsoleURLWithDefaultClient(
 	account: AccountInfo,
 	managedRegion: ManagedRegionService,
@@ -14,21 +11,20 @@ public func generateAWSConsoleURLWithDefaultClient(
 	accessToken: SecureAWSSSOAccessToken,
 	isSignedIn: Bool
 ) async -> Result<URL, Error> {
+	var err = Error?.none
 
-		var err = Error?.none
+	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.region).to(&err) else {
+		return .failure(XDK.Err("creating aws client", root: err))
+	}
 
-		guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.region).to(&err) else {
-			return .failure(XDK.Err("creating aws client", root: err))
-		}
-
-		return await generateAWSConsoleURL(
-			client: awsClient,
-			account: account,
-			managedRegion: managedRegion,
-			storageAPI: storageAPI,
-			accessToken: accessToken,
-			isSignedIn: isSignedIn
-		)
+	return await generateAWSConsoleURL(
+		client: awsClient,
+		account: account,
+		managedRegion: managedRegion,
+		storageAPI: storageAPI,
+		accessToken: accessToken,
+		isSignedIn: isSignedIn
+	)
 }
 
 public func generateAWSConsoleURL(
@@ -81,8 +77,6 @@ public func generateAWSConsoleURL(
 		return .failure(XDK.Err("error fetching signInToken", root: err))
 	}
 
-
-
 	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).to(&err) else {
 		return .failure(XDK.Err("error constructing console url", root: err))
 	}
@@ -91,7 +85,6 @@ public func generateAWSConsoleURL(
 }
 
 func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<URLRequest, Error> {
-
 	let federationBaseURL = credentials.stsRegion.starts(with: "us-gov-") ?
 		"https://signin.amazonaws-us-gov.com/federation" :
 		"https://\(credentials.stsRegion).signin.aws.amazon.com/federation"
@@ -114,7 +107,7 @@ func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<
 	components.percentEncodedQueryItems = [
 		URLQueryItem(name: "Action", value: "getSigninToken".urlPercentEncoding()),
 		URLQueryItem(name: "sessionDuration", value: "3200".urlPercentEncoding()),
-		URLQueryItem(name: "Session", value: sessionStringJSON.urlPercentEncoding())
+		URLQueryItem(name: "Session", value: sessionStringJSON.urlPercentEncoding()),
 	]
 	var req = URLRequest(url: components.url!)
 	req.httpMethod = "GET"

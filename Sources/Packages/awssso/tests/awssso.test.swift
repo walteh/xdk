@@ -64,7 +64,7 @@ class big_tests: XCTestCase {
 
 		let sess = SimpleManagedRegionService(
 			region: selectedRegion,
-			service : "s3"
+			service: "s3"
 		)
 
 		// guard let _ = await sess.refresh(accessToken: resp, storageAPI: storageAPI).to(&err) else {

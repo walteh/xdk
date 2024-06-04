@@ -71,16 +71,25 @@ public class SecureAWSSSOClientRegistrationInfo: NSObject, NSSecureCoding {
 		self.clientSecret = clientSecret
 	}
 
+	private let clientIDKey = "clientId"
+	private let clientSecretKey = "clientSecret"
+
 	// MARK: - NSSecureCoding
 
 	public required init?(coder: NSCoder) {
-		self.clientID = coder.decodeObject(forKey: "clientId") as? String ?? ""
-		self.clientSecret = coder.decodeObject(forKey: "clientSecret") as? String ?? ""
+		guard let clientID = coder.decodeObject(of: NSString.self, forKey: clientIDKey) as String?,
+		      let clientSecret = coder.decodeObject(of: NSString.self, forKey: clientSecretKey) as String?
+		else {
+			return nil
+		}
+
+		self.clientID = clientID
+		self.clientSecret = clientSecret
 	}
 
 	public func encode(with coder: NSCoder) {
-		coder.encode(self.clientID, forKey: "clientId")
-		coder.encode(self.clientSecret, forKey: "clientSecret")
+		coder.encode(self.clientID, forKey: clientIDKey)
+		coder.encode(self.clientSecret, forKey: clientSecretKey)
 	}
 
 	static func fromAWS(_ input: AWSSSOOIDC.RegisterClientOutput) -> Result<SecureAWSSSOClientRegistrationInfo, Error> {
