@@ -8,8 +8,8 @@ import XDK
 
 public protocol AWSSSOSDKProtocolWrapped {
 	var ssoRegion: String { get }
-	var sso: AWSSSO.SSOClientProtocol { get }
-	var ssoOIDC: AWSSSOOIDC.SSOOIDCClientProtocol { get }
+	var sso: AWSSSO.SSOClient { get }
+	var ssoOIDC: AWSSSOOIDC.SSOOIDCClient { get }
 	func getRoleCredentials(input: AWSSSO.GetRoleCredentialsInput) async -> Result<AWSSSO.GetRoleCredentialsOutput, Error>
 	func startDeviceAuthorization(input: AWSSSOOIDC.StartDeviceAuthorizationInput) async -> Result<AWSSSOOIDC.StartDeviceAuthorizationOutput, Error>
 	func listAccounts(input: AWSSSO.ListAccountsInput) async -> Result<AWSSSO.ListAccountsOutput, Error>
@@ -20,8 +20,8 @@ public protocol AWSSSOSDKProtocolWrapped {
 
 class AWSSSOSDKProtocolWrappedImpl: AWSSSOSDKProtocolWrapped {
 	let ssoRegion: String
-	let sso: AWSSSO.SSOClientProtocol
-	let ssoOIDC: AWSSSOOIDC.SSOOIDCClientProtocol
+	let sso: AWSSSO.SSOClient
+	let ssoOIDC: AWSSSOOIDC.SSOOIDCClient
 
 	init(ssoRegion: String) throws {
 		self.ssoRegion = ssoRegion
