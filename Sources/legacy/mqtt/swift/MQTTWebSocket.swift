@@ -411,6 +411,7 @@ public extension MQTTWebSocket {
 							switch message {
 							case let .data(data):
 								delegate.connection(self, receivedData: data)
+
 							case let .string(string):
 								delegate.connection(self, receivedString: string)
 
