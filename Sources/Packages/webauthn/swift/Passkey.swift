@@ -66,7 +66,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		return signInObserver
 	}
 
-@MainActor
+	@MainActor
 	public func assertPasskey() async -> Result<Void, Error> {
 		var err = Error?.none
 
@@ -95,7 +95,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		return .success(())
 	}
 
-@MainActor
+	@MainActor
 	public func attestPasskey() async -> Result<Void, Error> {
 		var err = Error?.none
 
@@ -118,7 +118,6 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		return .success(())
 	}
 
-
 	public func authorizationController(
 		controller _: ASAuthorizationController,
 		didCompleteWithAuthorization authorization: ASAuthorization
@@ -135,7 +134,6 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 			}
 		}
 	}
-
 
 	public func authorizationController(controller _: ASAuthorizationController, didCompleteWithError error: Error) {
 		guard let authorizationError = error as? ASAuthorizationError else {

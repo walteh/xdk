@@ -6,20 +6,22 @@
 //  Copyright © 2022 nugg.xyz LLC. All rights reserved.
 //
 
+import BigInt
 import Foundation
 import MicroDeterministicECDSA
 import XDK
-import BigInt
 import XDKByte
 
 extension BigUInt {
 	public init?(hex: String) {
 		self.init(hex.replacingOccurrences(of: "0x", with: ""), radix: 16)
 	}
+
 	func serializeToNil() -> Data? {
 		let res = self.serialize()
 		return BigUInt(res).isZero ? nil : res
 	}
+
 	func asChecksumAddress(chainID _: EthereumChain) -> Data {
 		var dat: [UInt8] = .init(repeating: 0, count: 20)
 

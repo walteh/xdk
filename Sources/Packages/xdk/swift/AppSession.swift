@@ -23,8 +23,7 @@ public final class NoopAppSession: AppSessionAPI {
 }
 
 public final class AppSessionID: NSObject, NSSecureCoding, Sendable {
-
-    public static let supportsSecureCoding = true
+	public static let supportsSecureCoding = true
 
 	let id: XID
 

@@ -6,8 +6,8 @@
 //  Copyright © 2022 nugg.xyz LLC. All rights reserved.
 //
 
-import Foundation
 import BigInt
+import Foundation
 import XDKByte
 
 public enum RLP {

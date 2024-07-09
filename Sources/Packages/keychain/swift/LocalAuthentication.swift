@@ -23,7 +23,6 @@ extension LAContext {
 }
 
 public final class LocalAuthenticationClient: NSObject, ObservableObject, Sendable {
-
 	// let authenticationContext =
 
 	let group: String

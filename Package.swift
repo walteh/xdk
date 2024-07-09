@@ -1,55 +1,53 @@
 // swift-tools-version: 6.0
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import Foundation
-import PackageDescription
+@preconcurrency import PackageDescription
 
-let package = Package(
-	name: "xdk",
+class God {
+	nonisolated let package = Package(
+		name: "xdk",
 
-	platforms: [
-		.macOS(.v14),
-		.iOS(.v17),
-		.tvOS(.v17),
-		.watchOS(.v10),
-		.visionOS(.v1),
-	],
-	products: [],
-	dependencies: [],
-	targets: []
-)
+		platforms: [
+			.macOS(.v14),
+			.iOS(.v17),
+			.tvOS(.v17),
+			.watchOS(.v10),
+			.visionOS(.v1),
+		],
+		products: [],
+		dependencies: [],
+		targets: []
+	)
 
-let mainTarget = Target.target(
-	name: "XDKModule",
-	path: "./Sources/XDKModule"
-)
+	let mainTarget = Target.target(
+		name: "XDKModule",
+		path: "./Sources/XDKModule"
+	)
 
-let swiftLogs = Git(module: "Logging", version: "1.6.1", url: "https://github.com/apple/swift-log.git").apply()
-// let swiftAtomics = Git(module: "Atomics", version: "1.2.0", url: "https://github.com/apple/swift-atomics.git").apply()
-let awssdk = Git(module: "AWS", version: "0.46.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply()
-let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply()
-let ecdsa = Git(module: "MicroDeterministicECDSA", version: "0.8.0", url: "https://github.com/walteh/micro-deterministic-ecdsa.git").apply()
-let swiftContext = Git(module: "ServiceContextModule", version: "1.0.0", url: "https://github.com/apple/swift-service-context.git").apply()
-// let swiftBigInt: .package(url: "https://github.com/attaswift/BigInt.git", from: "5.4.0")
-let swiftBigInt = Git(module: "BigInt", version: "5.4.0", url: "https://github.com/attaswift/BigInt.git").apply()
-
-let x = Local(name: "XDK").with(deps: [swiftLogs, swiftContext, swiftXid]).apply()
-let byte = Local(name: "Byte").with(deps: [x]).apply()
-let hex = Local(name: "Hex").with(deps: [x, byte]).apply()
-let keychain = Local(name: "keychain").with(deps: [x]).apply()
-// let big = Local(name: "Big").with(deps: [x]).apply()
-// let websocket = Local(name: "WebSocket").with(deps: [x, byte]).apply()
-// let mtx = Local(name: "MTX").with(deps: [x, hex]).apply()
-let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, swiftBigInt]).apply()
-let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply()
-// let moc = Local(name: "MOC").with(deps: [x, keychain]).apply()
-let webauthn = Local(name: "Webauthn").with(deps: [x, byte, hex,  keychain]).apply()
-let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply()
-
-@MainActor
-func complete() {
-	package.targets.append(mainTarget)
+	func complete() {
+		self.package.targets.append(self.mainTarget)
+	}
 }
+
+let god = God()
+
+let swiftLogs = Git(module: "Logging", version: "1.6.1", url: "https://github.com/apple/swift-log.git").apply(god)
+let awssdk = Git(module: "AWS", version: "0.46.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply(god)
+let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply(god)
+let ecdsa = Git(module: "MicroDeterministicECDSA", version: "0.8.0", url: "https://github.com/walteh/micro-deterministic-ecdsa.git").apply(god)
+let swiftContext = Git(module: "ServiceContextModule", version: "1.0.0", url: "https://github.com/apple/swift-service-context.git").apply(god)
+let swiftBigInt = Git(module: "BigInt", version: "5.4.0", url: "https://github.com/attaswift/BigInt.git").apply(god)
+
+let x = Local(name: "XDK").with(deps: [swiftLogs, swiftContext, swiftXid]).apply(god)
+let byte = Local(name: "Byte").with(deps: [x]).apply(god)
+let hex = Local(name: "Hex").with(deps: [x, byte]).apply(god)
+let keychain = Local(name: "keychain").with(deps: [x]).apply(god)
+let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, swiftBigInt]).apply(god)
+let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply(god)
+let webauthn = Local(name: "Webauthn").with(deps: [x, byte, hex, keychain]).apply(god)
+let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply(god)
+
+
 
 protocol Dep {
 	func target() -> Target.Dependency
@@ -76,9 +74,8 @@ class Git {
 		return Git(name: self.name, module: module, product: self.product)
 	}
 
-	@MainActor
-	func apply() -> Self {
-		package.dependencies.append(self.product)
+	func apply(_ god: God) -> Self {
+		god.package.dependencies.append(self.product)
 		return self
 	}
 }
@@ -126,14 +123,14 @@ class Local {
 		self.name = name
 	}
 
-	@MainActor
-	func apply() -> Self {
-		package.products += [
+	// @MainActor
+	func apply(_ god: God) -> Self {
+		god.package.products += [
 			.library(name: self.module(), targets: [self.module()]),
 		]
 
 		if self.hasC {
-			package.targets += [
+			god.package.targets += [
 				.target(
 					name: "\(self.module())C",
 					path: "\(self.packageFolder)\(self.name.lowercased())/c"
@@ -142,29 +139,29 @@ class Local {
 			self.subfolders += [Local(name: "\(self.camel())C")]
 		}
 
-		package.targets += [
+		god.package.targets += [
 			.target(
 				name: self.module(),
 				dependencies: self.subfolders.map { $0.target() },
-				path: "\(self.packageFolder)\(self.name.lowercased())/swift",
-				swiftSettings: [
-					.swiftLanguageVersion(.v6),
-				]
+				path: "\(self.packageFolder)\(self.name.lowercased())/swift"
+				// swiftSettings: [
+				// 	.swiftLanguageVersion(.v6),
+				// ]
 			),
 		]
 
-		package.targets += [
+		god.package.targets += [
 			.testTarget(
 				name: "\(self.module())Tests",
 				dependencies: [.byName(name: self.module())],
-				path: "\(self.packageFolder)\(self.name.lowercased())/tests",
-				swiftSettings: [
-					.swiftLanguageVersion(.v6),
-				]
+				path: "\(self.packageFolder)\(self.name.lowercased())/tests"
+				// swiftSettings: [
+				// 	.swiftLanguageVersion(.v6),
+				// ]
 			),
 		]
 
-		mainTarget.dependencies.append(.byName(name: self.module()))
+		god.mainTarget.dependencies.append(.byName(name: self.module()))
 
 		return self
 	}
@@ -176,4 +173,4 @@ extension Local: Dep {
 	}
 }
 
-complete()
+god.complete()

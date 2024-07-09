@@ -83,7 +83,6 @@ public func Delete<T>(using storageAPI: StorageAPI, _: T.Type, differentiator: S
 }
 
 public final class NoopStorage: StorageAPI {
-
 	public func version() -> String {
 		return "noop"
 	}
@@ -104,42 +103,42 @@ public final class NoopStorage: StorageAPI {
 }
 
 public final class InMemoryStorage: StorageAPI, @unchecked Sendable {
-    private var storage: [String: Data] = [:]
-    private let queue = DispatchQueue(label: "com.example.inmemorystorage", attributes: .concurrent)
+	private var storage: [String: Data] = [:]
+	private let queue = DispatchQueue(label: "com.example.inmemorystorage", attributes: .concurrent)
 
-    public func version() -> String {
-        return "inmemory"
-    }
+	public func version() -> String {
+		return "inmemory"
+	}
 
-    public func read(unsafe key: String) -> Result<Data?, Error> {
-        var result: Result<Data?, Error>!
-        queue.sync {
-            result = .success(self.storage[key])
-        }
-        return result
-    }
+	public func read(unsafe key: String) -> Result<Data?, Error> {
+		var result: Result<Data?, Error>!
+		self.queue.sync {
+			result = .success(self.storage[key])
+		}
+		return result
+	}
 
-    public func write(unsafe key: String, overwriting: Bool, as value: Data) -> Result<Void, Error> {
-        var result: Result<Void, Error>!
-        queue.sync(flags: .barrier) {
-            if !overwriting, self.storage[key] != nil {
-                result = .failure(NSError(domain: "com.example.inmemorystorage", code: 1, userInfo: [NSLocalizedDescriptionKey: "key already exists"]))
-            } else {
-                self.storage[key] = value
-                result = .success(())
-            }
-        }
-        return result
-    }
+	public func write(unsafe key: String, overwriting: Bool, as value: Data) -> Result<Void, Error> {
+		var result: Result<Void, Error>!
+		self.queue.sync(flags: .barrier) {
+			if !overwriting, self.storage[key] != nil {
+				result = .failure(NSError(domain: "com.example.inmemorystorage", code: 1, userInfo: [NSLocalizedDescriptionKey: "key already exists"]))
+			} else {
+				self.storage[key] = value
+				result = .success(())
+			}
+		}
+		return result
+	}
 
-    public func delete(unsafe key: String) -> Result<Void, Error> {
-        var result: Result<Void, Error>!
-        queue.sync(flags: .barrier) {
-            self.storage[key] = nil
-            result = .success(())
-        }
-        return result
-    }
+	public func delete(unsafe key: String) -> Result<Void, Error> {
+		var result: Result<Void, Error>!
+		self.queue.sync(flags: .barrier) {
+			self.storage[key] = nil
+			result = .success(())
+		}
+		return result
+	}
 
-    public init() {}
+	public init() {}
 }

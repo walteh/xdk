@@ -6,9 +6,9 @@
 //  Copyright © 2022 nugg.xyz LLC. All rights reserved.
 //
 
+import BigInt
 import Foundation
 import MicroDeterministicECDSA
-import BigInt
 import XDKHex
 
 struct EthereumTransaction {

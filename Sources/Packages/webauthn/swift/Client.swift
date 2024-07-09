@@ -30,10 +30,10 @@ final class WebauthnAuthenticationServicesClient: NSObject, Sendable {
 		return self.publicKeyProvider
 	}
 
-// @MainActor
-// 	public func getIsPerformingModalRequest() -> Bool {
-// 		return self.isPerformingModalRequest
-// 	}
+	// @MainActor
+	// 	public func getIsPerformingModalRequest() -> Bool {
+	// 		return self.isPerformingModalRequest
+	// 	}
 
 	public func getUserID() -> String {
 		return self.sessionAPI.ID().string()

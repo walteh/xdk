@@ -127,12 +127,11 @@ public extension Error {
 	func contains(_ g: some Swift.Error) -> Bool {
 		let r = self as RootListableError
 		return r.deepest(matching: g) != nil
-
 	}
 
 	func contains<G: Swift.Error>(_: G.Type) -> Bool {
-		 let r = self as RootListableError
-			return r.deepest(ofType: G.self) != nil
+		let r = self as RootListableError
+		return r.deepest(ofType: G.self) != nil
 	}
 }
 
@@ -189,7 +188,6 @@ public extension RootListableError {
 			if r.domain == i._domain, r.code == i._code {
 				return i
 			}
-
 		}
 		return nil
 	}

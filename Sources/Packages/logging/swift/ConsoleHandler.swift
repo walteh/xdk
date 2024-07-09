@@ -110,10 +110,8 @@ public struct ConsoleLogger: LogHandler {
 		let myMetadata = metadata
 		// run this in main actor
 		DispatchQueue.main.async {
-
-		_ = ConsoleLogger.outputFile.fileLogger.send(level, msg: "\(strtxt)", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: myMetadata)
+			_ = ConsoleLogger.outputFile.fileLogger.send(level, msg: "\(strtxt)", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: myMetadata)
 		}
-
 	}
 }
 
