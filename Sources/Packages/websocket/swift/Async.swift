@@ -106,7 +106,6 @@ extension WSAsyncProvider: WSDelegate {
 		case let .error(error):
 
 			self.websocketDidDisconnect(socket: client, error: error != nil ? x.error("websocket error", root: error!) : x.error("unknown websocket error"))
-
 //			case .ping:
 //			case .pong:
 		default:

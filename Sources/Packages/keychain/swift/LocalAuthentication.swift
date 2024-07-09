@@ -22,8 +22,9 @@ extension LAContext {
 	}
 }
 
-public class LocalAuthenticationClient: NSObject, ObservableObject {
-	let authenticationContext = LAContext()
+public final class LocalAuthenticationClient: NSObject, ObservableObject, Sendable {
+
+	// let authenticationContext =
 
 	let group: String
 	let _version: String
@@ -50,7 +51,7 @@ extension LocalAuthenticationClient: XDK.StorageAPI {
 		query[kSecUseDataProtectionKeychain as String] = true
 		query[kSecAttrAccount as String] = key
 		query[kSecAttrIsInvisible as String] = true
-		query[kSecUseAuthenticationContext as String] = self.authenticationContext
+		query[kSecUseAuthenticationContext as String] = LAContext()
 
 		//		query[kSecAttrIsSensitive as String] = true
 		var status = SecItemAdd(query as CFDictionary, nil)
@@ -88,7 +89,7 @@ extension LocalAuthenticationClient: XDK.StorageAPI {
 		query[kSecAttrAccessGroup as String] = self.group
 		query[kSecMatchLimit as String] = kSecMatchLimitOne
 		query[kSecReturnData as String] = true
-		query[kSecUseAuthenticationContext as String] = self.authenticationContext
+		query[kSecUseAuthenticationContext as String] = LAContext()
 		query[kSecAttrAccount as String] = key
 
 		var item: CFTypeRef?
@@ -113,7 +114,7 @@ extension LocalAuthenticationClient: XDK.StorageAPI {
 		query[kSecAttrSynchronizable as String] = true
 		query[kSecAttrAccessGroup as String] = self.group
 		query[kSecAttrAccount as String] = key
-		query[kSecUseAuthenticationContext as String] = self.authenticationContext
+		query[kSecUseAuthenticationContext as String] = LAContext()
 
 		let status = SecItemDelete(query as CFDictionary)
 
@@ -132,7 +133,7 @@ extension LocalAuthenticationClient: XDK.AuthenticationAPI {
 	/// Keychain errors we might encounter.
 	public func authenticationAvailable() -> Result<Bool, Error> {
 		var err: NSError?
-		let ok = self.authenticationContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: &err)
+		let ok = LAContext().canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: &err)
 		if err != nil {
 			return .failure(x.error("unable to check authentication availability", root: err))
 		}
@@ -147,7 +148,7 @@ extension LocalAuthenticationClient: XDK.AuthenticationAPI {
 			return .failure(x.error("local auth not available", root: err, alias: KeychainError.auth_failed))
 		}
 
-		guard let res = await Result.X({ try await self.authenticationContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: reason) }).to(&err) else {
+		guard let res = await Result.X({ try await LAContext().evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: reason) }).to(&err) else {
 			return .failure(x.error("unable to authenticate", root: err, alias: KeychainError.auth_failed))
 		}
 

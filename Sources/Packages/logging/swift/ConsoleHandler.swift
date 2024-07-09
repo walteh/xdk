@@ -37,7 +37,7 @@ public struct ConsoleLogger: LogHandler {
 		}
 	}
 
-	static let outputFile = OutputFile()
+	@MainActor static let outputFile = OutputFile()
 
 	/// The conosle that the messages will get logged to.
 	/// Creates a new `ConsoleLogger` instance.
@@ -106,7 +106,14 @@ public struct ConsoleLogger: LogHandler {
 			text += "\n" + err.dump() + "\n"
 		}
 
-		_ = ConsoleLogger.outputFile.fileLogger.send(level, msg: "\(text.terminalStylize())", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: metadata)
+		let strtxt = text.terminalStylize()
+		let myMetadata = metadata
+		// run this in main actor
+		DispatchQueue.main.async {
+
+		_ = ConsoleLogger.outputFile.fileLogger.send(level, msg: "\(strtxt)", thread: Thread.current.name ?? "unknown", file: file, function: function, line: Int(line), context: myMetadata)
+		}
+
 	}
 }
 

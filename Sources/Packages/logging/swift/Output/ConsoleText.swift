@@ -80,7 +80,7 @@ public struct ConsoleText: RandomAccessCollection, ExpressibleByArrayLiteral, Ex
 	}
 
 	/// `\n` character with plain styling.
-	public static let newLine: ConsoleText = "\n"
+	@MainActor public static let newLine: ConsoleText = "\n"
 
 //	public func padding(toLength: Int, withPad: any StringProtocol, startingAt: Int) -> ConsoleText {
 //

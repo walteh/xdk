@@ -75,7 +75,7 @@ class RoleCredentials: NSObject, NSSecureCoding {
 
 	// MARK: NSSecureCoding
 
-	public static var supportsSecureCoding: Bool { true }
+	public static let supportsSecureCoding: Bool = true
 
 	public required init?(coder: NSCoder) {
 		self.uniqueID = coder.decodeObject(of: NSString.self, forKey: "uniqueID") as String? ?? ""

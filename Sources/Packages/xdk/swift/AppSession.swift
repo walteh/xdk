@@ -8,11 +8,11 @@
 import Foundation
 import Logging
 
-public protocol AppSessionAPI {
+public protocol AppSessionAPI: Sendable {
 	func ID() -> XID
 }
 
-public class NoopAppSession: AppSessionAPI {
+public final class NoopAppSession: AppSessionAPI {
 	let base = XID.build()
 
 	public func ID() -> XID {
@@ -22,8 +22,9 @@ public class NoopAppSession: AppSessionAPI {
 	public init() {}
 }
 
-public class AppSessionID: NSObject, NSSecureCoding {
-	public static var supportsSecureCoding = true
+public final class AppSessionID: NSObject, NSSecureCoding, Sendable {
+
+    public static let supportsSecureCoding = true
 
 	let id: XID
 
@@ -45,7 +46,7 @@ public class AppSessionID: NSObject, NSSecureCoding {
 	}
 }
 
-public class StoredAppSession: NSObject {
+public final class StoredAppSession: NSObject, Sendable {
 	public let appSessionID: AppSessionID
 
 	public let storageAPI: any StorageAPI
@@ -55,12 +56,12 @@ public class StoredAppSession: NSObject {
 
 		self.storageAPI = storageAPI
 
-		var idres = XDK.Read(using: storageAPI, AppSessionID.self)
+		let idres = XDK.Read(using: storageAPI, AppSessionID.self)
 		if idres.error != nil {
 			throw x.error("failed to read app session id", root: idres.error)
 		}
 
-		var id = idres.value!
+		let id = idres.value!
 
 		if id == nil {
 			let tmpid = AppSessionID(id: XID.build())

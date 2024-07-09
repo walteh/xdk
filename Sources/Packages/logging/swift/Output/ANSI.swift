@@ -92,17 +92,14 @@ extension ANSISGRCommand {
 	var ansi: String {
 		switch self {
 		case .reset: return "0"
-
 		case .bold: return "1"
 		case .underline: return "4"
 		case .slowBlink: return "5"
-
 		case let .foregroundColor(c): return "3\(c)"
 		case let .brightForegroundColor(c): return "9\(c)"
 		case let .paletteForegroundColor(c): return "38;5;\(c)"
 		case let .rgbForegroundColor(r, g, b): return "38;2;\(r);\(g);\(b)"
 		case .defaultForegroundColor: return "39"
-
 		case let .backgroundColor(c): return "4\(c)"
 		case let .brightBackgroundColor(c): return "10\(c)"
 		case let .paletteBackgroundColor(c): return "48;5;\(c)"

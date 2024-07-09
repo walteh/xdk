@@ -61,7 +61,7 @@ public func buildAWSSSOSDKProtocolWrapped(ssoRegion: String) -> Result<AWSSSOSDK
 }
 
 public class SecureAWSSSOClientRegistrationInfo: NSObject, NSSecureCoding {
-	public static var supportsSecureCoding: Bool = true
+	public static let supportsSecureCoding: Bool = true
 
 	let clientID: String
 	let clientSecret: String
@@ -88,8 +88,8 @@ public class SecureAWSSSOClientRegistrationInfo: NSObject, NSSecureCoding {
 	}
 
 	public func encode(with coder: NSCoder) {
-		coder.encode(self.clientID, forKey: clientIDKey)
-		coder.encode(self.clientSecret, forKey: clientSecretKey)
+		coder.encode(self.clientID, forKey: self.clientIDKey)
+		coder.encode(self.clientSecret, forKey: self.clientSecretKey)
 	}
 
 	static func fromAWS(_ input: AWSSSOOIDC.RegisterClientOutput) -> Result<SecureAWSSSOClientRegistrationInfo, Error> {

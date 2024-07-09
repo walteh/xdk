@@ -33,7 +33,7 @@ public protocol AccessToken {
 }
 
 public class SecureAWSSSOAccessToken: NSObject, NSSecureCoding {
-	public static var supportsSecureCoding: Bool = true
+	public static let supportsSecureCoding: Bool = true
 
 	public let accessToken: String
 	public let refreshToken: String

@@ -14,6 +14,8 @@ import XDKHex
 import XDKKeychain
 
 extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
+
+
 	public func remote(init type: CeremonyType, credentialID: Data? = nil) async -> Result<Challenge, Error> {
 		var err = Error?.none
 

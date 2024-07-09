@@ -23,7 +23,7 @@ public protocol WSEngine {
 	func write(string: String, completion: (() -> Void)?)
 }
 
-public class NativeEngine: NSObject, WSEngine, URLSessionDataDelegate, URLSessionWebSocketDelegate {
+public final class NativeEngine: NSObject, WSEngine, URLSessionDataDelegate, URLSessionWebSocketDelegate {
 	private var task: URLSessionWebSocketTask?
 	private var delegate: WSEngineDelegate?
 

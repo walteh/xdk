@@ -24,7 +24,7 @@ public extension x {
 	}
 }
 
-public class XError: NSError {
+public final class XError: NSError, @unchecked Sendable {
 	override public var underlyingErrors: [Error] {
 		if let r = selfroot {
 			return [r]
@@ -108,7 +108,7 @@ public class XError: NSError {
 
 	public func info(_ data: [String: Any]) -> Self {
 		for i in data {
-			if let r = i.value as? CustomStringConvertible {
+			if let r = i.value as? (String) {
 				self.metadata[i.key] = .stringConvertible(r)
 			} else {
 				self.metadata[i.key] = .stringConvertible("\(i.value)")
@@ -125,17 +125,14 @@ public extension Error {
 	}
 
 	func contains(_ g: some Swift.Error) -> Bool {
-		if let r = self as? RootListableError {
-			return r.deepest(matching: g) != nil
-		}
-		return false
+		let r = self as RootListableError
+		return r.deepest(matching: g) != nil
+
 	}
 
 	func contains<G: Swift.Error>(_: G.Type) -> Bool {
-		if let r = self as? RootListableError {
+		 let r = self as RootListableError
 			return r.deepest(ofType: G.self) != nil
-		}
-		return false
 	}
 }
 
@@ -177,7 +174,7 @@ public extension RootListableError {
 	}
 
 	func deepest<T: Swift.Error>(ofType _: T.Type) -> Swift.Error? {
-		var list = self.rootList()
+		let list = self.rootList()
 
 		for i in list {
 			if let r = i as? T {
@@ -188,17 +185,17 @@ public extension RootListableError {
 					return i
 				}
 			}
-			if let r = i as? NSError {
-				if r.domain == i._domain, r.code == i._code {
-					return i
-				}
+			let r = i as NSError
+			if r.domain == i._domain, r.code == i._code {
+				return i
 			}
+
 		}
 		return nil
 	}
 
 	func deepest(matching: some Swift.Error) -> Swift.Error? {
-		var list = self.rootList()
+		let list = self.rootList()
 
 		for i in list {
 			// if let r = i as? T {
@@ -211,10 +208,9 @@ public extension RootListableError {
 					return i
 				}
 			}
-			if let r = i as? NSError {
-				if r.domain == matching._domain, r.code == matching._code {
-					return i
-				}
+			let r = i as NSError
+			if r.domain == i._domain, r.code == i._code {
+				return i
 			}
 		}
 		return nil

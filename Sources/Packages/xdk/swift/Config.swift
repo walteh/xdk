@@ -118,7 +118,7 @@ public func GetDeviceFamily(using configAPI: ConfigAPI) -> Result<String, Error>
 			return .failure(x.error("file not found: could not find \(file)"))
 		}
 
-		guard let data = Result.X { try Data(contentsOf: URL(fileURLWithPath: filepath), options: .mappedIfSafe) }.to(&err) else {
+		guard let data = Result.X({ try Data(contentsOf: URL(fileURLWithPath: filepath), options: .mappedIfSafe) }).to(&err) else {
 			return .failure(x.error("failed to read file", root: err).info("filepath", filepath))
 		}
 

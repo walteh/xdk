@@ -91,7 +91,7 @@ public class LogEvent {
 		return self.info(key, string)
 	}
 
-	public func add(_ key: String, any: CustomStringConvertible) -> Self {
+	public func add(_ key: String, any: CustomStringConvertible & Sendable) -> Self {
 		return self.info(key, any: any)
 	}
 
@@ -104,7 +104,7 @@ public class LogEvent {
 		return self
 	}
 
-	public func info(_ key: String, any: CustomStringConvertible) -> Self {
+	public func info(_ key: String, any: CustomStringConvertible & Sendable) -> Self {
 		self[metadataKey: key] = .stringConvertible(any)
 		return self
 	}

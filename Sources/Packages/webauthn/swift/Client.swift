@@ -9,7 +9,7 @@ import AuthenticationServices
 import Foundation
 import XDK
 
-class WebauthnAuthenticationServicesClient: NSObject {
+final class WebauthnAuthenticationServicesClient: NSObject, Sendable {
 	let host: URL
 
 	let sessionAPI: any XDK.AppSessionAPI
@@ -24,15 +24,16 @@ class WebauthnAuthenticationServicesClient: NSObject {
 	}
 
 	let publicKeyProvider: ASAuthorizationPlatformPublicKeyCredentialProvider
-	var isPerformingModalRequest: Bool = false
+	//  var isPerformingModalRequest: Bool = false
 
 	public func getPublicKeyProvider() -> ASAuthorizationPlatformPublicKeyCredentialProvider {
 		return self.publicKeyProvider
 	}
 
-	public func getIsPerformingModalRequest() -> Bool {
-		return self.isPerformingModalRequest
-	}
+// @MainActor
+// 	public func getIsPerformingModalRequest() -> Bool {
+// 		return self.isPerformingModalRequest
+// 	}
 
 	public func getUserID() -> String {
 		return self.sessionAPI.ID().string()

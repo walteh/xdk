@@ -36,7 +36,7 @@ public protocol WebauthnRemoteAPI {
 	func remote(credentialAssertion assert: ASAuthorizationPublicKeyCredentialAssertion) async -> Result<JWT, Error>
 	func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data) async -> Result<Void, Error>
 	func getPublicKeyProvider() -> ASAuthorizationPlatformPublicKeyCredentialProvider
-	func getIsPerformingModalRequest() -> Bool
+	// func getIsPerformingModalRequest() -> Bool
 	func getUserID() -> String
 }
 

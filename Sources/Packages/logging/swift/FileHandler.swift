@@ -9,7 +9,7 @@ import Foundation
 
 import Logging
 
-public class FileHandler: Logging.LogHandler {
+public class FileHandler: Logging.LogHandler, @unchecked Sendable {
 	public subscript(metadataKey key: String) -> Logging.Logger.Metadata.Value? {
 		get {
 			return self.metadata[key]

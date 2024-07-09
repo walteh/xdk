@@ -23,7 +23,7 @@ public extension NSNotification.Name {
 }
 
 class PasskeyCredentialID: NSObject, NSSecureCoding {
-	static var supportsSecureCoding = true
+	static let supportsSecureCoding = true
 
 	let credentialID: Data
 
@@ -66,6 +66,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		return signInObserver
 	}
 
+@MainActor
 	public func assertPasskey() async -> Result<Void, Error> {
 		var err = Error?.none
 
@@ -89,11 +90,12 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		authController.delegate = self
 		authController.presentationContextProvider = self
 		authController.performRequests(options: .preferImmediatelyAvailableCredentials)
-		self.isPerformingModalRequest = true
+		// self.isPerformingModalRequest = true
 
 		return .success(())
 	}
 
+@MainActor
 	public func attestPasskey() async -> Result<Void, Error> {
 		var err = Error?.none
 
@@ -111,10 +113,11 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		authController.delegate = self
 		authController.presentationContextProvider = self
 		authController.performRequests(options: .preferImmediatelyAvailableCredentials)
-		self.isPerformingModalRequest = true
+		// self.isPerformingModalRequest = true
 
 		return .success(())
 	}
+
 
 	public func authorizationController(
 		controller _: ASAuthorizationController,
@@ -133,9 +136,10 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		}
 	}
 
+
 	public func authorizationController(controller _: ASAuthorizationController, didCompleteWithError error: Error) {
 		guard let authorizationError = error as? ASAuthorizationError else {
-			self.isPerformingModalRequest = false
+			// self.isPerformingModalRequest = false
 			return
 		}
 
@@ -153,7 +157,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 			}
 		}
 
-		self.isPerformingModalRequest = false
+		// self.isPerformingModalRequest = false
 	}
 
 	func didFinishSignIn() {

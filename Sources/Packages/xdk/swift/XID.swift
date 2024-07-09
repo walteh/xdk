@@ -10,7 +10,7 @@ import xid
 
 // var buf = XIDManager()
 
-public struct XID {
+public struct XID: Sendable {
 	var _bytes: (
 		UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
 		UInt8, UInt8, UInt8, UInt8
@@ -145,7 +145,7 @@ private let base32DecodeMap: Data = {
 }()
 
 // extension XID: NSSecureCoding {
-// 	static var supportsSecureCoding = true
+// 	static let supportsSecureCoding = true
 
 // 	func encode(with coder: NSCoder) {
 // 		coder.encode(self._bytes, forKey: "id")

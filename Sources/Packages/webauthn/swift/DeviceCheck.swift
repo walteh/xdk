@@ -34,7 +34,7 @@ enum DeviceCheckError: Swift.Error {
 }
 
 class AppAttestKeyID: NSObject, NSSecureCoding {
-	static var supportsSecureCoding = true
+	static let supportsSecureCoding = true
 
 	let keyID: Data
 

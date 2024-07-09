@@ -46,7 +46,7 @@ public class RoleInfo: NSObject, NSSecureCoding {
 
 	// MARK: - NSSecureCoding
 
-	public static var supportsSecureCoding: Bool = true
+	public static let supportsSecureCoding: Bool = true
 
 	public required init?(coder: NSCoder) {
 		self.roleName = coder.decodeObject(of: NSString.self, forKey: "roleName") as String? ?? ""
@@ -92,7 +92,7 @@ public class AccountInfo: NSObject, NSSecureCoding, ObservableObject {
 	// MARK: - NSSecureCoding
 
 	// implement the NSSecureCoding protocol
-	public static var supportsSecureCoding: Bool = true
+	public static let supportsSecureCoding: Bool = true
 
 	public required init?(coder: NSCoder) {
 		self.accountID = coder.decodeObject(of: NSString.self, forKey: "accountID") as String? ?? ""
@@ -124,7 +124,7 @@ public class RoleInfoList: NSObject, Sequence, NSSecureCoding {
 
 	// MARK: - NSSecureCoding
 
-	public static var supportsSecureCoding = true
+	public static let supportsSecureCoding = true
 
 	public required init?(coder: NSCoder) {
 		guard let decodedArray = coder.decodeObject(of: [NSArray.self, RoleInfo.self], forKey: "roles") as? [RoleInfo] else {
@@ -151,7 +151,7 @@ public class AccountInfoList: NSObject, Sequence, NSSecureCoding {
 
 	// MARK: - NSSecureCoding
 
-	public static var supportsSecureCoding = true
+	public static let supportsSecureCoding = true
 
 	public required init?(coder: NSCoder) {
 		guard let decodedArray = coder.decodeObject(of: [NSArray.self, AccountInfo.self], forKey: "accounts") as? [AccountInfo] else {

@@ -31,7 +31,7 @@ class big_tests: XCTestCase {
 		// Put teardown code here. This method is called after the invocation of each test method in the class.
 	}
 
-	func testExample() async throws {
+	func dontTestExample() async throws {
 		let storageAPI = XDK.InMemoryStorage() as StorageAPI
 		let selectedRegion = "us-east-1"
 

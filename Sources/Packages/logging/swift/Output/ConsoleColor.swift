@@ -52,7 +52,6 @@ extension ConsoleColor {
 		case .brightWhite: return .bright(7)
 		case let .palette(p): return .palette(p)
 		case let .custom(r, g, b): return .rgb(r: r, g: g, b: b)
-
 		case .orange: return .palette(216)
 		case .perrywinkle: return .palette(147)
 		case .brightOrange: return .palette(214)
