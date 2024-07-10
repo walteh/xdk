@@ -127,7 +127,7 @@ public func Delete<T: Codable & Sendable>(using storageAPI: StorageAPI, _: T.Typ
 // 	return .success(())
 // }
 
-public final class NoopStorage: StorageAPI {
+public struct NoopStorage: StorageAPI {
 	public func version() -> String {
 		"noop"
 	}

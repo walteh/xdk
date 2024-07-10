@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol ConfigAPI {
+public protocol ConfigAPI: Sendable {
 	func get(key: String) -> Result<String, Error>
 	func get(file: String) -> Result<Data, Error>
 }

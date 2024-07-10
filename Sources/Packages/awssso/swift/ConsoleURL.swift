@@ -29,6 +29,31 @@ public func generateAWSConsoleURLWithDefaultClient(
 	)
 }
 
+public func generateAWSConsoleURLWithExpiryWithDefaultClient(
+	account: AccountInfo,
+	role: RoleInfo,
+	managedRegion: ManagedRegionService,
+	storageAPI: some XDK.StorageAPI,
+	accessToken: SecureAWSSSOAccessToken,
+	isSignedIn: Bool
+) async -> Result<(URL, Date), Error> {
+	var err = Error?.none
+
+	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.region).to(&err) else {
+		return .failure(XDK.Err("creating aws client", root: err))
+	}
+
+	return await generateAWSConsoleURLWithExpiry(
+		client: awsClient,
+		account: account,
+		role: role,
+		managedRegion: managedRegion,
+		storageAPI: storageAPI,
+		accessToken: accessToken,
+		isSignedIn: isSignedIn
+	)
+}
+
 public func generateAWSConsoleURL(
 	client: AWSSSOSDKProtocolWrapped,
 	account: AccountInfo,
@@ -54,7 +79,7 @@ public func generateAWSConsoleURL(
 
 	// if creds were updated, we need a new signintoken
 	if creds.pulledFromCache, isSignedIn {
-		XDK.Log(.debug).send("role creds were pulled from cache, but user is signed in")
+		XDK.Log(.debug).meta(["role": .string(role.roleName)]).send("role creds were pulled from cache, but user is signed in")
 		return constructSimpleConsoleURL(region: region, service: service)
 	}
 
@@ -86,6 +111,68 @@ public func generateAWSConsoleURL(
 	}
 
 	return .success(consoleHomeURL)
+}
+
+public func generateAWSConsoleURLWithExpiry(
+	client: AWSSSOSDKProtocolWrapped,
+	account: AccountInfo,
+	role: RoleInfo,
+	managedRegion: ManagedRegionService,
+	storageAPI: some XDK.StorageAPI,
+	accessToken: SecureAWSSSOAccessToken,
+	isSignedIn: Bool,
+	retryNumber: Int = 0
+) async -> Result<(URL, Date), Error> {
+	var err: Error? = nil
+
+	//	guard let role = account.role else {
+	//		return .failure(x.error("role not set"))
+	//	}
+
+	let region = managedRegion.region ?? accessToken.region
+	let service = managedRegion.service ?? ""
+
+	guard let creds = await getRoleCredentials(client, storage: storageAPI, accessToken: accessToken, account: role).to(&err) else {
+		return .failure(x.error("error fetching role creds", root: err))
+	}
+
+	// if creds were updated, we need a new signintoken
+	if creds.pulledFromCache, isSignedIn {
+		guard let simp = constructSimpleConsoleURL(region: region, service: service).to(&err) else {
+			return .failure(x.error("constructing url", root: err))
+		}
+
+		return .success((simp, creds.data.expiresAt))
+	}
+
+	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).to(&err) else {
+		if retryNumber < 5 {
+			XDK.Log(.debug).err(err).add("count", any: retryNumber).send("retrying generateAWSConsoleURL")
+
+			guard let _ = invalidateRoleCredentials(storageAPI, account: role).to(&err) else {
+				return .failure(x.error("error invalidating role creds", root: err))
+			}
+
+			return await generateAWSConsoleURLWithExpiry(
+				client: client,
+				account: account,
+				role: role,
+				managedRegion: managedRegion,
+				storageAPI: storageAPI,
+				accessToken: accessToken,
+				isSignedIn: false, // regardless of what our caller thinks we need to log in again
+				retryNumber: retryNumber + 1
+			)
+		}
+
+		return .failure(XDK.Err("error fetching signInToken", root: err))
+	}
+
+	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).to(&err) else {
+		return .failure(XDK.Err("error constructing console url", root: err))
+	}
+
+	return .success((consoleHomeURL, creds.data.expiresAt))
 }
 
 func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<URLRequest, Error> {

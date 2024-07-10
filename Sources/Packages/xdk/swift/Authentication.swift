@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol AuthenticationAPI {
+public protocol AuthenticationAPI: Sendable {
 	func obtainAuthentication(reason: String) async -> Result<Bool, Error>
 	func authenticationAvailable() -> Result<Bool, Error>
 }
