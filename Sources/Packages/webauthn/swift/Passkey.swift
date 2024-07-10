@@ -22,21 +22,11 @@ public extension NSNotification.Name {
 	static let PasskeyCredentialUpdated = Notification.Name("PasskeyCredentialUpdated")
 }
 
-class PasskeyCredentialID: NSObject, NSSecureCoding {
-	static let supportsSecureCoding = true
-
+struct PasskeyCredentialID: Codable, Sendable {
 	let credentialID: Data
 
 	init(credentialID: Data) {
 		self.credentialID = credentialID
-	}
-
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.credentialID, forKey: "credentialID")
-	}
-
-	public required init?(coder: NSCoder) {
-		self.credentialID = coder.decodeObject(forKey: "credentialID") as! Data
 	}
 }
 

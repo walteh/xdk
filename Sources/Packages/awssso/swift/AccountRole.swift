@@ -11,23 +11,22 @@ import Foundation
 import WebKit
 import XDK
 
-@MainActor
-public protocol ManagedRegionService {
+public protocol ManagedRegionService: Sendable {
 	var region: String? { get set }
 	var service: String? { get set }
 }
 
-public class SimpleManagedRegionService: ManagedRegionService {
+public struct SimpleManagedRegionService: ManagedRegionService {
 	public var region: String?
 	public var service: String?
 
-	public init(region: String, service: String) {
+	public init(region: String?, service: String?) {
 		self.region = region
 		self.service = service
 	}
 }
 
-public final class RoleInfo: NSObject, NSSecureCoding, Sendable {
+public struct RoleInfo: Codable, Sendable, Hashable {
 	public let roleName: String
 	public let accountID: String
 
@@ -42,77 +41,36 @@ public final class RoleInfo: NSObject, NSSecureCoding, Sendable {
 	}
 
 	var uniqueID: String {
-		return "\(self.accountID)_\(self.roleName)"
-	}
-
-	// MARK: - NSSecureCoding
-
-	public static let supportsSecureCoding: Bool = true
-
-	public required init?(coder: NSCoder) {
-		self.roleName = coder.decodeObject(of: NSString.self, forKey: "roleName") as String? ?? ""
-		self.accountID = coder.decodeObject(of: NSString.self, forKey: "accountID") as String? ?? ""
-	}
-
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.roleName, forKey: "roleName")
-		coder.encode(self.accountID, forKey: "accountID")
+		"\(self.accountID)_\(self.roleName)"
 	}
 }
 
-public final class AccountInfo: NSObject, NSSecureCoding, ObservableObject, Sendable {
+public struct AccountInfo: Codable, Sendable, Hashable {
+	public static func == (lhs: AccountInfo, rhs: AccountInfo) -> Bool {
+		return lhs.accountID == rhs.accountID
+	}
+
 	public let accountID: String
 	public let roles: [RoleInfo]
-    // public let role: RoleInfo
 	public let accountName: String
 	public let accountEmail: String
-
-	// this doesn't need to be here, but we can use it centralize the region
-	// @Published public var region: String?
-
-	// var currentRoleUniqueId: String {
-	// 	return "\(self.accountID)_\(self.role.roleName)"
-	// }
 
 	public init(accountID: String, accountName: String, roles: [RoleInfo], accountEmail: String) {
 		self.accountID = accountID
 		self.accountName = accountName
 		self.accountEmail = accountEmail
 		self.roles = roles
-		// self.role = roles.first
 	}
 
 	init(role: [AWSSSO.SSOClientTypes.RoleInfo], account: AWSSSO.SSOClientTypes.AccountInfo) {
 		self.accountID = account.accountId ?? ""
 		self.roles = role.map { RoleInfo($0) }
-		// self.role = self.roles.first ?? nil
 		self.accountName = account.accountName ?? ""
 		self.accountEmail = account.emailAddress ?? ""
 	}
-
-	// MARK: - NSSecureCoding
-
-	// implement the NSSecureCoding protocol
-	public static let supportsSecureCoding: Bool = true
-
-	public required init?(coder: NSCoder) {
-		self.accountID = coder.decodeObject(of: NSString.self, forKey: "accountID") as String? ?? ""
-		// self.role = coder.decodeObject(of: [RoleInfo.self], forKey: "role") as? RoleInfo ?? nil
-		self.roles = coder.decodeObject(of: [NSArray.self, RoleInfo.self], forKey: "roles") as? [RoleInfo] ?? []
-		self.accountName = coder.decodeObject(of: NSString.self, forKey: "accountName") as? String ?? ""
-		self.accountEmail = coder.decodeObject(of: NSString.self, forKey: "accountEmail") as? String ?? ""
-	}
-
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.accountID, forKey: "accountID")
-		// coder.encode(self.role, forKey: "role")
-		coder.encode(self.roles as NSArray, forKey: "roles")
-		coder.encode(self.accountName, forKey: "accountName")
-		coder.encode(self.accountEmail, forKey: "accountEmail")
-	}
 }
 
-public class RoleInfoList: NSObject, Sequence, NSSecureCoding {
+public struct RoleInfoList: Codable, Sequence, Sendable {
 	public var roles: [RoleInfo]
 
 	public init(roles: [RoleInfo]) {
@@ -120,26 +78,11 @@ public class RoleInfoList: NSObject, Sequence, NSSecureCoding {
 	}
 
 	public func makeIterator() -> IndexingIterator<[RoleInfo]> {
-		return self.roles.makeIterator()
-	}
-
-	// MARK: - NSSecureCoding
-
-	public static let supportsSecureCoding = true
-
-	public required init?(coder: NSCoder) {
-		guard let decodedArray = coder.decodeObject(of: [NSArray.self, RoleInfo.self], forKey: "roles") as? [RoleInfo] else {
-			return nil
-		}
-		self.roles = decodedArray
-	}
-
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.roles as NSArray, forKey: "roles")
+		self.roles.makeIterator()
 	}
 }
 
-public class AccountInfoList: NSObject, Sequence, NSSecureCoding {
+public struct AccountInfoList: Codable, Sequence, Sendable {
 	public var accounts: [AccountInfo]
 
 	public init(accounts: [AccountInfo]) {
@@ -147,31 +90,15 @@ public class AccountInfoList: NSObject, Sequence, NSSecureCoding {
 	}
 
 	public func makeIterator() -> IndexingIterator<[AccountInfo]> {
-		return self.accounts.makeIterator()
-	}
-
-	// MARK: - NSSecureCoding
-
-	public static let supportsSecureCoding = true
-
-	public required init?(coder: NSCoder) {
-		guard let decodedArray = coder.decodeObject(of: [NSArray.self, AccountInfo.self], forKey: "accounts") as? [AccountInfo] else {
-			return nil
-		}
-		self.accounts = decodedArray
-	}
-
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.accounts as NSArray, forKey: "accounts")
+		self.accounts.makeIterator()
 	}
 }
 
 func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> {
-	return XDK.Delete(using: storage, AccountInfoList.self)
+	XDK.Delete(using: storage, AccountInfoList.self)
 }
 
-@MainActor
-public  func getAccountsRoleList(
+public func getAccountsRoleList(
 	client: AWSSSOSDKProtocolWrapped,
 	storage: XDK.StorageAPI,
 	accessToken: SecureAWSSSOAccessToken
@@ -195,7 +122,7 @@ public  func getAccountsRoleList(
 		return .failure(x.error("response.accountList does not exist"))
 	}
 
-	let list = AccountInfoList(accounts: [])
+	var list = AccountInfoList(accounts: [])
 
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {

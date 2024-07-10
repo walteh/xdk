@@ -32,11 +32,11 @@ public struct WSError: Error {
 public protocol WSClient: AnyObject {
 	func connect()
 	func disconnect(closeCode: UInt16)
-	func write(string: String, completion: (() -> Void)?)
-	func write(stringData: Data, completion: (() -> Void)?)
-	func write(data: Data, completion: (() -> Void)?)
-	func write(ping: Data, completion: (() -> Void)?)
-	func write(pong: Data, completion: (() -> Void)?)
+	func write(string: String, completion: (@Sendable () -> Void)?)
+	func write(stringData: Data, completion: (@Sendable () -> Void)?)
+	func write(data: Data, completion: (@Sendable () -> Void)?)
+	func write(ping: Data, completion: (@Sendable () -> Void)?)
+	func write(pong: Data, completion: (@Sendable () -> Void)?)
 }
 
 // implements some of the base behaviors
@@ -110,7 +110,7 @@ open class WS: WSClient, WSEngineDelegate {
 		self.engine.forceStop()
 	}
 
-	public func write(data: Data, completion: (() -> Void)?) {
+	public func write(data: Data, completion: (@Sendable () -> Void)?) {
 		self.write(data: data, opcode: .binaryFrame, completion: completion)
 	}
 
@@ -118,26 +118,26 @@ open class WS: WSClient, WSEngineDelegate {
 		self.engine.write(string: string, completion: completion)
 	}
 
-	public func write(stringData: Data, completion: (() -> Void)?) {
+	public func write(stringData: Data, completion: (@Sendable () -> Void)?) {
 		self.write(data: stringData, opcode: .textFrame, completion: completion)
 	}
 
-	public func write(ping: Data, completion: (() -> Void)?) {
+	public func write(ping: Data, completion: (@Sendable () -> Void)?) {
 		self.write(data: ping, opcode: .ping, completion: completion)
 	}
 
-	public func write(pong: Data, completion: (() -> Void)?) {
+	public func write(pong: Data, completion: (@Sendable () -> Void)?) {
 		self.write(data: pong, opcode: .pong, completion: completion)
 	}
 
-	private func write(data: Data, opcode: FrameOpCode, completion: (() -> Void)?) {
+	private func write(data: Data, opcode: FrameOpCode, completion: (@Sendable () -> Void)?) {
 		self.engine.write(data: data, opcode: opcode, completion: completion)
 	}
 
 	// MARK: - EngineDelegate
 
 	public func didReceive(event: WSEvent) {
-		self.callbackq.async { [weak self] in
+		self.callbackq.sync { [weak self] in
 			guard let s = self else { return }
 			s.delegate.didReceive(event: event, client: s)
 			s.onEvent?(event)

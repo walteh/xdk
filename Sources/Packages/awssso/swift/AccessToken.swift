@@ -10,7 +10,7 @@ import Combine
 import Foundation
 import XDK
 
-public struct UserSignInData: Equatable {
+public struct UserSignInData: Sendable, Hashable {
 	public let activationURL: URL
 	public let activationURLWithCode: URL
 	public let code: String
@@ -32,9 +32,7 @@ public protocol AccessToken {
 	var startURL: URL { get }
 }
 
-public class SecureAWSSSOAccessToken: NSObject, NSSecureCoding {
-	public static let supportsSecureCoding: Bool = true
-
+public struct SecureAWSSSOAccessToken: Codable, Sendable, Hashable {
 	public let accessToken: String
 	public let refreshToken: String
 	public let expiresAt: Date
@@ -47,33 +45,6 @@ public class SecureAWSSSOAccessToken: NSObject, NSSecureCoding {
 		self.expiresAt = expiresAt
 		self.region = region
 		self.startURL = startURL
-	}
-
-	// MARK: - NSSecureCoding
-
-	public required init?(coder: NSCoder) {
-		guard let accessToken = coder.decodeObject(of: NSString.self, forKey: "accessToken") as String?,
-		      let refreshToken = coder.decodeObject(of: NSString.self, forKey: "refreshToken") as String?,
-		      let startURL = coder.decodeObject(of: NSURL.self, forKey: "startURL") as URL?,
-		      let region = coder.decodeObject(of: NSString.self, forKey: "region") as String?,
-		      let expiresAt = coder.decodeObject(of: NSDate.self, forKey: "expiresAt") as Date?
-		else {
-			return nil
-		}
-
-		self.accessToken = accessToken
-		self.refreshToken = refreshToken
-		self.expiresAt = expiresAt
-		self.region = region
-		self.startURL = startURL
-	}
-
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.accessToken, forKey: "accessToken")
-		coder.encode(self.refreshToken, forKey: "refreshToken")
-		coder.encode(self.expiresAt, forKey: "expiresAt")
-		coder.encode(self.region, forKey: "region")
-		coder.encode(self.startURL, forKey: "startURL")
 	}
 
 	static func fromAWS(input: AWSSSOOIDC.StartDeviceAuthorizationInput, output: AWSSSOOIDC.CreateTokenOutput,
@@ -108,13 +79,12 @@ public func signin(storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessTok
 	return .success(nil)
 }
 
-@MainActor
 public func signin(
 	client: AWSSSOSDKProtocolWrapped,
 	storageAPI: some XDK.StorageAPI,
 	ssoRegion: String,
 	startURL: URL,
-	callback: @escaping (_ url: UserSignInData) -> Void
+	callback: @escaping @Sendable (_ url: UserSignInData) -> Void
 ) async -> Result<SecureAWSSSOAccessToken, Error> {
 	var err: Error? = nil
 

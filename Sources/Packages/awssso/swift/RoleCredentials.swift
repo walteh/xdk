@@ -10,7 +10,7 @@ import Combine
 import Foundation
 import XDK
 
-class RoleCredentialsSignInToken: NSObject, NSSecureCoding {
+struct RoleCredentialsSignInToken: Codable, Sendable {
 	public let token: String
 	public let credentialID: String
 
@@ -18,25 +18,9 @@ class RoleCredentialsSignInToken: NSObject, NSSecureCoding {
 		self.token = token
 		self.credentialID = credentialID
 	}
-
-	// MARK: NSSecureCoding
-
-	public static
-
-	var supportsSecureCoding: Bool { true }
-
-	public required init?(coder: NSCoder) {
-		self.token = coder.decodeObject(of: NSString.self, forKey: "token") as String? ?? ""
-		self.credentialID = coder.decodeObject(of: NSString.self, forKey: "credentialID") as String? ?? ""
-	}
-
-	func encode(with coder: NSCoder) {
-		coder.encode(self.token as NSString, forKey: "token")
-		coder.encode(self.credentialID as NSString, forKey: "credentialID")
-	}
 }
 
-class RoleCredentials: NSObject, NSSecureCoding {
+struct RoleCredentials: Codable, Sendable {
 	public let accessKeyID: Swift.String
 	public let expiresAt: Date
 	public let secretAccessKey: Swift.String
@@ -62,7 +46,7 @@ class RoleCredentials: NSObject, NSSecureCoding {
 		self.stsRegion = stsRegion
 	}
 
-	public convenience init(_ aws: AWSSSO.SSOClientTypes.RoleCredentials, _ role: RoleInfo, stsRegion: String) {
+	public init(_ aws: AWSSSO.SSOClientTypes.RoleCredentials, _ role: RoleInfo, stsRegion: String) {
 		self.init(
 			accessKeyID: aws.accessKeyId ?? "",
 			expiresAt: Date(timeIntervalSince1970: Double(Double(aws.expiration) / 1000)),
@@ -73,36 +57,12 @@ class RoleCredentials: NSObject, NSSecureCoding {
 		)
 	}
 
-	// MARK: NSSecureCoding
-
-	public static let supportsSecureCoding: Bool = true
-
-	public required init?(coder: NSCoder) {
-		self.uniqueID = coder.decodeObject(of: NSString.self, forKey: "uniqueID") as String? ?? ""
-		self.accessKeyID = coder.decodeObject(of: NSString.self, forKey: "accessKeyID") as String? ?? ""
-		self.role = coder.decodeObject(of: [RoleInfo.self], forKey: "role") as? RoleInfo ?? RoleInfo(roleName: "", accountID: "")
-		self.expiresAt = coder.decodeObject(of: NSDate.self, forKey: "expiresAt") as? Date ?? Date()
-		self.secretAccessKey = coder.decodeObject(of: NSString.self, forKey: "secretAccessKey") as? String ?? ""
-		self.sessionToken = coder.decodeObject(of: NSString.self, forKey: "sessionToken") as? String ?? ""
-		self.stsRegion = coder.decodeObject(of: NSString.self, forKey: "stsRegion") as? String ?? ""
-	}
-
-	func encode(with coder: NSCoder) {
-		coder.encode(self.uniqueID, forKey: "uniqueID")
-		coder.encode(self.accessKeyID, forKey: "accessKeyID")
-		coder.encode(self.secretAccessKey, forKey: "secretAccessKey")
-		coder.encode(self.expiresAt, forKey: "expiresAt")
-		coder.encode(self.sessionToken, forKey: "sessionToken")
-		coder.encode(self.role, forKey: "role")
-		coder.encode(self.stsRegion, forKey: "stsRegion")
-	}
-
 	func expiresIn() -> TimeInterval {
-		return self.expiresAt.timeIntervalSinceNow
+		self.expiresAt.timeIntervalSinceNow
 	}
 
 	func isExpired() -> Bool {
-		return self.expiresIn() < 0
+		self.expiresIn() < 0
 	}
 }
 
@@ -131,7 +91,7 @@ func invalidateAndGetRoleCredentials(
 	return await getRoleCredentials(client, storage: storage, accessToken: accessToken, account: account)
 }
 
-struct RoleCredentialsStatus {
+struct RoleCredentialsStatus: Sendable {
 	let data: RoleCredentials
 	let pulledFromCache: Bool
 }

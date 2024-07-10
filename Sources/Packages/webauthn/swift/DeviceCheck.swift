@@ -33,9 +33,7 @@ enum DeviceCheckError: Swift.Error {
 	case unexpectedNil
 }
 
-class AppAttestKeyID: NSObject, NSSecureCoding {
-	static let supportsSecureCoding = true
-
+struct AppAttestKeyID: Codable, Sendable {
 	let keyID: Data
 
 	init(keyID: Data) {
@@ -46,7 +44,7 @@ class AppAttestKeyID: NSObject, NSSecureCoding {
 		coder.encode(self.keyID, forKey: "keyID")
 	}
 
-	public required init?(coder: NSCoder) {
+	public init?(coder: NSCoder) {
 		self.keyID = coder.decodeObject(forKey: "keyID") as! Data
 	}
 }

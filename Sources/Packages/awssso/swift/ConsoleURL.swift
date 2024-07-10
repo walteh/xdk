@@ -4,7 +4,6 @@ import Combine
 import Foundation
 import XDK
 
-@MainActor
 public func generateAWSConsoleURLWithDefaultClient(
 	account: AccountInfo,
 	role: RoleInfo,
@@ -30,7 +29,6 @@ public func generateAWSConsoleURLWithDefaultClient(
 	)
 }
 
-@MainActor
 public func generateAWSConsoleURL(
 	client: AWSSSOSDKProtocolWrapped,
 	account: AccountInfo,
@@ -43,9 +41,9 @@ public func generateAWSConsoleURL(
 ) async -> Result<URL, Error> {
 	var err: Error? = nil
 
-//	guard let role = account.role else {
-//		return .failure(x.error("role not set"))
-//	}
+	//	guard let role = account.role else {
+	//		return .failure(x.error("role not set"))
+	//	}
 
 	let region = managedRegion.region ?? accessToken.region
 	let service = managedRegion.service ?? ""
@@ -166,7 +164,7 @@ func constructLoginURL(with signInToken: String, credentials: RoleCredentials, r
 		return .success(url)
 	} else {
 		return .failure(x.error("coule not convert components to url").event {
-			return $0.add("components", components)
+			$0.add("components", components)
 		})
 	}
 }

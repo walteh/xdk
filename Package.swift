@@ -50,7 +50,6 @@ let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: 
 
 god.complete()
 
-
 protocol Dep {
 	func target() -> Target.Dependency
 }
@@ -73,7 +72,7 @@ class Git {
 	}
 
 	func child(module: String) -> Git {
-		return Git(name: self.name, module: module, product: self.product)
+		Git(name: self.name, module: module, product: self.product)
 	}
 
 	func apply(_ god: God) -> Self {
@@ -84,7 +83,7 @@ class Git {
 
 extension Git: Dep {
 	func target() -> Target.Dependency {
-		return .product(name: self.module, package: self.name)
+		.product(name: self.module, package: self.name)
 	}
 }
 
@@ -103,7 +102,7 @@ class Local {
 	}
 
 	func camel() -> String {
-		return "\(self.name.prefix(1).uppercased() + self.name.dropFirst())"
+		"\(self.name.prefix(1).uppercased() + self.name.dropFirst())"
 	}
 
 	func with(c: Bool) -> Self {
@@ -171,7 +170,6 @@ class Local {
 
 extension Local: Dep {
 	func target() -> Target.Dependency {
-		return .byName(name: self.module())
+		.byName(name: self.module())
 	}
 }
-

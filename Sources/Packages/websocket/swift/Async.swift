@@ -55,7 +55,7 @@ public class WSAsyncProvider: WSProvider {
 	}
 
 	public func connect(url: URL, protocols: [String]) {
-		self.serialq.async {
+		self.serialq.sync {
 			x.log(.debug).send("[ws] connect. Connecting to url")
 
 			self._socket = WS(url: url, protocols: protocols, serialq: self.serialq, delegate: self)
@@ -64,7 +64,7 @@ public class WSAsyncProvider: WSProvider {
 	}
 
 	public func disconnect() {
-		self.serialq.async {
+		self.serialq.sync {
 			x.log(.debug).send("[ws] socket.disconnect")
 			self._socket?.disconnect()
 			self._socket = nil
@@ -72,7 +72,7 @@ public class WSAsyncProvider: WSProvider {
 	}
 
 	public func write(message: String) {
-		self.serialq.async {
+		self.serialq.sync {
 			x.log(.debug).send("[ws] socket.write - \(message)")
 			self._socket?.write(string: message)
 		}
@@ -115,7 +115,7 @@ extension WSAsyncProvider: WSDelegate {
 
 	private func websocketDidConnect(socket _: WSClient) {
 		x.log(.debug).send("[ws] websocketDidConnect: websocket has been connected.")
-		self.serialq.async {
+		self.serialq.sync {
 			self._isConnected = true
 			self.websocketDidConnectCallback()
 		}
@@ -128,7 +128,7 @@ extension WSAsyncProvider: WSDelegate {
 			x.log(.warning).send("websocket disconnected without an error")
 		}
 
-		self.serialq.async {
+		self.serialq.sync {
 			self._isConnected = false
 			self.websocketDidDisconnectCallback(error: error)
 		}

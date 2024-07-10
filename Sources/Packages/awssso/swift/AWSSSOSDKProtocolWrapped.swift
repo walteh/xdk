@@ -18,6 +18,12 @@ public protocol AWSSSOSDKProtocolWrapped {
 	func createToken(input: AWSSSOOIDC.CreateTokenInput) async -> Result<AWSSSOOIDC.CreateTokenOutput, Error>
 }
 
+extension AWSSSO.ListAccountsOutput: @retroactive @unchecked Sendable {}
+extension AWSSSO.ListAccountRolesOutput: @retroactive @unchecked Sendable {}
+extension AWSSSOOIDC.StartDeviceAuthorizationOutput: @retroactive @unchecked Sendable {}
+extension AWSSSOOIDC.RegisterClientOutput: @retroactive @unchecked Sendable {}
+extension AWSSSOOIDC.CreateTokenOutput: @retroactive @unchecked Sendable {}
+
 class AWSSSOSDKProtocolWrappedImpl: AWSSSOSDKProtocolWrapped {
 	let ssoRegion: String
 	let sso: AWSSSO.SSOClient
@@ -30,39 +36,37 @@ class AWSSSOSDKProtocolWrappedImpl: AWSSSOSDKProtocolWrapped {
 	}
 
 	func getRoleCredentials(input: AWSSSO.GetRoleCredentialsInput) async -> Result<AWSSSO.GetRoleCredentialsOutput, Error> {
-		return await Result.X { try await self.sso.getRoleCredentials(input: input) }
+		await Result.X { try await self.sso.getRoleCredentials(input: input) }
 	}
 
 	func startDeviceAuthorization(input: AWSSSOOIDC
 		.StartDeviceAuthorizationInput) async -> Result<AWSSSOOIDC.StartDeviceAuthorizationOutput, Error>
 	{
-		return await Result.X { try await self.ssoOIDC.startDeviceAuthorization(input: input) }
+		await Result.X { try await self.ssoOIDC.startDeviceAuthorization(input: input) }
 	}
 
 	func listAccounts(input: AWSSSO.ListAccountsInput) async -> Result<AWSSSO.ListAccountsOutput, Error> {
-		return await Result.X { try await self.sso.listAccounts(input: input) }
+		await Result.X { try await self.sso.listAccounts(input: input) }
 	}
 
 	func listAccountRoles(input: AWSSSO.ListAccountRolesInput) async -> Result<AWSSSO.ListAccountRolesOutput, Error> {
-		return await Result.X { try await self.sso.listAccountRoles(input: input) }
+		await Result.X { try await self.sso.listAccountRoles(input: input) }
 	}
 
 	func registerClient(input: AWSSSOOIDC.RegisterClientInput) async -> Result<AWSSSOOIDC.RegisterClientOutput, Error> {
-		return await Result.X { try await self.ssoOIDC.registerClient(input: input) }
+		await Result.X { try await self.ssoOIDC.registerClient(input: input) }
 	}
 
 	func createToken(input: AWSSSOOIDC.CreateTokenInput) async -> Result<AWSSSOOIDC.CreateTokenOutput, Error> {
-		return await Result.X { try await self.ssoOIDC.createToken(input: input) }
+		await Result.X { try await self.ssoOIDC.createToken(input: input) }
 	}
 }
 
 public func buildAWSSSOSDKProtocolWrapped(ssoRegion: String) -> Result<AWSSSOSDKProtocolWrapped, Error> {
-	return Result.X { try AWSSSOSDKProtocolWrappedImpl(ssoRegion: ssoRegion) }
+	Result.X { try AWSSSOSDKProtocolWrappedImpl(ssoRegion: ssoRegion) }
 }
 
-public class SecureAWSSSOClientRegistrationInfo: NSObject, NSSecureCoding {
-	public static let supportsSecureCoding: Bool = true
-
+public struct SecureAWSSSOClientRegistrationInfo: Codable, Sendable {
 	let clientID: String
 	let clientSecret: String
 
@@ -71,26 +75,8 @@ public class SecureAWSSSOClientRegistrationInfo: NSObject, NSSecureCoding {
 		self.clientSecret = clientSecret
 	}
 
-	private let clientIDKey = "clientId"
-	private let clientSecretKey = "clientSecret"
-
-	// MARK: - NSSecureCoding
-
-	public required init?(coder: NSCoder) {
-		guard let clientID = coder.decodeObject(of: NSString.self, forKey: clientIDKey) as String?,
-		      let clientSecret = coder.decodeObject(of: NSString.self, forKey: clientSecretKey) as String?
-		else {
-			return nil
-		}
-
-		self.clientID = clientID
-		self.clientSecret = clientSecret
-	}
-
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.clientID, forKey: self.clientIDKey)
-		coder.encode(self.clientSecret, forKey: self.clientSecretKey)
-	}
+	private static let clientIDKey = "clientId"
+	private static let clientSecretKey = "clientSecret"
 
 	static func fromAWS(_ input: AWSSSOOIDC.RegisterClientOutput) -> Result<SecureAWSSSOClientRegistrationInfo, Error> {
 		if let clientID = input.clientId, let clientSecret = input.clientSecret {

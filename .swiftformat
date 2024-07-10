@@ -32,7 +32,6 @@
 --self insert
 --semicolons inline
 --stripunusedargs always
---swiftversion 5.9
 --trimwhitespace always
 --wraparguments preserve
 --wrapcollections preserve

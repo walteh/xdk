@@ -22,25 +22,19 @@ public final class NoopAppSession: AppSessionAPI {
 	public init() {}
 }
 
-public final class AppSessionID: NSObject, NSSecureCoding, Sendable {
-	public static let supportsSecureCoding = true
-
+public struct AppSessionID: Codable, Sendable {
 	let id: XID
 
 	init(id: XID) {
 		self.id = id
 	}
 
-	public func encode(with coder: NSCoder) {
-		coder.encode(self.id.string(), forKey: "id")
-	}
-
-	public required init?(coder: NSCoder) {
+	public init?(coder: NSCoder) {
 		let dat = coder.decodeObject(of: NSString.self, forKey: "id")! as String
 		self.id = try! XID.rebuild(string: dat).get()
 	}
 
-	override public var description: String {
+	public var description: String {
 		return self.id.string()
 	}
 }

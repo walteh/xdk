@@ -19,11 +19,11 @@ public protocol WSEngine {
 	func start(request: URLRequest)
 	func stop(closeCode: UInt16)
 	func forceStop()
-	func write(data: Data, opcode: FrameOpCode, completion: (() -> Void)?)
+	func write(data: Data, opcode: FrameOpCode, completion: (@Sendable () -> Void)?)
 	func write(string: String, completion: (() -> Void)?)
 }
 
-public final class NativeEngine: NSObject, WSEngine, URLSessionDataDelegate, URLSessionWebSocketDelegate {
+public final class NativeEngine: NSObject, WSEngine, URLSessionDataDelegate, URLSessionWebSocketDelegate, @unchecked Sendable {
 	private var task: URLSessionWebSocketTask?
 	private var delegate: WSEngineDelegate?
 
@@ -53,7 +53,7 @@ public final class NativeEngine: NSObject, WSEngine, URLSessionDataDelegate, URL
 		})
 	}
 
-	public func write(data: Data, opcode: FrameOpCode, completion: (() -> Void)?) {
+	public func write(data: Data, opcode: FrameOpCode, completion: (@Sendable () -> Void)?) {
 		switch opcode {
 		case .binaryFrame:
 			self.task?.send(.data(data), completionHandler: { _ in
