@@ -11,6 +11,7 @@ import Foundation
 import WebKit
 import XDK
 
+@MainActor
 public protocol ManagedRegionService {
 	var region: String? { get set }
 	var service: String? { get set }
@@ -26,7 +27,7 @@ public class SimpleManagedRegionService: ManagedRegionService {
 	}
 }
 
-public class RoleInfo: NSObject, NSSecureCoding {
+public final class RoleInfo: NSObject, NSSecureCoding, Sendable {
 	public let roleName: String
 	public let accountID: String
 
@@ -59,32 +60,32 @@ public class RoleInfo: NSObject, NSSecureCoding {
 	}
 }
 
-public class AccountInfo: NSObject, NSSecureCoding, ObservableObject {
+public final class AccountInfo: NSObject, NSSecureCoding, ObservableObject, Sendable {
 	public let accountID: String
 	public let roles: [RoleInfo]
-	@Published public var role: RoleInfo?
+    // public let role: RoleInfo
 	public let accountName: String
 	public let accountEmail: String
 
 	// this doesn't need to be here, but we can use it centralize the region
 	// @Published public var region: String?
 
-	var currentRoleUniqueId: String {
-		return "\(self.accountID)_\(self.role?.roleName ?? "none")"
-	}
+	// var currentRoleUniqueId: String {
+	// 	return "\(self.accountID)_\(self.role.roleName)"
+	// }
 
 	public init(accountID: String, accountName: String, roles: [RoleInfo], accountEmail: String) {
 		self.accountID = accountID
 		self.accountName = accountName
 		self.accountEmail = accountEmail
 		self.roles = roles
-		self.role = roles.first
+		// self.role = roles.first
 	}
 
 	init(role: [AWSSSO.SSOClientTypes.RoleInfo], account: AWSSSO.SSOClientTypes.AccountInfo) {
 		self.accountID = account.accountId ?? ""
 		self.roles = role.map { RoleInfo($0) }
-		self.role = self.roles.first ?? nil
+		// self.role = self.roles.first ?? nil
 		self.accountName = account.accountName ?? ""
 		self.accountEmail = account.emailAddress ?? ""
 	}
@@ -96,7 +97,7 @@ public class AccountInfo: NSObject, NSSecureCoding, ObservableObject {
 
 	public required init?(coder: NSCoder) {
 		self.accountID = coder.decodeObject(of: NSString.self, forKey: "accountID") as String? ?? ""
-		self.role = coder.decodeObject(of: [RoleInfo.self], forKey: "role") as? RoleInfo ?? nil
+		// self.role = coder.decodeObject(of: [RoleInfo.self], forKey: "role") as? RoleInfo ?? nil
 		self.roles = coder.decodeObject(of: [NSArray.self, RoleInfo.self], forKey: "roles") as? [RoleInfo] ?? []
 		self.accountName = coder.decodeObject(of: NSString.self, forKey: "accountName") as? String ?? ""
 		self.accountEmail = coder.decodeObject(of: NSString.self, forKey: "accountEmail") as? String ?? ""
@@ -104,7 +105,7 @@ public class AccountInfo: NSObject, NSSecureCoding, ObservableObject {
 
 	public func encode(with coder: NSCoder) {
 		coder.encode(self.accountID, forKey: "accountID")
-		coder.encode(self.role, forKey: "role")
+		// coder.encode(self.role, forKey: "role")
 		coder.encode(self.roles as NSArray, forKey: "roles")
 		coder.encode(self.accountName, forKey: "accountName")
 		coder.encode(self.accountEmail, forKey: "accountEmail")
@@ -169,7 +170,8 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 	return XDK.Delete(using: storage, AccountInfoList.self)
 }
 
-public func getAccountsRoleList(
+@MainActor
+public  func getAccountsRoleList(
 	client: AWSSSOSDKProtocolWrapped,
 	storage: XDK.StorageAPI,
 	accessToken: SecureAWSSSOAccessToken

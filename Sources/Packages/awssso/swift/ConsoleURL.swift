@@ -4,8 +4,10 @@ import Combine
 import Foundation
 import XDK
 
+@MainActor
 public func generateAWSConsoleURLWithDefaultClient(
 	account: AccountInfo,
+	role: RoleInfo,
 	managedRegion: ManagedRegionService,
 	storageAPI: some XDK.StorageAPI,
 	accessToken: SecureAWSSSOAccessToken,
@@ -20,6 +22,7 @@ public func generateAWSConsoleURLWithDefaultClient(
 	return await generateAWSConsoleURL(
 		client: awsClient,
 		account: account,
+		role: role,
 		managedRegion: managedRegion,
 		storageAPI: storageAPI,
 		accessToken: accessToken,
@@ -27,9 +30,11 @@ public func generateAWSConsoleURLWithDefaultClient(
 	)
 }
 
+@MainActor
 public func generateAWSConsoleURL(
 	client: AWSSSOSDKProtocolWrapped,
 	account: AccountInfo,
+	role: RoleInfo,
 	managedRegion: ManagedRegionService,
 	storageAPI: some XDK.StorageAPI,
 	accessToken: SecureAWSSSOAccessToken,
@@ -38,9 +43,9 @@ public func generateAWSConsoleURL(
 ) async -> Result<URL, Error> {
 	var err: Error? = nil
 
-	guard let role = account.role else {
-		return .failure(x.error("role not set"))
-	}
+//	guard let role = account.role else {
+//		return .failure(x.error("role not set"))
+//	}
 
 	let region = managedRegion.region ?? accessToken.region
 	let service = managedRegion.service ?? ""
@@ -66,6 +71,7 @@ public func generateAWSConsoleURL(
 			return await generateAWSConsoleURL(
 				client: client,
 				account: account,
+				role: role,
 				managedRegion: managedRegion,
 				storageAPI: storageAPI,
 				accessToken: accessToken,

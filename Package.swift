@@ -45,8 +45,10 @@ let keychain = Local(name: "keychain").with(deps: [x]).apply(god)
 let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, swiftBigInt]).apply(god)
 let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply(god)
 let webauthn = Local(name: "Webauthn").with(deps: [x, byte, hex, keychain]).apply(god)
+let websocket = Local(name: "Websocket").with(deps: [x, byte, hex]).apply(god)
 let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply(god)
 
+god.complete()
 
 
 protocol Dep {
@@ -173,4 +175,3 @@ extension Local: Dep {
 	}
 }
 
-god.complete()

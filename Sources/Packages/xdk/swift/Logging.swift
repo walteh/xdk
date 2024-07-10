@@ -115,6 +115,13 @@ public class LogEvent {
 		return self
 	}
 
+	public func meta(_ data: Logging.Logger.Metadata) -> Self {
+		for (k, v) in data {
+			self.metadata[k] = v
+		}
+		return self
+	}
+
 	@inlinable
 	public func send(_ str: some CustomDebugStringConvertible) {
 		if let err = self.error {

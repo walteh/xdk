@@ -108,6 +108,7 @@ public func signin(storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessTok
 	return .success(nil)
 }
 
+@MainActor
 public func signin(
 	client: AWSSSOSDKProtocolWrapped,
 	storageAPI: some XDK.StorageAPI,
