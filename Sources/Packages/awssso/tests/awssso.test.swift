@@ -32,7 +32,7 @@ class big_tests: XCTestCase {
 	}
 
 	func testGetServices() throws {
-		let res = XDKAWSSSO.getServices()
+		let res = XDKAWSSSO.loadTheServices()
 		XDK.Log(.info).info("data", res).send("okay")
 		XCTAssertNotNil(res)
 	}
@@ -57,7 +57,7 @@ class big_tests: XCTestCase {
 			session: XDK.NoopAppSession(),
 			ssoRegion: selectedRegion,
 			startURL: startURI,
-			callback: { url in
+			callback: { _ in
 				// promptURL = url
 			}
 		).to(&err) else {
@@ -84,7 +84,7 @@ class big_tests: XCTestCase {
 		guard let url = await XDKAWSSSO.generateAWSConsoleURLUsingSSO(
 			client: client,
 			account: account,
-						role: role,
+			role: role,
 			managedRegion: sess,
 			storageAPI: storageAPI,
 			accessToken: resp,
