@@ -10,13 +10,13 @@ import Combine
 import Foundation
 import XDK
 
-public struct UserSignInData: Sendable, Hashable {
+public struct AWSSSOSignInCodeData: Sendable, Hashable {
 	public let activationURL: URL
 	public let activationURLWithCode: URL
 	public let code: String
 
-	static func fromAWS(_ input: AWSSSOOIDC.StartDeviceAuthorizationOutput) -> UserSignInData {
-		return UserSignInData(
+	static func fromAWS(_ input: AWSSSOOIDC.StartDeviceAuthorizationOutput) -> AWSSSOSignInCodeData {
+		return AWSSSOSignInCodeData(
 			activationURL: URL(string: input.verificationUri!)!,
 			activationURLWithCode: URL(string: input.verificationUriComplete!)!,
 			code: input.deviceCode!
@@ -25,14 +25,13 @@ public struct UserSignInData: Sendable, Hashable {
 }
 
 public protocol AccessToken {
-	var accessToken: String { get }
-	var refreshToken: String { get }
-	var expiresAt: Date { get }
-	var region: String { get }
-	var startURL: URL { get }
+	func token() -> String
+	// var refreshToken: String { get }
+	func expires() -> Date
+	func stsRegion() -> String
 }
 
-public struct SecureAWSSSOAccessToken: Codable, Sendable, Hashable {
+public struct SecureAWSSSOAccessToken: Codable, Sendable, Hashable, AccessToken {
 	public let accessToken: String
 	public let refreshToken: String
 	public let expiresAt: Date
@@ -45,6 +44,18 @@ public struct SecureAWSSSOAccessToken: Codable, Sendable, Hashable {
 		self.expiresAt = expiresAt
 		self.region = region
 		self.startURL = startURL
+	}
+
+	public func token() -> String {
+		self.accessToken
+	}
+
+	public func expires() -> Date {
+		self.expiresAt
+	}
+
+	public func stsRegion() -> String {
+		self.region
 	}
 
 	static func fromAWS(input: AWSSSOOIDC.StartDeviceAuthorizationInput, output: AWSSSOOIDC.CreateTokenOutput,
@@ -61,12 +72,22 @@ public struct SecureAWSSSOAccessToken: Codable, Sendable, Hashable {
 		}
 		return .failure(x.error("missing values"))
 	}
+
+	func refreshIfNeeded(client: AWSSSOSDKProtocolWrapped, session: some XDK.AppSessionAPI, storage: some XDK.StorageAPI) async -> Result<SecureAWSSSOAccessToken, Error> {
+		var err: Error? = nil
+
+		guard let registration = await generateSSOAccessTokenUsingBrowserIfNeeded(client: client, storage: storage, session: session, ssoRegion: region, startURL: startURL, callback: { _ in }).to(&err) else {
+			return .failure(x.error("error signing in", root: err))
+		}
+
+		return .success(registration)
+	}
 }
 
-public func signin(storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessToken?, Error> {
+public func getSignedInSSOUserFromKeychain(session: AppSessionAPI, storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessToken?, Error> {
 	var err: Error?
 
-	guard let current = XDK.Read(using: storage, SecureAWSSSOAccessToken.self).to(&err) else {
+	guard let current = XDK.Read(using: storage, SecureAWSSSOAccessToken.self, differentiator: session.ID().string()).to(&err) else {
 		return .failure(x.error("error loading access token", root: err))
 	}
 
@@ -79,16 +100,17 @@ public func signin(storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessTok
 	return .success(nil)
 }
 
-public func signin(
+public func generateSSOAccessTokenUsingBrowserIfNeeded(
 	client: AWSSSOSDKProtocolWrapped,
-	storageAPI: some XDK.StorageAPI,
+	storage: some XDK.StorageAPI,
+	session: some AppSessionAPI,
 	ssoRegion: String,
 	startURL: URL,
-	callback: @escaping @Sendable (_ url: UserSignInData) -> Void
+	callback: @escaping @Sendable (_ url: AWSSSOSignInCodeData) -> Void
 ) async -> Result<SecureAWSSSOAccessToken, Error> {
 	var err: Error? = nil
 
-	guard let token = signin(storage: storageAPI).to(&err) else {
+	guard let token = getSignedInSSOUserFromKeychain(session: session, storage: storage).to(&err) else {
 		return .failure(x.error("error loading access token", root: err))
 	}
 
@@ -96,9 +118,29 @@ public func signin(
 		return .success(token)
 	}
 
-	guard let registration = await registerClientIfNeeded(awsssoAPI: client, storageAPI: storageAPI).to(&err) else {
+	guard let registration = await registerClientIfNeeded(awsssoAPI: client, storage: storage).to(&err) else {
 		return .failure(x.error("error registering client", root: err))
 	}
+
+	guard let tkn = await generateSSOAccessTokenUsingBrowser(client: client, registration: registration, ssoRegion: ssoRegion, startURL: startURL, callback: callback).to(&err) else {
+		return .failure(x.error("error signing in", root: err))
+	}
+
+	guard let _ = XDK.Write(using: storage, tkn, differentiator: session.ID().string()).to(&err) else {
+		return .failure(x.error("error writing secure access token", root: err))
+	}
+
+	return .success(tkn)
+}
+
+func generateSSOAccessTokenUsingBrowser(
+	client: AWSSSOSDKProtocolWrapped,
+	registration: SecureAWSSSOClientRegistrationInfo,
+	ssoRegion: String,
+	startURL: URL,
+	callback: @escaping @Sendable (_ url: AWSSSOSignInCodeData) -> Void
+) async -> Result<SecureAWSSSOAccessToken, Error> {
+	var err: Error? = nil
 
 	let input = AWSSSOOIDC.StartDeviceAuthorizationInput(
 		clientId: registration.clientID,
@@ -110,7 +152,7 @@ public func signin(
 		return .failure(x.error("error starting device auth", root: err))
 	}
 
-	let data = UserSignInData.fromAWS(deviceAuth)
+	let data = AWSSSOSignInCodeData.fromAWS(deviceAuth)
 
 	callback(data)
 
@@ -123,17 +165,13 @@ public func signin(
 		return .failure(x.error("error creating secure access token", root: err))
 	}
 
-	guard let _ = XDK.Write(using: storageAPI, work).to(&err) else {
-		return .failure(x.error("error writing secure access token", root: err))
-	}
-
 	return .success(work)
 }
 
 func pollForToken(
 	_ client: AWSSSOSDKProtocolWrapped,
 	registration: SecureAWSSSOClientRegistrationInfo,
-	deviceAuth: UserSignInData,
+	deviceAuth: AWSSSOSignInCodeData,
 	pollInterval: TimeInterval,
 	expirationTime: TimeInterval
 ) async -> Result<AWSSSOOIDC.CreateTokenOutput, Error> {
@@ -167,14 +205,15 @@ func pollForToken(
 	return .failure(NSError(domain: "SSOService", code: -1, userInfo: [NSLocalizedDescriptionKey: "SSO login timed out"]))
 }
 
-func registerClientIfNeeded(awsssoAPI: AWSSSOSDKProtocolWrapped,
-                            storageAPI: some XDK.StorageAPI) async -> Result<SecureAWSSSOClientRegistrationInfo, Error>
-{
+func registerClientIfNeeded(
+	awsssoAPI: AWSSSOSDKProtocolWrapped,
+	storage: some XDK.StorageAPI
+) async -> Result<SecureAWSSSOClientRegistrationInfo, Error> {
 	// Check if client is already registered and saved in secure storage (Keychain)
 
 	var err: Error? = nil
 
-	guard let reg = XDK.Read(using: storageAPI, SecureAWSSSOClientRegistrationInfo.self).to(&err) else {
+	guard let reg = XDK.Read(using: storage, SecureAWSSSOClientRegistrationInfo.self).to(&err) else {
 		return .failure(x.error("error loading client registration", root: err))
 	}
 
@@ -193,7 +232,7 @@ func registerClientIfNeeded(awsssoAPI: AWSSSOSDKProtocolWrapped,
 		return .failure(x.error("error creating secure client registration", root: err))
 	}
 
-	guard let _ = XDK.Write(using: storageAPI, work).to(&err) else {
+	guard let _ = XDK.Write(using: storage, work).to(&err) else {
 		return .failure(x.error("error writing secure client registration", root: err))
 	}
 

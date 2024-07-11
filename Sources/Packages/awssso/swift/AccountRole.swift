@@ -40,7 +40,7 @@ public struct RoleInfo: Codable, Sendable, Hashable {
 		self.accountID = accountID
 	}
 
-	var uniqueID: String {
+	public var uniqueID: String {
 		"\(self.accountID)_\(self.roleName)"
 	}
 }
@@ -101,7 +101,7 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 public func getAccountsRoleList(
 	client: AWSSSOSDKProtocolWrapped,
 	storage: XDK.StorageAPI,
-	accessToken: SecureAWSSSOAccessToken
+	accessToken: AccessToken
 ) async -> Result<AccountInfoList, Error> {
 	var err: Error? = nil
 
@@ -114,7 +114,7 @@ public func getAccountsRoleList(
 		return .success(cached)
 	}
 
-	guard let response = await client.listAccounts(input: .init(accessToken: accessToken.accessToken)).to(&err) else {
+	guard let response = await client.listAccounts(input: .init(accessToken: accessToken.token())).to(&err) else {
 		return .failure(x.error("error fetching accounts", root: err))
 	}
 
@@ -145,13 +145,13 @@ public func getAccountsRoleList(
 
 func listRolesForAccount(
 	client: AWSSSOSDKProtocolWrapped,
-	accessToken: SecureAWSSSOAccessToken,
+	accessToken: AccessToken,
 	account: AWSSSO.SSOClientTypes.AccountInfo
 ) async -> Result<[AccountInfo], Error> {
 	// List roles for the given account
 	var err: Error? = nil
 
-	guard let rolesResponse = await client.listAccountRoles(input: .init(accessToken: accessToken.accessToken, accountId: account.accountId!))
+	guard let rolesResponse = await client.listAccountRoles(input: .init(accessToken: accessToken.token(), accountId: account.accountId!))
 		.err(&err)
 	else {
 		return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!)

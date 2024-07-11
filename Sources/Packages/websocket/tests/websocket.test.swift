@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import XDKWebSocket
+@testable import XDKWebsocket
 
 class swift_sdkTests: XCTestCase {
 	override func setUpWithError() throws {

@@ -31,6 +31,12 @@ class big_tests: XCTestCase {
 		// Put teardown code here. This method is called after the invocation of each test method in the class.
 	}
 
+	func testGetServices() throws {
+		let res = XDKAWSSSO.getServices()
+		XDK.Log(.info).info("data", res).send("okay")
+		XCTAssertNotNil(res)
+	}
+
 	func dontTestExample() async throws {
 		let storageAPI = XDK.InMemoryStorage() as StorageAPI
 		let selectedRegion = "us-east-1"
@@ -44,14 +50,15 @@ class big_tests: XCTestCase {
 
 		let client = try! AWSSSOSDKProtocolWrappedImpl(ssoRegion: selectedRegion)
 
-		var promptURL: XDKAWSSSO.UserSignInData? = nil
-		guard let resp = await XDKAWSSSO.signin(
+		var promptURL: XDKAWSSSO.AWSSSOSignInCodeData? = nil
+		guard let resp = await XDKAWSSSO.generateSSOAccessTokenUsingBrowserIfNeeded(
 			client: client,
-			storageAPI: storageAPI,
+			storage: storageAPI,
+			session: XDK.NoopAppSession(),
 			ssoRegion: selectedRegion,
 			startURL: startURI,
 			callback: { url in
-				promptURL = url
+				// promptURL = url
 			}
 		).to(&err) else {
 			XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
@@ -74,9 +81,10 @@ class big_tests: XCTestCase {
 
 		XCTAssertNotNil(promptURL)
 
-		guard let url = await XDKAWSSSO.generateAWSConsoleURL(
+		guard let url = await XDKAWSSSO.generateAWSConsoleURLUsingSSO(
 			client: client,
 			account: account,
+						role: role,
 			managedRegion: sess,
 			storageAPI: storageAPI,
 			accessToken: resp,

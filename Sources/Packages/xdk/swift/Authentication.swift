@@ -13,7 +13,7 @@ func AuthenticationAvailable(using: AuthenticationAPI) -> Result<Bool, Error> {
 	return using.authenticationAvailable()
 }
 
-public class NoopAuthentication: AuthenticationAPI {
+public struct NoopAuthentication: AuthenticationAPI, Sendable {
 	public func obtainAuthentication(reason _: String) async -> Result<Bool, Error> {
 		return .success(true)
 	}

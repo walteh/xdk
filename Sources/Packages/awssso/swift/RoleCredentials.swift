@@ -20,7 +20,7 @@ struct RoleCredentialsSignInToken: Codable, Sendable {
 	}
 }
 
-struct RoleCredentials: Codable, Sendable {
+public struct RoleCredentials: Codable, Sendable {
 	public let accessKeyID: Swift.String
 	public let expiresAt: Date
 	public let secretAccessKey: Swift.String
@@ -66,29 +66,29 @@ struct RoleCredentials: Codable, Sendable {
 	}
 }
 
-func invalidateRoleCredentials(_ storage: some StorageAPI, account: RoleInfo) -> Result<Bool, Error> {
+func invalidateRoleCredentials(_ storage: some StorageAPI, role: RoleInfo) -> Result<Bool, Error> {
 	var err: Error? = nil
 
-	guard let _ = XDK.Delete(using: storage, RoleCredentials.self, differentiator: account.uniqueID).to(&err) else {
+	guard let _ = XDK.Delete(using: storage, RoleCredentials.self, differentiator: role.uniqueID).to(&err) else {
 		return .failure(x.error("error deleting role creds from keychain", root: err))
 	}
 
 	return .success(true)
 }
 
-func invalidateAndGetRoleCredentials(
-	_ client: any AWSSSOSDKProtocolWrapped,
+func invalidateAndGetRoleCredentialsUsing(
+	sso client: any AWSSSOSDKProtocolWrapped,
 	storage: some StorageAPI,
 	accessToken: SecureAWSSSOAccessToken,
-	account: RoleInfo
+	role: RoleInfo
 ) async -> Result<RoleCredentialsStatus, Error> {
 	var err: Error? = nil
 
-	guard let _ = invalidateRoleCredentials(storage, account: account).to(&err) else {
+	guard let _ = invalidateRoleCredentials(storage, role: role).to(&err) else {
 		return .failure(x.error("error deleting role creds from keychain", root: err))
 	}
 
-	return await getRoleCredentials(client, storage: storage, accessToken: accessToken, account: account)
+	return await getRoleCredentialsUsing(sso: client, storage: storage, accessToken: accessToken, role: role)
 }
 
 struct RoleCredentialsStatus: Sendable {
@@ -96,15 +96,15 @@ struct RoleCredentialsStatus: Sendable {
 	let pulledFromCache: Bool
 }
 
-func getRoleCredentials(
-	_ client: any AWSSSOSDKProtocolWrapped,
+func getRoleCredentialsUsing(
+	sso client: any AWSSSOSDKProtocolWrapped,
 	storage: some StorageAPI,
-	accessToken: SecureAWSSSOAccessToken,
-	account: RoleInfo
+	accessToken: AccessToken,
+	role: RoleInfo
 ) async -> Result<RoleCredentialsStatus, Error> {
 	var err: Error? = nil
 
-	guard let curr = XDK.Read(using: storage, RoleCredentials.self, differentiator: account.uniqueID).to(&err) else {
+	guard let curr = XDK.Read(using: storage, RoleCredentials.self, differentiator: role.uniqueID).to(&err) else {
 		return .failure(x.error("error reading role creds from keychain", root: err))
 	}
 
@@ -112,7 +112,7 @@ func getRoleCredentials(
 
 	if let curr {
 		if curr.expiresIn() > 60 * 5, curr.expiresIn() < 60 * 60 * 24 * 7 {
-			XDK.Log(.debug).info("creds", curr.accessKeyID).info("account", account.accountID).info("role", account.roleName)
+			XDK.Log(.debug).info("creds", curr.accessKeyID).info("account", role.accountID).info("role", role.roleName)
 				.info("expiresIn", curr.expiresIn()).send("using cached creds")
 			return .success(RoleCredentialsStatus(data: curr, pulledFromCache: true))
 		} else {
@@ -123,9 +123,9 @@ func getRoleCredentials(
 
 	// into this at compile time
 	guard let creds = await client.getRoleCredentials(input: .init(
-		accessToken: accessToken.accessToken,
-		accountId: account.accountID,
-		roleName: account.roleName
+		accessToken: accessToken.token(),
+		accountId: role.accountID,
+		roleName: role.roleName
 	)).to(&err) else {
 		return .failure(x.error("error fetching role creds", root: err))
 	}
@@ -134,20 +134,13 @@ func getRoleCredentials(
 		return .failure(x.error("roleCredentials does not exist"))
 	}
 
-	// XDK.Log(.info).info("sessioTokenFromAWS", rolecreds.sessionToken).info("account", account.accountID).info("role",
-	// account.role).send("fetched role creds")
+	let rcreds = RoleCredentials(rolecreds, role, stsRegion: accessToken.stsRegion())
 
-	let rcreds = RoleCredentials(rolecreds, account, stsRegion: accessToken.region)
-
-	// XDK.Log(.debug).info("savedSessionToken", rcreds.sessionToken).info("account", account.accountID).info("role",
-	// account.role).send("saving role creds")
-
-	guard let _ = XDK.Write(using: storage, rcreds, overwrite: true, differentiator: account.uniqueID).to(&err) else {
+	guard let _ = XDK.Write(using: storage, rcreds, overwrite: true, differentiator: role.uniqueID).to(&err) else {
 		return .failure(x.error("error writing role creds to keychain", root: err))
 	}
 
-	XDK.Log(.debug).info("creds", rcreds.accessKeyID).info("account", account.accountID).info("uniqueID", account.uniqueID)
-		.info("role", account.roleName).info("expiresAt", rcreds.expiresAt).send("writing creds to cache")
+	XDK.Log(.debug).info("creds", rcreds.accessKeyID).info("account", role.accountID).info("uniqueID", role.uniqueID).info("role", role.roleName).info("expiresAt", rcreds.expiresAt).send("writing creds to cache")
 
 	return .success(RoleCredentialsStatus(data: rcreds, pulledFromCache: false))
 }

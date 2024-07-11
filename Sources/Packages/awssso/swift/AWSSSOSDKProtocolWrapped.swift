@@ -63,7 +63,7 @@ class AWSSSOSDKProtocolWrappedImpl: AWSSSOSDKProtocolWrapped {
 }
 
 public func buildAWSSSOSDKProtocolWrapped(ssoRegion: String) -> Result<AWSSSOSDKProtocolWrapped, Error> {
-	Result.X { try AWSSSOSDKProtocolWrappedImpl(ssoRegion: ssoRegion) }
+	return Result.X { try AWSSSOSDKProtocolWrappedImpl(ssoRegion: ssoRegion) }
 }
 
 public struct SecureAWSSSOClientRegistrationInfo: Codable, Sendable {
@@ -74,9 +74,6 @@ public struct SecureAWSSSOClientRegistrationInfo: Codable, Sendable {
 		self.clientID = clientID
 		self.clientSecret = clientSecret
 	}
-
-	private static let clientIDKey = "clientId"
-	private static let clientSecretKey = "clientSecret"
 
 	static func fromAWS(_ input: AWSSSOOIDC.RegisterClientOutput) -> Result<SecureAWSSSOClientRegistrationInfo, Error> {
 		if let clientID = input.clientId, let clientSecret = input.clientSecret {

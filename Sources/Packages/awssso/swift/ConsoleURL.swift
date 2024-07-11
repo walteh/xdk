@@ -9,16 +9,16 @@ public func generateAWSConsoleURLWithDefaultClient(
 	role: RoleInfo,
 	managedRegion: ManagedRegionService,
 	storageAPI: some XDK.StorageAPI,
-	accessToken: SecureAWSSSOAccessToken,
+	accessToken: AccessToken,
 	isSignedIn: Bool
 ) async -> Result<URL, Error> {
 	var err = Error?.none
 
-	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.region).to(&err) else {
+	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion()).to(&err) else {
 		return .failure(XDK.Err("creating aws client", root: err))
 	}
 
-	return await generateAWSConsoleURL(
+	return await generateAWSConsoleURLUsingSSO(
 		client: awsClient,
 		account: account,
 		role: role,
@@ -34,12 +34,12 @@ public func generateAWSConsoleURLWithExpiryWithDefaultClient(
 	role: RoleInfo,
 	managedRegion: ManagedRegionService,
 	storageAPI: some XDK.StorageAPI,
-	accessToken: SecureAWSSSOAccessToken,
+	accessToken: AccessToken,
 	isSignedIn: Bool
 ) async -> Result<(URL, Date), Error> {
 	var err = Error?.none
 
-	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.region).to(&err) else {
+	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion()).to(&err) else {
 		return .failure(XDK.Err("creating aws client", root: err))
 	}
 
@@ -54,13 +54,13 @@ public func generateAWSConsoleURLWithExpiryWithDefaultClient(
 	)
 }
 
-public func generateAWSConsoleURL(
+public func generateAWSConsoleURLUsingSSO(
 	client: AWSSSOSDKProtocolWrapped,
 	account: AccountInfo,
 	role: RoleInfo,
 	managedRegion: ManagedRegionService,
 	storageAPI: some XDK.StorageAPI,
-	accessToken: SecureAWSSSOAccessToken,
+	accessToken: AccessToken,
 	isSignedIn: Bool,
 	retryNumber: Int = 0
 ) async -> Result<URL, Error> {
@@ -70,10 +70,10 @@ public func generateAWSConsoleURL(
 	//		return .failure(x.error("role not set"))
 	//	}
 
-	let region = managedRegion.region ?? accessToken.region
+	let region = managedRegion.region ?? client.ssoRegion
 	let service = managedRegion.service ?? ""
 
-	guard let creds = await getRoleCredentials(client, storage: storageAPI, accessToken: accessToken, account: role).to(&err) else {
+	guard let creds = await getRoleCredentialsUsing(sso: client, storage: storageAPI, accessToken: accessToken, role: role).to(&err) else {
 		return .failure(x.error("error fetching role creds", root: err))
 	}
 
@@ -87,11 +87,11 @@ public func generateAWSConsoleURL(
 		if retryNumber < 5 {
 			XDK.Log(.debug).err(err).add("count", any: retryNumber).send("retrying generateAWSConsoleURL")
 
-			guard let _ = invalidateRoleCredentials(storageAPI, account: role).to(&err) else {
+			guard let _ = invalidateRoleCredentials(storageAPI, role: role).to(&err) else {
 				return .failure(x.error("error invalidating role creds", root: err))
 			}
 
-			return await generateAWSConsoleURL(
+			return await generateAWSConsoleURLUsingSSO(
 				client: client,
 				account: account,
 				role: role,
@@ -119,20 +119,16 @@ public func generateAWSConsoleURLWithExpiry(
 	role: RoleInfo,
 	managedRegion: ManagedRegionService,
 	storageAPI: some XDK.StorageAPI,
-	accessToken: SecureAWSSSOAccessToken,
+	accessToken: AccessToken,
 	isSignedIn: Bool,
 	retryNumber: Int = 0
 ) async -> Result<(URL, Date), Error> {
 	var err: Error? = nil
 
-	//	guard let role = account.role else {
-	//		return .failure(x.error("role not set"))
-	//	}
-
-	let region = managedRegion.region ?? accessToken.region
+	let region = managedRegion.region ?? client.ssoRegion
 	let service = managedRegion.service ?? ""
 
-	guard let creds = await getRoleCredentials(client, storage: storageAPI, accessToken: accessToken, account: role).to(&err) else {
+	guard let creds = await getRoleCredentialsUsing(sso: client, storage: storageAPI, accessToken: accessToken, role: role).to(&err) else {
 		return .failure(x.error("error fetching role creds", root: err))
 	}
 
@@ -149,7 +145,7 @@ public func generateAWSConsoleURLWithExpiry(
 		if retryNumber < 5 {
 			XDK.Log(.debug).err(err).add("count", any: retryNumber).send("retrying generateAWSConsoleURL")
 
-			guard let _ = invalidateRoleCredentials(storageAPI, account: role).to(&err) else {
+			guard let _ = invalidateRoleCredentials(storageAPI, role: role).to(&err) else {
 				return .failure(x.error("error invalidating role creds", root: err))
 			}
 
