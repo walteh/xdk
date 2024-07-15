@@ -20,7 +20,7 @@ public protocol WSEngine {
 	func stop(closeCode: UInt16)
 	func forceStop()
 	func write(data: Data, opcode: FrameOpCode, completion: (@Sendable () -> Void)?)
-	func write(string: String, completion: (() -> Void)?)
+	func write(string: String, completion: (@Sendable () -> Void)?)
 }
 
 public final class NativeEngine: NSObject, WSEngine, URLSessionDataDelegate, URLSessionWebSocketDelegate, @unchecked Sendable {

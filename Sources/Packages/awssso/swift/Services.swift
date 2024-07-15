@@ -1,11 +1,6 @@
 import JavaScriptCore
 import XDK
 
-// extension String {
-// 	func getTheServices() -> [String] {
-// 		return loadTheServices()
-// 	}
-// }
 
 public func loadTheServices() -> [String] {
 	let context = JSContext()
@@ -23,14 +18,11 @@ public func loadTheServices() -> [String] {
 	}
 	""")
 
-	// _getLinkTemplates
-	// let arn2: JSValue? = context?.objectForKeyedSubscript("ARNz")
-	// let arn3 = arn2?.call(withArguments: [])
+
 	let dat = context?.objectForKeyedSubscript("getAvailableServices")
 
 	let d2: JSValue? = dat?.call(withArguments: [])
 	let d3 = d2?.toArray()
-	// XDK.Log(.info).send("d2 \(d3)")
 
 	var servicesArray = [String]()
 
@@ -75,6 +67,5 @@ public let regions = [
 	"us-gov-east-1": "AWS GovCloud (US-East)",
 	"us-gov-west-1": "AWS GovCloud (US-West)",
 ]
-
 
 public let regionsList = regions.keys.sorted() as [String]
