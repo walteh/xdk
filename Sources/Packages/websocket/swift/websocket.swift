@@ -114,7 +114,7 @@ open class WS: WSClient, WSEngineDelegate {
 		self.write(data: data, opcode: .binaryFrame, completion: completion)
 	}
 
-	public func write(string: String, completion: (() -> Void)?) {
+	public func write(string: String, completion: (@Sendable () -> Void)?) {
 		self.engine.write(string: string, completion: completion)
 	}
 

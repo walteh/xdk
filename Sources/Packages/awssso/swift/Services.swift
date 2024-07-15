@@ -1,7 +1,6 @@
 import JavaScriptCore
 import XDK
 
-
 public func loadTheServices() -> [String] {
 	let context = JSContext()
 
@@ -17,7 +16,6 @@ public func loadTheServices() -> [String] {
 	    return services;
 	}
 	""")
-
 
 	let dat = context?.objectForKeyedSubscript("getAvailableServices")
 

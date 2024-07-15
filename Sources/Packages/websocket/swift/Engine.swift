@@ -47,7 +47,7 @@ public final class NativeEngine: NSObject, WSEngine, URLSessionDataDelegate, URL
 		self.stop(closeCode: UInt16(URLSessionWebSocketTask.CloseCode.abnormalClosure.rawValue))
 	}
 
-	public func write(string: String, completion: (() -> Void)?) {
+	public func write(string: String, completion: (@Sendable () -> Void)?) {
 		self.task?.send(.string(string), completionHandler: { _ in
 			completion?()
 		})
