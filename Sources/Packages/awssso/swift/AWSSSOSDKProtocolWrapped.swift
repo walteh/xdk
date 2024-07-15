@@ -6,7 +6,7 @@ import Combine
 import Foundation
 import XDK
 
-public protocol AWSSSOSDKProtocolWrapped {
+public protocol AWSSSOSDKProtocolWrapped: Sendable {
 	var ssoRegion: String { get }
 	var sso: AWSSSO.SSOClient { get }
 	var ssoOIDC: AWSSSOOIDC.SSOOIDCClient { get }
@@ -24,7 +24,7 @@ extension AWSSSOOIDC.StartDeviceAuthorizationOutput: @retroactive @unchecked Sen
 extension AWSSSOOIDC.RegisterClientOutput: @retroactive @unchecked Sendable {}
 extension AWSSSOOIDC.CreateTokenOutput: @retroactive @unchecked Sendable {}
 
-class AWSSSOSDKProtocolWrappedImpl: AWSSSOSDKProtocolWrapped {
+class AWSSSOSDKProtocolWrappedImpl: AWSSSOSDKProtocolWrapped, @unchecked Sendable {
 	let ssoRegion: String
 	let sso: AWSSSO.SSOClient
 	let ssoOIDC: AWSSSOOIDC.SSOOIDCClient

@@ -15,7 +15,9 @@ class God {
 			.visionOS(.v1),
 		],
 		products: [],
-		dependencies: [],
+		dependencies: [
+			.package(url: "https://github.com/apple/swift-testing.git", branch: "main"),
+		],
 		targets: []
 	)
 
@@ -154,8 +156,9 @@ class Local {
 		god.package.targets += [
 			.testTarget(
 				name: "\(self.module())Tests",
-				dependencies: [.byName(name: self.module())],
+				dependencies: [.byName(name: self.module()), .product(name: "Testing", package: "swift-testing")],
 				path: "\(self.packageFolder)\(self.name.lowercased())/tests"
+
 				// swiftSettings: [
 				// 	.swiftLanguageVersion(.v6),
 				// ]
