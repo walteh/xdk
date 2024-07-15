@@ -91,12 +91,12 @@ func invalidateAndGetRoleCredentialsUsing(
 	return await getRoleCredentialsUsing(sso: client, storage: storage, accessToken: accessToken, role: role)
 }
 
-struct RoleCredentialsStatus: Sendable {
-	let data: RoleCredentials
+public struct RoleCredentialsStatus: Sendable {
+	public let data: RoleCredentials
 	let pulledFromCache: Bool
 }
 
-func getRoleCredentialsUsing(
+public func getRoleCredentialsUsing(
 	sso client: any AWSSSOSDKProtocolWrapped,
 	storage: some StorageAPI,
 	accessToken: AccessToken,
