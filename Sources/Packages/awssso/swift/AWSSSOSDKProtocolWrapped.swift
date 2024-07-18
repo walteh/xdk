@@ -6,7 +6,6 @@ import Combine
 import Foundation
 import XDK
 
-// import XDKMacros
 
 public protocol AWSSSOSDKProtocolWrapped: Sendable {
 	var ssoRegion: String { get }

@@ -9,7 +9,6 @@ import AWSSSOOIDC
 import Combine
 import Foundation
 import XDK
-import XDKMacro
 
 struct RoleCredentialsSignInToken: Codable, Sendable {
 	public let token: String
