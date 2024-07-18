@@ -1,5 +1,6 @@
 // swift-tools-version: 6.0
 
+import CompilerPluginSupport
 import Foundation
 @preconcurrency import PackageDescription
 
@@ -14,11 +15,48 @@ class God {
 			.watchOS(.v10),
 			.visionOS(.v1),
 		],
-		products: [],
+		products: [
+		],
 		dependencies: [
 			.package(url: "https://github.com/apple/swift-testing.git", branch: "main"),
 		],
-		targets: []
+		targets: [
+			.macro(
+				name: "XDKMacroMacros",
+				dependencies: [
+					.product(name: "SwiftDiagnostics", package: "swift-syntax"),
+					.product(name: "SwiftSyntax", package: "swift-syntax"),
+					.product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+					.product(name: "SwiftParser", package: "swift-syntax"),
+					.product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+					.product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+				],
+				path: "./Sources/Packages/macro/macros"
+				// swiftSettings: [
+				// 	// When building as a package, the macro plugin always builds as an
+				// 	// executable rather than a library.
+				// 	.define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
+
+				// 	// The only target which needs the ability to import this macro
+				// 	// implementation target's module is its unit test target. Users of the
+				// 	// macros this target implements use them via their declarations in the
+				// 	// Testing module. This target's module is never distributed to users,
+				// 	// but as an additional guard against accidental misuse, this specifies
+				// 	// the unit test target as the only allowable client.
+				// 	.unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
+				// ]
+			),
+			.testTarget(
+				name: "XDKMacroTests",
+				dependencies: [
+					// .product(name: "Testing", package: "swift-testing"),
+					.product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+					"XDKMacroMacros",
+				],
+				path: "./Sources/Packages/macro/tests"
+			),
+			.target(name: "XDKMacro", dependencies: ["XDKMacroMacros"], path: "./Sources/Packages/macro/swift"),
+		]
 	)
 
 	let mainTarget = Target.target(
@@ -33,13 +71,18 @@ class God {
 
 let god = God()
 
+let macro = XDKMacro()
+
 let swiftLogs = Git(module: "Logging", version: "1.6.1", url: "https://github.com/apple/swift-log.git").apply(god)
 let awssdk = Git(module: "AWS", version: "0.46.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply(god)
+let swiftSyntax: Git = .init(modules: ["SwiftSyntax", "SwiftSyntaxMacros", "SwiftSyntaxMacroExpansion", "SwiftCompilerPlugin", "SwiftSyntaxBuilder", "SwiftParser", "SwiftDiagnostics", "SwiftSyntaxMacrosTestSupport"], from: "600.0.0-latest", url: "https://github.com/apple/swift-syntax.git").apply(god)
+
 let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply(god)
 let ecdsa = Git(module: "MicroDeterministicECDSA", version: "0.8.0", url: "https://github.com/walteh/micro-deterministic-ecdsa.git").apply(god)
 let swiftContext = Git(module: "ServiceContextModule", version: "1.0.0", url: "https://github.com/apple/swift-service-context.git").apply(god)
 let swiftBigInt = Git(module: "BigInt", version: "5.4.0", url: "https://github.com/attaswift/BigInt.git").apply(god)
 
+// let macro: Local = Local(name: "Macro").with(deps: [swiftSyntax]).apply(god)
 let x = Local(name: "XDK").with(deps: [swiftLogs, swiftContext, swiftXid]).apply(god)
 let byte = Local(name: "Byte").with(deps: [x]).apply(god)
 let hex = Local(name: "Hex").with(deps: [x, byte]).apply(god)
@@ -47,30 +90,42 @@ let keychain = Local(name: "keychain").with(deps: [x]).apply(god)
 let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, swiftBigInt]).apply(god)
 let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply(god)
 let webauthn = Local(name: "Webauthn").with(deps: [x, byte, hex, keychain]).apply(god)
-let websocket = Local(name: "Websocket").with(deps: [x, byte, hex]).apply(god)
+let websocket: Local = .init(name: "Websocket").with(deps: [x, byte, hex]).apply(god)
 let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply(god)
 
 god.complete()
 
 protocol Dep {
-	func target() -> Target.Dependency
+	func target() -> [Target.Dependency]
 }
 
 class Git {
 	var product: Package.Dependency
 	let name: String
-	let module: String
+	let modules: [String]
+
+	init(modules: [String], from: String, url: String) {
+		self.name = url.split(separator: "/").last!.replacingOccurrences(of: ".git", with: "")
+		self.modules = modules
+		self.product = .package(url: url, .upToNextMajor(from: Version(stringLiteral: from)))
+	}
 
 	init(module: String, version: String, url: String) {
 		self.name = url.split(separator: "/").last!.replacingOccurrences(of: ".git", with: "")
-		self.module = module
+		self.modules = [module]
 		self.product = .package(url: url, exact: Version(stringLiteral: version))
 	}
 
 	init(name: String, module: String, product: Package.Dependency) {
 		self.name = name
-		self.module = module
+		self.modules = [module]
 		self.product = product
+	}
+
+	init(module: String, from: String, url: String) {
+		self.name = url.split(separator: "/").last!.replacingOccurrences(of: ".git", with: "")
+		self.modules = [module]
+		self.product = .package(url: url, .upToNextMajor(from: Version(stringLiteral: from)))
 	}
 
 	func child(module: String) -> Git {
@@ -84,8 +139,10 @@ class Git {
 }
 
 extension Git: Dep {
-	func target() -> Target.Dependency {
-		.product(name: self.module, package: self.name)
+	func target() -> [Target.Dependency] {
+		self.modules.map {
+			.product(name: $0, package: self.name)
+		}
 	}
 }
 
@@ -145,7 +202,7 @@ class Local {
 		god.package.targets += [
 			.target(
 				name: self.module(),
-				dependencies: self.subfolders.map { $0.target() },
+				dependencies: self.subfolders.flatMap { $0.target() },
 				path: "\(self.packageFolder)\(self.name.lowercased())/swift"
 				// swiftSettings: [
 				// 	.swiftLanguageVersion(.v6),
@@ -172,7 +229,13 @@ class Local {
 }
 
 extension Local: Dep {
-	func target() -> Target.Dependency {
-		.byName(name: self.module())
+	func target() -> [Target.Dependency] {
+		[.byName(name: self.module())]
+	}
+}
+
+struct XDKMacro: Dep {
+	func target() -> [Target.Dependency] {
+		[.byName(name: "XDKMacro")]
 	}
 }

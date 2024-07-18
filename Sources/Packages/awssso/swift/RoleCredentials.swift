@@ -71,7 +71,6 @@ func invalidateRoleCredentials(_ storage: some StorageAPI, role: RoleInfo) -> Re
 
 	// let res = #autoreturn { return true }
 
-
 	guard let _ = XDK.Delete(using: storage, RoleCredentials.self, differentiator: role.uniqueID + XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
 		return .failure(x.error("error deleting role creds from keychain", root: err))
 	}
@@ -156,7 +155,7 @@ func fetchCachedSignInToken(
 ) async -> Result<RoleCredentialsSignInToken, Error> {
 	var err: Error? = nil
 
-	let myid = credentials.role.uniqueID  + XDKAWSSSO_KEYCHAIN_VERSION
+	let myid = credentials.role.uniqueID + XDKAWSSSO_KEYCHAIN_VERSION
 
 	guard let curr = XDK.Read(using: storage, RoleCredentialsSignInToken.self, differentiator: myid).to(&err) else {
 		return .failure(x.error("error reading signin token from keychain", root: err))
@@ -188,7 +187,7 @@ func fetchSignInToken(with credentials: RoleCredentials, retryNumber: Int = 0) a
 		return .failure(x.error("error constructing federation url", root: err))
 	}
 
-	guard let (data, response) = await Result({ try await URLSession.shared.data(for: request)}) .to(&err) else {
+	guard let (data, response) = await Result({ try await URLSession.shared.data(for: request) }).to(&err) else {
 		return .failure(x.error("error fetching sign in token", root: err))
 	}
 
