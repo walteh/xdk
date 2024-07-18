@@ -6,6 +6,8 @@ import Combine
 import Foundation
 import XDK
 
+// import XDKMacros
+
 public protocol AWSSSOSDKProtocolWrapped: Sendable {
 	var ssoRegion: String { get }
 	var sso: AWSSSO.SSOClient { get }
@@ -36,34 +38,32 @@ class AWSSSOSDKProtocolWrappedImpl: AWSSSOSDKProtocolWrapped, @unchecked Sendabl
 	}
 
 	func getRoleCredentials(input: AWSSSO.GetRoleCredentialsInput) async -> Result<AWSSSO.GetRoleCredentialsOutput, Error> {
-		await Result.X { try await self.sso.getRoleCredentials(input: input) }
+		await Result { try await self.sso.getRoleCredentials(input: input) }
 	}
 
-	func startDeviceAuthorization(input: AWSSSOOIDC
-		.StartDeviceAuthorizationInput) async -> Result<AWSSSOOIDC.StartDeviceAuthorizationOutput, Error>
-	{
-		await Result.X { try await self.ssoOIDC.startDeviceAuthorization(input: input) }
+	func startDeviceAuthorization(input: AWSSSOOIDC.StartDeviceAuthorizationInput) async -> Result<AWSSSOOIDC.StartDeviceAuthorizationOutput, Error> {
+		await Result { try await self.ssoOIDC.startDeviceAuthorization(input: input) }
 	}
 
 	func listAccounts(input: AWSSSO.ListAccountsInput) async -> Result<AWSSSO.ListAccountsOutput, Error> {
-		await Result.X { try await self.sso.listAccounts(input: input) }
+		await Result { try await self.sso.listAccounts(input: input) }
 	}
 
 	func listAccountRoles(input: AWSSSO.ListAccountRolesInput) async -> Result<AWSSSO.ListAccountRolesOutput, Error> {
-		await Result.X { try await self.sso.listAccountRoles(input: input) }
+		await Result { try await self.sso.listAccountRoles(input: input) }
 	}
 
 	func registerClient(input: AWSSSOOIDC.RegisterClientInput) async -> Result<AWSSSOOIDC.RegisterClientOutput, Error> {
-		await Result.X { try await self.ssoOIDC.registerClient(input: input) }
+		await Result { try await self.ssoOIDC.registerClient(input: input) }
 	}
 
 	func createToken(input: AWSSSOOIDC.CreateTokenInput) async -> Result<AWSSSOOIDC.CreateTokenOutput, Error> {
-		await Result.X { try await self.ssoOIDC.createToken(input: input) }
+		await Result { try await self.ssoOIDC.createToken(input: input) }
 	}
 }
 
 public func buildAWSSSOSDKProtocolWrapped(ssoRegion: String) -> Result<AWSSSOSDKProtocolWrapped, Error> {
-	return Result.X { try AWSSSOSDKProtocolWrappedImpl(ssoRegion: ssoRegion) }
+	return Result { try AWSSSOSDKProtocolWrappedImpl(ssoRegion: ssoRegion) }
 }
 
 public struct SecureAWSSSOClientRegistrationInfo: Codable, Sendable {

@@ -7,6 +7,24 @@
 
 import Foundation
 
+public extension Result where Failure == Swift.Error {
+	init(_ body: borrowing @escaping () async throws(Failure) -> Success, __file: String = #fileID, __function: String = #function, __line: UInt = #line) async {
+		do {
+			self = try await .success(body())
+		} catch {
+			self = .failure(x.error("caught", root: error, __file: __file, __function: __function, __line: __line))
+		}
+	}
+
+	init(_ body: borrowing @escaping () throws(Failure) -> Success, __file: String = #fileID, __function: String = #function, __line: UInt = #line) {
+		do {
+			self = try .success(body())
+		} catch {
+			self = .failure(x.error("caught", root: error, __file: __file, __function: __function, __line: __line))
+		}
+	}
+}
+
 public extension Result where Failure == Error {
 	static func X(_ body: @escaping () throws -> Success, __file: String = #fileID, __function: String = #function, __line: UInt = #line) -> Result<Success, Failure> {
 		return Result { try body() }.mapError { err in

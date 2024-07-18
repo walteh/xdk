@@ -9,6 +9,7 @@ import AWSSSOOIDC
 import Combine
 import Foundation
 import XDK
+import XDKMacro
 
 struct RoleCredentialsSignInToken: Codable, Sendable {
 	public let token: String
@@ -69,7 +70,10 @@ public struct RoleCredentials: Codable, Sendable {
 func invalidateRoleCredentials(_ storage: some StorageAPI, role: RoleInfo) -> Result<Bool, Error> {
 	var err: Error? = nil
 
-	guard let _ = XDK.Delete(using: storage, RoleCredentials.self, differentiator: role.uniqueID).to(&err) else {
+	// let res = #autoreturn { return true }
+
+
+	guard let _ = XDK.Delete(using: storage, RoleCredentials.self, differentiator: role.uniqueID + XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
 		return .failure(x.error("error deleting role creds from keychain", root: err))
 	}
 
@@ -104,7 +108,9 @@ public func getRoleCredentialsUsing(
 ) async -> Result<RoleCredentialsStatus, Error> {
 	var err: Error? = nil
 
-	guard let curr = XDK.Read(using: storage, RoleCredentials.self, differentiator: role.uniqueID).to(&err) else {
+	let myid = role.uniqueID + XDKAWSSSO_KEYCHAIN_VERSION
+
+	guard let curr = XDK.Read(using: storage, RoleCredentials.self, differentiator: myid).to(&err) else {
 		return .failure(x.error("error reading role creds from keychain", root: err))
 	}
 
@@ -136,7 +142,7 @@ public func getRoleCredentialsUsing(
 
 	let rcreds = RoleCredentials(rolecreds, role, stsRegion: accessToken.stsRegion())
 
-	guard let _ = XDK.Write(using: storage, rcreds, overwrite: true, differentiator: role.uniqueID).to(&err) else {
+	guard let _ = XDK.Write(using: storage, rcreds, overwrite: true, differentiator: myid).to(&err) else {
 		return .failure(x.error("error writing role creds to keychain", root: err))
 	}
 
@@ -151,7 +157,9 @@ func fetchCachedSignInToken(
 ) async -> Result<RoleCredentialsSignInToken, Error> {
 	var err: Error? = nil
 
-	guard let curr = XDK.Read(using: storage, RoleCredentialsSignInToken.self, differentiator: credentials.role.uniqueID).to(&err) else {
+	let myid = credentials.role.uniqueID  + XDKAWSSSO_KEYCHAIN_VERSION
+
+	guard let curr = XDK.Read(using: storage, RoleCredentialsSignInToken.self, differentiator: myid).to(&err) else {
 		return .failure(x.error("error reading signin token from keychain", root: err))
 	}
 
@@ -167,7 +175,7 @@ func fetchCachedSignInToken(
 
 	let tok = RoleCredentialsSignInToken(token: signInToken, credentialID: credentials.uniqueID)
 
-	guard let _ = XDK.Write(using: storage, tok, overwrite: true, differentiator: credentials.role.uniqueID).to(&err) else {
+	guard let _ = XDK.Write(using: storage, tok, overwrite: true, differentiator: myid).to(&err) else {
 		return .failure(x.error("error writing signin token to keychain", root: err))
 	}
 
@@ -181,7 +189,7 @@ func fetchSignInToken(with credentials: RoleCredentials, retryNumber: Int = 0) a
 		return .failure(x.error("error constructing federation url", root: err))
 	}
 
-	guard let (data, response) = await Result.X({ try await URLSession.shared.data(for: request) }).to(&err) else {
+	guard let (data, response) = await Result({ try await URLSession.shared.data(for: request)}) .to(&err) else {
 		return .failure(x.error("error fetching sign in token", root: err))
 	}
 

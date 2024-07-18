@@ -105,8 +105,10 @@ public func getAccountsRoleList(
 ) async -> Result<AccountInfoList, Error> {
 	var err: Error? = nil
 
+	let myid = accessToken.source() + XDKAWSSSO_KEYCHAIN_VERSION
+
 	// check storage
-	guard let cached = XDK.Read(using: storage, AccountInfoList.self).to(&err) else {
+	guard let cached = XDK.Read(using: storage, AccountInfoList.self, differentiator: myid).to(&err) else {
 		return .failure(x.error("error loading accounts from storage", root: err))
 	}
 
@@ -136,7 +138,7 @@ public func getAccountsRoleList(
 	}
 
 	// save to storage
-	guard let _ = XDK.Write(using: storage, list).to(&err) else {
+	guard let _ = XDK.Write(using: storage, list, differentiator: myid).to(&err) else {
 		return .failure(x.error("error saving accounts to storage", root: err))
 	}
 

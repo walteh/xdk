@@ -10,6 +10,8 @@ import Combine
 import Foundation
 import XDK
 
+
+
 public struct AWSSSOSignInCodeData: Sendable, Hashable {
 	public let activationURL: URL
 	public let activationURLWithCode: URL
@@ -29,6 +31,7 @@ public protocol AccessToken {
 	// var refreshToken: String { get }
 	func expires() -> Date
 	func stsRegion() -> String
+	func source() -> String
 }
 
 public struct SecureAWSSSOAccessToken: Codable, Sendable, Hashable, AccessToken {
@@ -56,6 +59,10 @@ public struct SecureAWSSSOAccessToken: Codable, Sendable, Hashable, AccessToken 
 
 	public func stsRegion() -> String {
 		self.region
+	}
+
+	public func source() -> String {
+		return self.startURL.absoluteString
 	}
 
 	static func fromAWS(input: AWSSSOOIDC.StartDeviceAuthorizationInput, output: AWSSSOOIDC.CreateTokenOutput,
@@ -87,7 +94,7 @@ public struct SecureAWSSSOAccessToken: Codable, Sendable, Hashable, AccessToken 
 public func getSignedInSSOUserFromKeychain(session: AppSessionAPI, storage: some XDK.StorageAPI) -> Result<SecureAWSSSOAccessToken?, Error> {
 	var err: Error?
 
-	guard let current = XDK.Read(using: storage, SecureAWSSSOAccessToken.self, differentiator: session.ID().string()).to(&err) else {
+	guard let current = XDK.Read(using: storage, SecureAWSSSOAccessToken.self, differentiator: session.ID().string() + XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
 		return .failure(x.error("error loading access token", root: err))
 	}
 
@@ -126,7 +133,7 @@ public func generateSSOAccessTokenUsingBrowserIfNeeded(
 		return .failure(x.error("error signing in", root: err))
 	}
 
-	guard let _ = XDK.Write(using: storage, tkn, differentiator: session.ID().string()).to(&err) else {
+	guard let _ = XDK.Write(using: storage, tkn, differentiator: session.ID().string() +   XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
 		return .failure(x.error("error writing secure access token", root: err))
 	}
 
@@ -213,7 +220,7 @@ func registerClientIfNeeded(
 
 	var err: Error? = nil
 
-	guard let reg = XDK.Read(using: storage, SecureAWSSSOClientRegistrationInfo.self).to(&err) else {
+	guard let reg = XDK.Read(using: storage, SecureAWSSSOClientRegistrationInfo.self, differentiator:  XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
 		return .failure(x.error("error loading client registration", root: err))
 	}
 
@@ -232,7 +239,7 @@ func registerClientIfNeeded(
 		return .failure(x.error("error creating secure client registration", root: err))
 	}
 
-	guard let _ = XDK.Write(using: storage, work).to(&err) else {
+	guard let _ = XDK.Write(using: storage, work, differentiator:  XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
 		return .failure(x.error("error writing secure client registration", root: err))
 	}
 
