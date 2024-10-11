@@ -9,6 +9,7 @@ import AWSSSOOIDC
 import Combine
 import Foundation
 import XDK
+@_spi(ExperimentalLanguageFeature) public import Err
 
 public struct AWSSSOSignInCodeData: Sendable, Hashable {
 	public let activationURL: URL
@@ -210,15 +211,14 @@ func pollForToken(
 	return .failure(NSError(domain: "SSOService", code: -1, userInfo: [NSLocalizedDescriptionKey: "SSO login timed out"]))
 }
 
-func registerClientIfNeeded(
+@err func registerClientIfNeeded(
 	awsssoAPI: AWSSSOSDKProtocolWrapped,
 	storage: some XDK.StorageAPI
 ) async -> Result<SecureAWSSSOClientRegistrationInfo, Error> {
 	// Check if client is already registered and saved in secure storage (Keychain)
 
-	var err: Error? = nil
 
-	guard let reg = XDK.Read(using: storage, SecureAWSSSOClientRegistrationInfo.self, differentiator: XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
+	guard let reg = XDK.Read(using: storage, SecureAWSSSOClientRegistrationInfo.self, differentiator: XDKAWSSSO_KEYCHAIN_VERSION).err() else {
 		return .failure(x.error("error loading client registration", root: err))
 	}
 
@@ -229,15 +229,16 @@ func registerClientIfNeeded(
 	let regClientInput = AWSSSOOIDC.RegisterClientInput(clientName: "spatial-aws-basic", clientType: "public", scopes: [])
 
 	// No registration found, register a new client
-	guard let regd = await awsssoAPI.registerClient(input: regClientInput).to(&err) else {
+	guard let regd = await awsssoAPI.registerClient(input: regClientInput).err() else {
 		return .failure(x.error("error registering client", root: err))
 	}
 
-	guard let work = SecureAWSSSOClientRegistrationInfo.fromAWS(regd).to(&err) else {
+
+	guard let work = SecureAWSSSOClientRegistrationInfo.fromAWS(regd).err() else {
 		return .failure(x.error("error creating secure client registration", root: err))
 	}
 
-	guard let _ = XDK.Write(using: storage, work, differentiator: XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
+	guard let _ = XDK.Write(using: storage, work, differentiator: XDKAWSSSO_KEYCHAIN_VERSION).err() else {
 		return .failure(x.error("error writing secure client registration", root: err))
 	}
 

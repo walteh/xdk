@@ -18,44 +18,10 @@ class God {
 		products: [
 		],
 		dependencies: [
-			.package(url: "https://github.com/apple/swift-testing.git", branch: "main"),
+			.package(url: "https://github.com/swiftlang/swift-testing.git", branch: "main"),
 		],
 		targets: [
-			.macro(
-				name: "XDKMacroMacros",
-				dependencies: [
-					.product(name: "SwiftDiagnostics", package: "swift-syntax"),
-					.product(name: "SwiftSyntax", package: "swift-syntax"),
-					.product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
-					.product(name: "SwiftParser", package: "swift-syntax"),
-					.product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-					.product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-				],
-				path: "./Sources/Packages/macro/macros"
-				// swiftSettings: [
-				// 	// When building as a package, the macro plugin always builds as an
-				// 	// executable rather than a library.
-				// 	.define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
-				// 	// The only target which needs the ability to import this macro
-				// 	// implementation target's module is its unit test target. Users of the
-				// 	// macros this target implements use them via their declarations in the
-				// 	// Testing module. This target's module is never distributed to users,
-				// 	// but as an additional guard against accidental misuse, this specifies
-				// 	// the unit test target as the only allowable client.
-				// 	.unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
-				// ]
-			),
-			.testTarget(
-				name: "XDKMacroTests",
-				dependencies: [
-					// .product(name: "Testing", package: "swift-testing"),
-					.product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
-					"XDKMacroMacros",
-				],
-				path: "./Sources/Packages/macro/tests"
-			),
-			.target(name: "XDKMacro", dependencies: ["XDKMacroMacros"], path: "./Sources/Packages/macro/swift"),
 		]
 	)
 
@@ -71,27 +37,24 @@ class God {
 
 let god = God()
 
-let macro = XDKMacro()
 
 let swiftLogs = Git(module: "Logging", version: "1.6.1", url: "https://github.com/apple/swift-log.git").apply(god)
 let awssdk = Git(module: "AWS", version: "0.46.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply(god)
-let swiftSyntax: Git = .init(modules: ["SwiftSyntax", "SwiftSyntaxMacros", "SwiftSyntaxMacroExpansion", "SwiftCompilerPlugin", "SwiftSyntaxBuilder", "SwiftParser", "SwiftDiagnostics", "SwiftSyntaxMacrosTestSupport"], from: "600.0.0-latest", url: "https://github.com/apple/swift-syntax.git").apply(god)
-
+let swiftErr = Git(module: "Err", version: "0.0.5", url: "https://github.com/walteh/swift-err.git").apply(god)
 let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply(god)
 let ecdsa = Git(module: "MicroDeterministicECDSA", version: "0.8.0", url: "https://github.com/walteh/micro-deterministic-ecdsa.git").apply(god)
 let swiftContext = Git(module: "ServiceContextModule", version: "1.0.0", url: "https://github.com/apple/swift-service-context.git").apply(god)
 let swiftBigInt = Git(module: "BigInt", version: "5.4.0", url: "https://github.com/attaswift/BigInt.git").apply(god)
 
-// let macro: Local = Local(name: "Macro").with(deps: [swiftSyntax]).apply(god)
-let x = Local(name: "XDK").with(deps: [swiftLogs, swiftContext, swiftXid]).apply(god)
+let x = Local(name: "XDK").with(deps: [swiftLogs, swiftContext, swiftXid, swiftErr]).apply(god)
 let byte = Local(name: "Byte").with(deps: [x]).apply(god)
 let hex = Local(name: "Hex").with(deps: [x, byte]).apply(god)
-let keychain = Local(name: "keychain").with(deps: [x]).apply(god)
+let keychain = Local(name: "keychain").with(deps: [x, swiftErr]).apply(god)
 let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, swiftBigInt]).apply(god)
 let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply(god)
 let webauthn = Local(name: "Webauthn").with(deps: [x, byte, hex, keychain]).apply(god)
 let websocket: Local = .init(name: "Websocket").with(deps: [x, byte, hex]).apply(god)
-let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC")]).apply(god)
+let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC"), swiftErr]).apply(god)
 
 god.complete()
 
@@ -234,8 +197,3 @@ extension Local: Dep {
 	}
 }
 
-struct XDKMacro: Dep {
-	func target() -> [Target.Dependency] {
-		[.byName(name: "XDKMacro")]
-	}
-}

@@ -10,7 +10,7 @@ import Foundation
 import XDK
 import XDKKeychain
 
-public struct JWT {
+public struct JWT: Sendable {
 	let token: String
 	let credentialID: Data
 }

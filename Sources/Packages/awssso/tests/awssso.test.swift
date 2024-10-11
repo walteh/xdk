@@ -36,7 +36,7 @@ func testGetServices() throws {
 	XDK.Log(.info).info("data", res).send("okay")
 	XCTAssertNotNil(res)
 }
-
+// @Test
 func dontTestExample() async throws {
 	let storageAPI = XDK.InMemoryStorage() as StorageAPI
 	let selectedRegion = "us-east-1"
@@ -50,15 +50,19 @@ func dontTestExample() async throws {
 
 	let client = try! AWSSSOSDKProtocolWrappedImpl(ssoRegion: selectedRegion)
 
-	var promptURL: XDKAWSSSO.AWSSSOSignInCodeData?
+	// var promptURL: XDKAWSSSO.AWSSSOSignInCodeData?
 	guard let resp = await XDKAWSSSO.generateSSOAccessTokenUsingBrowserIfNeeded(
 		client: client,
 		storage: storageAPI,
 		session: XDK.NoopAppSession(),
 		ssoRegion: selectedRegion,
 		startURL: startURI,
-		callback: { _ in
-			// promptURL = url
+		callback: { @Sendable url in
+			#expect(url != nil)
+			print("====================================")
+			// open the browser with the url
+			XDK.Log(.info).info("url", url.activationURLWithCode).send("okay")
+			print("====================================")
 		}
 	).to(&err) else {
 		XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
@@ -79,7 +83,6 @@ func dontTestExample() async throws {
 	// 	return
 	// }
 
-	#expect(promptURL != nil)
 
 	let url = await XDKAWSSSO.generateAWSConsoleURLUsingSSO(
 		client: client,

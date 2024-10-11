@@ -1,5 +1,5 @@
 {
-  "originHash" : "c12fd96de03ef66d7bf815a8b2ef0f6dd869965c271ac1a59f994f5ac2d217ba",
+  "originHash" : "14ea2bfbd376b67c459ef4a2d58a37dba73f967a8c2880840f6eabec01508d87",
   "pins" : [
     {
       "identity" : "aws-crt-swift",
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/walteh/swift-err.git",
       "state" : {
-        "revision" : "c03d964783f5eda6d1e056db2e2b93048ca8ee46",
-        "version" : "0.0.5"
+        "revision" : "3f8f9a266a0eb555d98005adfb7d573145991834",
+        "version" : "0.0.4"
       }
     },
     {
@@ -85,19 +85,19 @@
     {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swiftlang/swift-syntax.git",
+      "location" : "https://github.com/apple/swift-syntax.git",
       "state" : {
-        "revision" : "0687f71944021d616d34d922343dcef086855920",
-        "version" : "600.0.1"
+        "revision" : "06b5cdc432e93b60e3bdf53aff2857c6b312991a",
+        "version" : "600.0.0-prerelease-2024-07-30"
       }
     },
     {
       "identity" : "swift-testing",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swiftlang/swift-testing.git",
+      "location" : "https://github.com/apple/swift-testing.git",
       "state" : {
         "branch" : "main",
-        "revision" : "50e29075cc6653d22eddd990a46dc948d47bc855"
+        "revision" : "ace555de148c7902adbc6d7ec42457b783896615"
       }
     },
     {

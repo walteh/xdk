@@ -10,6 +10,7 @@ import Foundation
 import LocalAuthentication
 import os
 import XDK
+@_spi(ExperimentalLanguageFeature) public import Err
 
 extension LAContext {
 	func evaluatePolicy(_ policy: LAPolicy, localizedReason reason: String) async throws -> Bool {
@@ -140,14 +141,14 @@ extension LocalAuthenticationClient: XDK.AuthenticationAPI {
 		return .success(ok)
 	}
 
+	@err
 	public func obtainAuthentication(reason: String) async -> Result<Bool, Error> {
-		var err: Error? = nil
 
-		guard let _ = self.authenticationAvailable().to(&err) else {
+		guard let _ = self.authenticationAvailable().err() else {
 			return .failure(x.error("local auth not available", root: err, alias: KeychainError.auth_failed))
 		}
 
-		guard let res = await Result.X({ try await LAContext().evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: reason) }).to(&err) else {
+		guard let res = try await LAContext().evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: reason) else {
 			return .failure(x.error("unable to authenticate", root: err, alias: KeychainError.auth_failed))
 		}
 
