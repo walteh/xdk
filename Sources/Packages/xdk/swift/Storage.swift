@@ -1,5 +1,6 @@
 
 import Foundation
+import Err
 
 public protocol StorageAPI: Sendable {
 	func version() -> String
@@ -39,11 +40,11 @@ public protocol StorageAPI: Sendable {
 
 // the  differentiator is used to allow multiple versions of the same object to be stored
 // public func Read<T>(using storageAPI: StorageAPI, _: T.Type, differentiator: String = "") -> Result<T?, Error> where T: NSObject, T: NSSecureCoding {
-// 	var err: Error? = nil
+//
 
 // 	let storageKey = "\(T.description())_\(storageAPI.version())_\(differentiator)"
 
-// 	guard let data = storageAPI.read(unsafe: storageKey).to(&err) else {
+// 	guard let data = storageAPI.read(unsafe: storageKey).get() else {
 // 		return .failure(x.error("failed to read object", root: err).info("storageKey", storageKey))
 // 	}
 
@@ -55,47 +56,45 @@ public protocol StorageAPI: Sendable {
 // }
 
 // public func Write<T>(using storageAPI: StorageAPI, _ object: T, overwrite: Bool = true, differentiator: String = "") -> Result<Void, Error> where T: NSObject, T: NSSecureCoding {
-// 	var err: Error? = nil
+//
 
 // 	let storageKey = "\(T.description())_\(storageAPI.version())_\(differentiator)"
 
-// 	guard let resp = Result.X({ try NSKeyedArchiver.archivedData(withRootObject: object, requiringSecureCoding: true) }).to(&err) else {
+// 	guard let resp = Result.X({ try NSKeyedArchiver.archivedData(withRootObject: object, requiringSecureCoding: true) }).get() else {
 // 		return .failure(x.error("failed to archive object", root: err).info("storageKey", storageKey))
 // 	}
 
-// 	guard let _ = storageAPI.write(unsafe: storageKey, overwriting: overwrite, as: resp).to(&err) else {
+// 	guard let _ = storageAPI.write(unsafe: storageKey, overwriting: overwrite, as: resp).get() else {
 // 		return .failure(x.error("failed to write object", root: err).info("storageKey", storageKey))
 // 	}
 
 // 	return .success(())
 // }
 
-public func Read<T: Codable & Sendable>(using storageAPI: StorageAPI, _: T.Type, differentiator: String = "") -> Result<T?, Error> {
+@err public func Read<T: Codable & Sendable>(using storageAPI: StorageAPI, _: T.Type, differentiator: String = "") -> Result<T?, Error> {
 	let storageKey = "\(T.self)_\(storageAPI.version())_\(differentiator)"
-	var err: Error? = nil
 
-	guard let data = storageAPI.read(unsafe: storageKey).err(&err) else {
+	guard let data = storageAPI.read(unsafe: storageKey).get() else {
 		return .failure(x.error("failed to read object", root: err).info("storageKey", storageKey))
 	}
 	guard let data else { return .success(nil) }
 
 	let decoder = JSONDecoder()
-	guard let object = Result.X({ try decoder.decode(T.self, from: data) }).err(&err) else {
+	guard let object = try decoder.decode(T.self, from: data)  else {
 		return .failure(x.error("failed to decode object", root: err).info("storageKey", storageKey))
 	}
 	return .success(object)
 }
 
-public func Write<T: Codable & Sendable>(using storageAPI: StorageAPI, _ object: T, overwrite: Bool = true, differentiator: String = "") -> Result<Void, Error> {
-	var err: Error? = nil
+@err public func Write<T: Codable & Sendable>(using storageAPI: StorageAPI, _ object: T, overwrite: Bool = true, differentiator: String = "") -> Result<Void, Error> {
 
 	let storageKey = "\(T.self)_\(storageAPI.version())_\(differentiator)"
 
 	let encoder = JSONEncoder()
-	guard let data = Result.X({ try encoder.encode(object) }).err(&err) else {
+	guard let data = try encoder.encode(object) else {
 		return .failure(x.error("failed to encode object", root: err).info("storageKey", storageKey))
 	}
-	guard let _ = storageAPI.write(unsafe: storageKey, overwriting: overwrite, as: data).err(&err) else {
+	guard let _ = storageAPI.write(unsafe: storageKey, overwriting: overwrite, as: data).get() else {
 		print(err)
 		return .failure(x.error("failed to write object", root: err).info("storageKey", storageKey))
 	}
@@ -103,12 +102,11 @@ public func Write<T: Codable & Sendable>(using storageAPI: StorageAPI, _ object:
 	return .success(())
 }
 
-public func Delete<T: Codable & Sendable>(using storageAPI: StorageAPI, _: T.Type, differentiator: String = "") -> Result<Void, Error> {
-	var err: Error? = nil
+@err public func Delete<T: Codable & Sendable>(using storageAPI: StorageAPI, _: T.Type, differentiator: String = "") -> Result<Void, Error> {
 
 	let storageKey = "\(T.self)_\(storageAPI.version())_\(differentiator)"
 
-	guard let _ = storageAPI.delete(unsafe: storageKey).err(&err) else {
+	guard let _ = storageAPI.delete(unsafe: storageKey).get() else {
 		return .failure(x.error("failed to delete object", root: err).info("storageKey", storageKey))
 	}
 
@@ -116,11 +114,11 @@ public func Delete<T: Codable & Sendable>(using storageAPI: StorageAPI, _: T.Typ
 }
 
 // public func Delete<T>(using storageAPI: StorageAPI, _: T.Type, differentiator: String = "") -> Result<Void, Error> where T: NSObject, T: NSSecureCoding {
-// 	var err: Error? = nil
+//
 
 // 	let storageKey = "\(T.description())_\(storageAPI.version())_\(differentiator)"
 
-// 	guard let _ = storageAPI.delete(unsafe: storageKey).to(&err) else {
+// 	guard let _ = storageAPI.delete(unsafe: storageKey).get() else {
 // 		return .failure(x.error("failed to delete object", root: err).info("storageKey", storageKey))
 // 	}
 

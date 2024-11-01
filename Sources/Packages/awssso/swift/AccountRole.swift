@@ -10,6 +10,7 @@ import Combine
 import Foundation
 import WebKit
 import XDK
+import Err
 
 public protocol ManagedRegionService: Sendable {
 	var region: String? { get set }
@@ -98,17 +99,16 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 	XDK.Delete(using: storage, AccountInfoList.self)
 }
 
-public func getAccountsRoleList(
+@err public func getAccountsRoleList(
 	client: AWSSSOSDKProtocolWrapped,
 	storage: XDK.StorageAPI,
 	accessToken: AccessToken
 ) async -> Result<AccountInfoList, Error> {
-	var err: Error? = nil
 
 	let myid = accessToken.source() + XDKAWSSSO_KEYCHAIN_VERSION
 
 	// check storage
-	guard let cached = XDK.Read(using: storage, AccountInfoList.self, differentiator: myid).to(&err) else {
+	guard let cached = XDK.Read(using: storage, AccountInfoList.self, differentiator: myid).get() else {
 		return .failure(x.error("error loading accounts from storage", root: err))
 	}
 
@@ -116,7 +116,7 @@ public func getAccountsRoleList(
 		return .success(cached)
 	}
 
-	guard let response = await client.listAccounts(input: .init(accessToken: accessToken.token())).to(&err) else {
+	guard let response = await client.listAccounts(input: .init(accessToken: accessToken.token())).get() else {
 		return .failure(x.error("error fetching accounts", root: err))
 	}
 
@@ -128,7 +128,7 @@ public func getAccountsRoleList(
 
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {
-		guard let roles = await listRolesForAccount(client: client, accessToken: accessToken, account: account).to(&err) else {
+		guard let roles = try await listRolesForAccount(client: client, accessToken: accessToken, account: account).get() else {
 			return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!)
 				.info("accountName", account.accountName!))
 		}
@@ -138,24 +138,19 @@ public func getAccountsRoleList(
 	}
 
 	// save to storage
-	guard let _ = XDK.Write(using: storage, list, differentiator: myid).to(&err) else {
+	guard let _ = XDK.Write(using: storage, list, differentiator: myid).get() else {
 		return .failure(x.error("error saving accounts to storage", root: err))
 	}
 
 	return .success(list)
 }
 
-func listRolesForAccount(
+@err func listRolesForAccount(
 	client: AWSSSOSDKProtocolWrapped,
 	accessToken: AccessToken,
 	account: AWSSSO.SSOClientTypes.AccountInfo
 ) async -> Result<[AccountInfo], Error> {
-	// List roles for the given account
-	var err: Error? = nil
-
-	guard let rolesResponse = await client.listAccountRoles(input: .init(accessToken: accessToken.token(), accountId: account.accountId!))
-		.err(&err)
-	else {
+	guard let rolesResponse = await client.listAccountRoles(input: .init(accessToken: accessToken.token(), accountId: account.accountId!)).get()	else {
 		return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!)
 			.info("accountName", account.accountName!))
 	}

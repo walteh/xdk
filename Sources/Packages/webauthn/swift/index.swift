@@ -17,19 +17,19 @@ public struct JWT: Sendable {
 
 public typealias Challenge = XID
 
-public protocol WebauthnDeviceCheckAPI {
-	func assert(request: inout URLRequest, dataToSign: Data?) async -> Result<Void, Error>
+public protocol WebauthnDeviceCheckAPI: Sendable {
+	func assert(request:  URLRequest, dataToSign: Data?) async -> Result<[String:String], Error>
 	func attest() async -> Result<Void, Error>
 	func initialized() -> Result<Bool, Error>
 }
 
-public protocol WebauthnPasskeyAPI: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+public protocol WebauthnPasskeyAPI: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, Sendable {
 	func assertPasskey() async -> Result<Void, Error>
 	func attestPasskey() async -> Result<Void, Error>
 	func startSignInObserver() -> NSObjectProtocol
 }
 
-public protocol WebauthnRemoteAPI {
+public protocol WebauthnRemoteAPI: Sendable {
 	func remote(init type: CeremonyType, credentialID: Data?) async -> Result<Challenge, Error>
 	func remote(authorization: ASAuthorization) async -> Result<JWT, Error>
 	func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async -> Result<JWT, Error>
@@ -40,7 +40,7 @@ public protocol WebauthnRemoteAPI {
 	func getUserID() -> String
 }
 
-public enum CeremonyType: String {
+public enum CeremonyType: String, Sendable {
 	case Get = "webauthn.get"
 	case Create = "webauthn.create"
 }

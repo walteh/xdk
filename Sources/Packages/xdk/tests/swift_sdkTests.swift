@@ -25,7 +25,7 @@ class XDKXTests: XCTestCase {
 	}
 
 	func testExamplew() throws {
-		var err: Error? = nil
+
 
 		// let ok = Result.X(catch: &err) { throw x.error("hello") }
 	}

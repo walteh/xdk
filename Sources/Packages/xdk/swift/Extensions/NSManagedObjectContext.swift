@@ -7,10 +7,19 @@
 
 import CoreData
 import Foundation
+import Err
+
 
 extension NSManagedObjectContext {
 	func saveRecordingError() -> Result<Void, Error> {
-		x.log(.info).send("Need to update \(self.updatedObjects.count) Objects in CoreData")
-		return Result.X { try self.save() }
+
+		do {
+			x.log(.info).send("Need to update \(self.updatedObjects.count) Objects in CoreData")
+			try self.save()
+		} catch {
+			return .failure(x.error("Failed to obtain permanent IDs", root: error))
+		}
+
+		return .success(())
 	}
 }

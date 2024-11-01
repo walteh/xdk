@@ -7,6 +7,7 @@
 
 import Foundation
 import xid
+import Err
 
 // var buf = XIDManager()
 
@@ -21,15 +22,15 @@ public struct XID: Sendable {
 	}
 
 	static func rebuild(raw: Data) -> Result<XID, Error> {
-		return Result.X { try XID(raw: raw) }
+		return Result { try XID(raw: raw) }
 	}
 
 	public static func rebuild(string: String) -> Result<XID, Error> {
-		return Result.X { try XID(string: string) }
+		return Result { try XID(string: string) }
 	}
 
 	public static func rebuild(utf8: Data) -> Result<XID, Error> {
-		return Result.X { try XID(utf8: utf8) }
+		return Result { try XID(utf8: utf8) }
 	}
 
 	private init(fromLib: xid.Id) {
@@ -64,34 +65,29 @@ extension XID: CustomStringConvertible {
 }
 
 public extension XID {
-	private init(raw: Data) throws {
-		let ok = Result.X { try xid.NewXid(bytes: raw) }
-		if let err = ok.error {
+	@err private init(raw: Data) throws {
+
+		guard let ok = try xid.NewXid(bytes: raw) else {
 			throw x.error("problem converting to lib based xid", root: err)
 		}
 
-		let id = ok.value!
-		self.init(fromLib: id)
+		self.init(fromLib: ok)
 	}
 
-	private init(string: String) throws {
-		let ok = Result.X { try xid.NewXid(from: string) }
-		if let err = ok.error {
+	@err private init(string: String) throws {
+		guard let ok = try xid.NewXid(from: string) else {
 			throw x.error("problem converting to lib based xid", root: err)
 		}
 
-		let id = ok.value!
-		self.init(fromLib: id)
+		self.init(fromLib: ok)
 	}
 
-	private init(utf8: Data) throws {
-		let ok = Result.X { try xid.NewXid(from: utf8) }
-		if let err = ok.error {
+	@err private init(utf8: Data) throws {
+		guard let ok =  try xid.NewXid(from: utf8) else {
 			throw x.error("problem converting to lib based xid", root: err)
 		}
 
-		let id = ok.value!
-		self.init(fromLib: id)
+		self.init(fromLib: ok)
 	}
 }
 

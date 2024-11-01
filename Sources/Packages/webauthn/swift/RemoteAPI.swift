@@ -8,15 +8,14 @@
 
 import AuthenticationServices
 import Foundation
+import Err
 
 import XDK
 import XDKHex
 import XDKKeychain
 
 extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
-	public func remote(init type: CeremonyType, credentialID: Data? = nil) async -> Result<Challenge, Error> {
-		var err = Error?.none
-
+	@err public func remote(init type: CeremonyType, credentialID: Data? = nil) async -> Result<Challenge, Error> {
 		var req: URLRequest = .init(url: host.appending(path: "/init"))
 
 		req.setValue(xhex.ToHexString(sessionAPI.ID().utf8()), forHTTPHeaderField: "X-Nugg-Hex-Session-ID")
@@ -30,17 +29,15 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 
 		let safeReq = req
 
-		guard let (_, response) = await Result.X({
-			return try await URLSession.shared.data(for: safeReq)
-		}).to(&err) else {
+		guard let (_, response) = try await URLSession.shared.data(for: safeReq) else {
 			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
-		guard let chal = checkFor(header: "x-nugg-hex-challenge", in: response, with: 204).to(&err) else {
+		guard let chal = checkFor(header: "x-nugg-hex-challenge", in: response, with: 204).get() else {
 			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
-		guard let res = XDK.XID.rebuild(string: chal).to(&err) else {
+		guard let res = XDK.XID.rebuild(string: chal).get() else {
 			return .failure(XDK.Err("failed to rebuild challenge", root: err, alias: DeviceCheckError.invalidChallenge))
 		}
 
@@ -57,8 +54,8 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		return .failure(XDK.Err("unexpected nil").event { $0.add("variable", "authorization.credential") })
 	}
 
-	public func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async -> Result<JWT, Error> {
-		var err = Error?.none
+	@err public func remote(credentialRegistration attest: ASAuthorizationPlatformPublicKeyCredentialRegistration) async -> Result<JWT, Error> {
+
 
 		var req: URLRequest = .init(url: host.appending(path: "/ios/register/passkey"))
 
@@ -72,28 +69,24 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 		req.setValue(xhex.ToHexString(attester), forHTTPHeaderField: "X-Nugg-Hex-Attestation-Object")
 		req.setValue(attest.rawClientDataJSON.string!, forHTTPHeaderField: "X-Nugg-Utf-Client-Data-Json")
 
-		guard let _ = await assert(request: &req, dataToSign: attest.credentialID).to(&err) else {
+		guard let safeReqHeaders = await self.assert(request: req, dataToSign: attest.credentialID).get() [req] else {
 			return .failure(XDK.Err("failed to assert", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
-		let safeReq = req
+		req.allHTTPHeaderFields = safeReqHeaders
 
-		guard let (_, response) = await Result.X({
-			return try await URLSession.shared.data(for: safeReq)
-		}).to(&err) else {
+		guard let (_, rez) = try await URLSession.shared.data(for: req) [req] else {
 			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
-		guard let chal = checkFor(header: "x-nugg-utf-access-token", in: response, with: 204).to(&err) else {
+		guard let chal = checkFor(header: "x-nugg-utf-access-token", in: rez, with: 204).get() else {
 			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		return .success(.init(token: chal, credentialID: attest.credentialID))
 	}
 
-	public func remote(credentialAssertion assert: ASAuthorizationPublicKeyCredentialAssertion) async -> Result<JWT, Error> {
-		var err = Error?.none
-
+	@err public func remote(credentialAssertion assert: ASAuthorizationPublicKeyCredentialAssertion) async -> Result<JWT, Error> {
 		var req: URLRequest = .init(url: host.appending(path: "/passkey/assert"))
 
 		req.httpMethod = "POST"
@@ -107,21 +100,19 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 
 		let safeReq = req
 
-		guard let (_, response) = await Result.X({
-			return try await URLSession.shared.data(for: safeReq)
-		}).to(&err) else {
+		guard let (_, response) =  try await URLSession.shared.data(for: safeReq) else {
 			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
-		guard let chal = checkFor(header: "x-nugg-utf-access-token", in: response, with: 204).to(&err) else {
+		guard let chal = checkFor(header: "x-nugg-utf-access-token", in: response, with: 204).get() else {
 			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		return .success(.init(token: chal, credentialID: assert.credentialID))
 	}
 
-	func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data) async -> Result<Void, Error> {
-		var err = Error?.none
+	@err func remote(deviceAttestation da: Data, clientDataJSON: String, using key: Data) async -> Result<Void, Error> {
+
 
 		var req: URLRequest = .init(url: host.appending(path: "/ios/register/device"))
 
@@ -137,14 +128,12 @@ extension WebauthnAuthenticationServicesClient: WebauthnRemoteAPI {
 
 		let safeReq = req
 
-		guard let (_, response) = await Result.X({
-			return try await URLSession.shared.data(for: safeReq)
-		}).to(&err) else {
+		guard let (_, response) = try await URLSession.shared.data(for: safeReq) else {
 			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
 		}
 
 		guard let res = response as? HTTPURLResponse else {
-			return .failure(XDK.Err("failed to get challenge", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(XDK.Err("failed to get challenge", alias: DeviceCheckError.unexpectedNil))
 		}
 
 		if res.statusCode != 204 {

@@ -9,6 +9,7 @@ import AWSSSOOIDC
 import Combine
 import Foundation
 import XDK
+import Err
 
 struct RoleCredentialsSignInToken: Codable, Sendable {
 	public let token: String
@@ -66,27 +67,27 @@ public struct RoleCredentials: Codable, Sendable {
 	}
 }
 
-func invalidateRoleCredentials(_ storage: some StorageAPI, role: RoleInfo) -> Result<Bool, Error> {
-	var err: Error? = nil
+@err func invalidateRoleCredentials(_ storage: some StorageAPI, role: RoleInfo) -> Result<Bool, Error> {
+
 
 	// let res = #autoreturn { return true }
 
-	guard let _ = XDK.Delete(using: storage, RoleCredentials.self, differentiator: role.uniqueID + XDKAWSSSO_KEYCHAIN_VERSION).to(&err) else {
+	guard let _ = XDK.Delete(using: storage, RoleCredentials.self, differentiator: role.uniqueID + XDKAWSSSO_KEYCHAIN_VERSION).get() else {
 		return .failure(x.error("error deleting role creds from keychain", root: err))
 	}
 
 	return .success(true)
 }
 
-func invalidateAndGetRoleCredentialsUsing(
+@err func invalidateAndGetRoleCredentialsUsing(
 	sso client: any AWSSSOSDKProtocolWrapped,
 	storage: some StorageAPI,
 	accessToken: SecureAWSSSOAccessToken,
 	role: RoleInfo
 ) async -> Result<RoleCredentialsStatus, Error> {
-	var err: Error? = nil
 
-	guard let _ = invalidateRoleCredentials(storage, role: role).to(&err) else {
+
+	guard let _ = invalidateRoleCredentials(storage, role: role).get() else {
 		return .failure(x.error("error deleting role creds from keychain", root: err))
 	}
 
@@ -98,17 +99,17 @@ public struct RoleCredentialsStatus: Sendable {
 	let pulledFromCache: Bool
 }
 
-public func getRoleCredentialsUsing(
+@err public func getRoleCredentialsUsing(
 	sso client: any AWSSSOSDKProtocolWrapped,
 	storage: some StorageAPI,
 	accessToken: AccessToken,
 	role: RoleInfo
 ) async -> Result<RoleCredentialsStatus, Error> {
-	var err: Error? = nil
+
 
 	let myid = role.uniqueID + XDKAWSSSO_KEYCHAIN_VERSION
 
-	guard let curr = XDK.Read(using: storage, RoleCredentials.self, differentiator: myid).to(&err) else {
+	guard let curr = XDK.Read(using: storage, RoleCredentials.self, differentiator: myid).get() else {
 		return .failure(x.error("error reading role creds from keychain", root: err))
 	}
 
@@ -130,7 +131,7 @@ public func getRoleCredentialsUsing(
 		accessToken: accessToken.token(),
 		accountId: role.accountID,
 		roleName: role.roleName
-	)).to(&err) else {
+	)).get() else {
 		return .failure(x.error("error fetching role creds", root: err))
 	}
 
@@ -140,7 +141,7 @@ public func getRoleCredentialsUsing(
 
 	let rcreds = RoleCredentials(rolecreds, role, stsRegion: accessToken.stsRegion())
 
-	guard let _ = XDK.Write(using: storage, rcreds, overwrite: true, differentiator: myid).to(&err) else {
+	guard let _ = XDK.Write(using: storage, rcreds, overwrite: true, differentiator: myid).get() else {
 		return .failure(x.error("error writing role creds to keychain", root: err))
 	}
 
@@ -149,15 +150,15 @@ public func getRoleCredentialsUsing(
 	return .success(RoleCredentialsStatus(data: rcreds, pulledFromCache: false))
 }
 
-func fetchCachedSignInToken(
+@err func fetchCachedSignInToken(
 	storage: some StorageAPI,
 	credentials: RoleCredentials
 ) async -> Result<RoleCredentialsSignInToken, Error> {
-	var err: Error? = nil
+
 
 	let myid = credentials.role.uniqueID + XDKAWSSSO_KEYCHAIN_VERSION
 
-	guard let curr = XDK.Read(using: storage, RoleCredentialsSignInToken.self, differentiator: myid).to(&err) else {
+	guard let curr = XDK.Read(using: storage, RoleCredentialsSignInToken.self, differentiator: myid).get() else {
 		return .failure(x.error("error reading signin token from keychain", root: err))
 	}
 
@@ -167,27 +168,27 @@ func fetchCachedSignInToken(
 		}
 	}
 
-	guard let signInToken = await fetchSignInToken(with: credentials).to(&err) else {
+	guard let signInToken = await fetchSignInToken(with: credentials).get() else {
 		return .failure(x.error("error fetching signin token", root: err))
 	}
 
 	let tok = RoleCredentialsSignInToken(token: signInToken, credentialID: credentials.uniqueID)
 
-	guard let _ = XDK.Write(using: storage, tok, overwrite: true, differentiator: myid).to(&err) else {
+	guard let _ = XDK.Write(using: storage, tok, overwrite: true, differentiator: myid).get() else {
 		return .failure(x.error("error writing signin token to keychain", root: err))
 	}
 
 	return .success(tok)
 }
 
-func fetchSignInToken(with credentials: RoleCredentials, retryNumber: Int = 0) async -> Result<String, Error> {
-	var err: Error? = nil
+@err func fetchSignInToken(with credentials: RoleCredentials, retryNumber: Int = 0) async -> Result<String, Error> {
 
-	guard let request = constructFederationURLRequest(with: credentials).to(&err) else {
+
+	guard let request = constructFederationURLRequest(with: credentials).get() else {
 		return .failure(x.error("error constructing federation url", root: err))
 	}
 
-	guard let (data, response) = await Result({ try await URLSession.shared.data(for: request) }).to(&err) else {
+	guard let (data, response) = await Result({ try await URLSession.shared.data(for: request) }).get() else {
 		return .failure(x.error("error fetching sign in token", root: err))
 	}
 
@@ -211,17 +212,19 @@ func fetchSignInToken(with credentials: RoleCredentials, retryNumber: Int = 0) a
 		XDK.Log(.debug).add("request_url", request.url?.absoluteString ?? "none").send("success on fetchSignInToken")
 	}
 
-	guard let jsonResult = Result.X({ try JSONSerialization.jsonObject(with: data) as? [String: Any] }).to(&err) else {
+	guard let jsonResultz = try JSONSerialization.jsonObject(with: data) else {
 		return .failure(x.error("error parsing json", root: err))
 	}
 
-	if jsonResult == nil {
+	guard let jsonResult = jsonResultz as? [String: Any] else {
 		return .failure(x.error("no json data returned"))
 	}
 
-	XDK.Log(.debug).info("jsonResult", jsonResult!).send("fetchSignInToken")
 
-	if let signInToken = jsonResult!["SigninToken"] as? String {
+
+	XDK.Log(.debug).info("jsonResult", jsonResult).send("fetchSignInToken")
+
+	if let signInToken = jsonResult["SigninToken"] as? String {
 		return .success(signInToken)
 	} else {
 		return .failure(x.error("error parsing json"))

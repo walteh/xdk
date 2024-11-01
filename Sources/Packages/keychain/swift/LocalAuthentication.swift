@@ -144,7 +144,7 @@ extension LocalAuthenticationClient: XDK.AuthenticationAPI {
 	@err
 	public func obtainAuthentication(reason: String) async -> Result<Bool, Error> {
 
-		guard let _ = self.authenticationAvailable().err() else {
+		guard let _ = self.authenticationAvailable().get() else {
 			return .failure(x.error("local auth not available", root: err, alias: KeychainError.auth_failed))
 		}
 

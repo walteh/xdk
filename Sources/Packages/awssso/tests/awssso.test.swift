@@ -10,6 +10,7 @@ import Testing
 import XCTest
 import XDK
 import XDKLogging
+import Err
 
 @testable import XDKAWSSSO
 
@@ -37,7 +38,7 @@ func testGetServices() throws {
 	XCTAssertNotNil(res)
 }
 // @Test
-func dontTestExample() async throws {
+@err  func dontTestExample() async throws {
 	let storageAPI = XDK.InMemoryStorage() as StorageAPI
 	let selectedRegion = "us-east-1"
 
@@ -46,7 +47,6 @@ func dontTestExample() async throws {
 		throw URLError(.init(rawValue: 0), userInfo: ["uri": val])
 	}
 
-	var err: Error?
 
 	let client = try! AWSSSOSDKProtocolWrappedImpl(ssoRegion: selectedRegion)
 
@@ -64,7 +64,7 @@ func dontTestExample() async throws {
 			XDK.Log(.info).info("url", url.activationURLWithCode).send("okay")
 			print("====================================")
 		}
-	).to(&err) else {
+	).get() else {
 		XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
 		return
 	}
@@ -78,7 +78,7 @@ func dontTestExample() async throws {
 		service: "s3"
 	)
 
-	// guard let _ = await sess.refresh(accessToken: resp, storageAPI: storageAPI).to(&err) else {
+	// guard let _ = await sess.refresh(accessToken: resp, storageAPI: storageAPI).get() else {
 	// 	XCTFail("failed to refresh" + (err?.localizedDescription ?? "unknown error"))
 	// 	return
 	// }
@@ -92,7 +92,7 @@ func dontTestExample() async throws {
 		storageAPI: storageAPI,
 		accessToken: resp,
 		isSignedIn: true
-	).to(&err)
+	).get()
 
 	#expect(err == nil)
 

@@ -39,21 +39,22 @@ let god = God()
 
 
 let swiftLogs = Git(module: "Logging", version: "1.6.1", url: "https://github.com/apple/swift-log.git").apply(god)
-let awssdk = Git(module: "AWS", version: "0.46.0", url: "https://github.com/awslabs/aws-sdk-swift.git").apply(god)
-let swiftErr = Git(module: "Err", version: "0.0.5", url: "https://github.com/walteh/swift-err.git").apply(god)
+let awssdk = Git(module: "AWS", version: "1.0.17", url: "https://github.com/awslabs/aws-sdk-swift.git").apply(god)
+let swiftErr = Git(module: "Err", version: "0.5.0", url: "https://github.com/walteh/swift-err.git").apply(god)
+// let swiftErr = TmpLocal(module: "Err", url: "../../swift-err").apply(god)
 let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply(god)
 let ecdsa = Git(module: "MicroDeterministicECDSA", version: "0.8.0", url: "https://github.com/walteh/micro-deterministic-ecdsa.git").apply(god)
-let swiftContext = Git(module: "ServiceContextModule", version: "1.0.0", url: "https://github.com/apple/swift-service-context.git").apply(god)
+let swiftContext = Git(module: "ServiceContextModule", version: "1.1.0", url: "https://github.com/apple/swift-service-context.git").apply(god)
 let swiftBigInt = Git(module: "BigInt", version: "5.4.0", url: "https://github.com/attaswift/BigInt.git").apply(god)
 
 let x = Local(name: "XDK").with(deps: [swiftLogs, swiftContext, swiftXid, swiftErr]).apply(god)
-let byte = Local(name: "Byte").with(deps: [x]).apply(god)
-let hex = Local(name: "Hex").with(deps: [x, byte]).apply(god)
+let byte = Local(name: "Byte").with(deps: [x, swiftErr]).apply(god)
+let hex = Local(name: "Hex").with(deps: [x, byte, swiftErr]).apply(god)
 let keychain = Local(name: "keychain").with(deps: [x, swiftErr]).apply(god)
-let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, swiftBigInt]).apply(god)
-let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex]).apply(god)
-let webauthn = Local(name: "Webauthn").with(deps: [x, byte, hex, keychain]).apply(god)
-let websocket: Local = .init(name: "Websocket").with(deps: [x, byte, hex]).apply(god)
+let rlp = Local(name: "RLP").with(deps: [x, ecdsa, byte, hex, swiftBigInt, swiftErr]).apply(god)
+let logging = Local(name: "Logging").with(deps: [x, swiftLogs, hex, swiftErr]).apply(god)
+let webauthn = Local(name: "Webauthn").with(deps: [x, byte, hex, keychain, swiftErr]).apply(god)
+let websocket: Local = .init(name: "Websocket").with(deps: [x, byte, hex, swiftErr]).apply(god)
 let awssso = Local(name: "AWSSSO").with(deps: [x, logging, awssdk.child(module: "AWSSSO"), awssdk.child(module: "AWSSSOOIDC"), swiftErr]).apply(god)
 
 god.complete()
@@ -98,6 +99,31 @@ class Git {
 	func apply(_ god: God) -> Self {
 		god.package.dependencies.append(self.product)
 		return self
+	}
+}
+
+class TmpLocal {
+	var product: Package.Dependency
+	let name: String
+	let modules: [String]
+
+	init(module: String, url: String) {
+		self.name = url.split(separator: "/").last!.replacingOccurrences(of: ".git", with: "")
+		self.modules = [module]
+		self.product = .package(path: url)
+	}
+
+	func apply(_ god: God) -> Self {
+		god.package.dependencies.append(self.product)
+		return self
+	}
+}
+
+extension TmpLocal: Dep {
+	func target() -> [Target.Dependency] {
+		self.modules.map {
+			.product(name: $0, package: self.name)
+		}
 	}
 }
 

@@ -7,6 +7,7 @@
 
 import Foundation
 import Logging
+import Err
 
 public protocol AppSessionAPI: Sendable {
 	func ID() -> XID
@@ -44,8 +45,8 @@ public final class StoredAppSession: NSObject, Sendable {
 
 	public let storageAPI: any StorageAPI
 
-	public init(storageAPI: any StorageAPI) throws {
-		var err: Error? = nil
+	@err public init(storageAPI: any StorageAPI) throws {
+
 
 		self.storageAPI = storageAPI
 
@@ -56,16 +57,19 @@ public final class StoredAppSession: NSObject, Sendable {
 
 		let id = idres.value!
 
-		if id == nil {
-			let tmpid = AppSessionID(id: XID.build())
-			guard let _ = XDK.Write(using: storageAPI, tmpid).to(&err) else {
-				throw x.error("failed to write app session id", root: err)
-			}
-			self.appSessionID = tmpid
-		} else {
+		if id != nil {
 			Log(.info).info("sessionID", id).send("idk")
 			self.appSessionID = id!
+			super.init()
+			return
 		}
+
+		let tmpid = AppSessionID(id: XID.build())
+		guard let _ = XDK.Write(using: storageAPI, tmpid).get() else {
+			throw x.error("failed to write app session id", root: err)
+		}
+		self.appSessionID = tmpid
+
 
 		super.init()
 	}

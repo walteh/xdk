@@ -9,7 +9,7 @@ import AuthenticationServices
 import Foundation
 import XDK
 
-public class WebauthnNoopRemoteClient: WebauthnRemoteAPI {
+final public class WebauthnNoopRemoteClient: WebauthnRemoteAPI {
 	let userID = XDK.XID.build()
 
 	public func getPublicKeyProvider() -> ASAuthorizationPlatformPublicKeyCredentialProvider {

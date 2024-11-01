@@ -9,6 +9,7 @@
 import AuthenticationServices
 import Foundation
 import os
+import Err
 
 import XDK
 import XDKKeychain
@@ -31,21 +32,21 @@ struct PasskeyCredentialID: Codable, Sendable {
 }
 
 extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
-	public func startSignInObserver() -> NSObjectProtocol {
+	@err public func startSignInObserver() -> NSObjectProtocol {
 		let signInObserver = NotificationCenter.default.addObserver(forName: .UserSignInRequest, object: nil, queue: nil) { _ in
 			Task.detached(priority: .userInitiated) {
-				var err = Error?.none
-				guard let read = XDK.Read(using: self.keychainAPI, PasskeyCredentialID.self).to(&err) else {
+
+				guard let read = XDK.Read(using: self.keychainAPI, PasskeyCredentialID.self).get() else {
 					x.log(.critical).err(err).send("webauthn error")
 					return
 				}
 				if read != nil {
-					guard let _ = await self.attestPasskey().to(&err) else {
+					guard let _ = await self.attestPasskey().get() else {
 						x.log(.critical).err(err).send("webauthn error in attest")
 						return
 					}
 				} else {
-					guard let _ = await self.assertPasskey().to(&err) else {
+					guard let _ = await self.assertPasskey().get() else {
 						x.log(.critical).err(err).send("webauthn error in assert")
 						return
 					}
@@ -56,11 +57,10 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		return signInObserver
 	}
 
-	@MainActor
-	public func assertPasskey() async -> Result<Void, Error> {
-		var err = Error?.none
+	@err public func assertPasskey() async -> Result<Void, Error> {
 
-		guard let credid = XDK.Read(using: self.keychainAPI, PasskeyCredentialID.self).to(&err) else {
+
+		guard let credid = XDK.Read(using: self.keychainAPI, PasskeyCredentialID.self).get() else {
 			return .failure(x.error("cound not assert", root: err, alias: DeviceCheckError.invalidKey("credentialId")))
 		}
 
@@ -68,7 +68,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 			return .failure(x.error("cound not assert because credentialId is nil", alias: DeviceCheckError.invalidKey("credentialId")))
 		}
 
-		guard let challenge = await remote(init: .Get, credentialID: credid.credentialID).to(&err) else {
+		guard let challenge = await self.remote(init: .Get, credentialID: credid.credentialID).get() else {
 			return .failure(x.error("cound not assert", root: err, alias: DeviceCheckError.invalidKey("challenge")))
 		}
 
@@ -85,11 +85,9 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		return .success(())
 	}
 
-	@MainActor
-	public func attestPasskey() async -> Result<Void, Error> {
-		var err = Error?.none
+	@err public func attestPasskey() async -> Result<Void, Error> {
 
-		guard let challenge = await remote(init: .Create).to(&err) else {
+		guard let challenge = await self.remote(init: .Create).get() else {
 			return .failure(x.error("probelm getting challenge", root: err))
 		}
 
@@ -108,24 +106,24 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		return .success(())
 	}
 
-	public func authorizationController(
+	@err public func authorizationController(
 		controller _: ASAuthorizationController,
 		didCompleteWithAuthorization authorization: ASAuthorization
 	) {
 		Task(priority: .high) {
-			var err = Error?.none
-			guard let res = await remote(authorization: authorization).to(&err) else {
+
+			guard let res = await self.remote(authorization: authorization).get() else {
 				XDK.Log(.critical).err(err).send("failed to successfully handle auth")
 				return
 			}
-			guard let _ = XDK.Write(using: self.keychainAPI, PasskeyCredentialID(credentialID: res.credentialID)).to(&err) else {
+			guard let _ = XDK.Write(using: self.keychainAPI, PasskeyCredentialID(credentialID: res.credentialID)).get() else {
 				XDK.Log(.critical).err(err).send("failed to write credential id")
 				return
 			}
 		}
 	}
 
-	public func authorizationController(controller _: ASAuthorizationController, didCompleteWithError error: Error) {
+	@err public func authorizationController(controller _: ASAuthorizationController, didCompleteWithError error: Error) {
 		guard let authorizationError = error as? ASAuthorizationError else {
 			// self.isPerformingModalRequest = false
 			return
@@ -137,8 +135,8 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 			if authorizationError.errorUserInfo["NSLocalizedFailureReason"] as? String == "No credentials available for login." {
 				// this happens when the user tries to log in with a pass key they have deleted
 //					self.credentialID = nil
-				var err = Error?.none
-				guard let _ = XDK.Write(using: self.keychainAPI, PasskeyCredentialID(credentialID: Data())).to(&err) else {
+
+				guard let _ = XDK.Write(using: self.keychainAPI, PasskeyCredentialID(credentialID: Data())).get() else {
 					XDK.Log(.critical).err(err).send("failed to write credential id")
 					return
 				}

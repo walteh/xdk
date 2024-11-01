@@ -109,18 +109,18 @@ public extension Result {
 	}
 }
 
-public extension Result {
-	func to(_ err: inout Error?) -> (Success?) {
-		return self.err(&err)
-	}
+// public extension Result {
+// 	func to(_ err: inout Error?) -> (Success?) {
+// 		return self.err(&err)
+// 	}
 
-	func err(_ err: inout Error?) -> (Success?) {
-		switch self {
-		case let .success(value):
-			return value
-		case let .failure(error):
-			err = error
-			return nil
-		}
-	}
-}
+// 	func err(_ err: inout Error?) -> (Success?) {
+// 		switch self {
+// 		case let .success(value):
+// 			return value
+// 		case let .failure(error):
+// 			err = error
+// 			return nil
+// 		}
+// 	}
+// }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Err
 
 public protocol ConfigAPI: Sendable {
 	func get(key: String) -> Result<String, Error>
@@ -44,9 +45,9 @@ public func GetBuild(using configAPI: ConfigAPI) -> Result<String, Error> {
 	return configAPI.get(key: "CFBundleVersion")
 }
 
-public func GetBuildWithDebugFlag(using configAPI: ConfigAPI) -> Result<String, Error> {
-	var err: Error? = nil
-	guard let build = GetBuild(using: configAPI).to(&err) else {
+@err public func GetBuildWithDebugFlag(using configAPI: ConfigAPI) -> Result<String, Error> {
+
+	guard let build = GetBuild(using: configAPI).get() else {
 		return .failure(x.error("failed to get build", root: err))
 	}
 
@@ -106,8 +107,7 @@ public func GetDeviceFamily(using configAPI: ConfigAPI) -> Result<String, Error>
 		return .success(res)
 	}
 
-	public func get(file: String) -> Result<Data, Error> {
-		var err: Error? = nil
+	@err public func get(file: String) -> Result<Data, Error> {
 
 		guard let ext = file.split(separator: ".").last else {
 			return .failure(x.error("unable to determine file extension").info("file", file))
@@ -118,7 +118,7 @@ public func GetDeviceFamily(using configAPI: ConfigAPI) -> Result<String, Error>
 			return .failure(x.error("file not found: could not find \(file)"))
 		}
 
-		guard let data = Result.X({ try Data(contentsOf: URL(fileURLWithPath: filepath), options: .mappedIfSafe) }).to(&err) else {
+		guard let data = try Data(contentsOf: URL(fileURLWithPath: filepath), options: .mappedIfSafe) else {
 			return .failure(x.error("failed to read file", root: err).info("filepath", filepath))
 		}
 

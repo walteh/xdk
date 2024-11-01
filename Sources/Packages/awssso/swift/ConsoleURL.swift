@@ -3,8 +3,9 @@ import AWSSSOOIDC
 import Combine
 import Foundation
 import XDK
+import Err
 
-public func generateAWSConsoleURLWithDefaultClient(
+@err public func generateAWSConsoleURLWithDefaultClient(
 	account: AccountInfo,
 	role: RoleInfo,
 	managedRegion: ManagedRegionService,
@@ -12,9 +13,9 @@ public func generateAWSConsoleURLWithDefaultClient(
 	accessToken: AccessToken,
 	isSignedIn: Bool
 ) async -> Result<URL, Error> {
-	var err = Error?.none
 
-	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion()).to(&err) else {
+
+	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion()).get() else {
 		return .failure(XDK.Err("creating aws client", root: err))
 	}
 
@@ -29,7 +30,7 @@ public func generateAWSConsoleURLWithDefaultClient(
 	)
 }
 
-public func generateAWSConsoleURLWithExpiryWithDefaultClient(
+@err  public func generateAWSConsoleURLWithExpiryWithDefaultClient(
 	account: AccountInfo,
 	role: RoleInfo,
 	managedRegion: ManagedRegionService,
@@ -37,9 +38,9 @@ public func generateAWSConsoleURLWithExpiryWithDefaultClient(
 	accessToken: AccessToken,
 	isSignedIn: Bool
 ) async -> Result<(URL, Date), Error> {
-	var err = Error?.none
 
-	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion()).to(&err) else {
+
+	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion()).get() else {
 		return .failure(XDK.Err("creating aws client", root: err))
 	}
 
@@ -54,7 +55,7 @@ public func generateAWSConsoleURLWithExpiryWithDefaultClient(
 	)
 }
 
-public func generateAWSConsoleURLUsingSSO(
+@err public func generateAWSConsoleURLUsingSSO(
 	client: AWSSSOSDKProtocolWrapped,
 	account: AccountInfo,
 	role: RoleInfo,
@@ -64,7 +65,7 @@ public func generateAWSConsoleURLUsingSSO(
 	isSignedIn: Bool,
 	retryNumber: Int = 0
 ) async -> Result<URL, Error> {
-	var err: Error? = nil
+
 
 	//	guard let role = account.role else {
 	//		return .failure(x.error("role not set"))
@@ -73,7 +74,7 @@ public func generateAWSConsoleURLUsingSSO(
 	let region = managedRegion.region ?? client.ssoRegion
 	let service = managedRegion.service ?? ""
 
-	guard let creds = await getRoleCredentialsUsing(sso: client, storage: storageAPI, accessToken: accessToken, role: role).to(&err) else {
+	guard let creds = await getRoleCredentialsUsing(sso: client, storage: storageAPI, accessToken: accessToken, role: role).get() else {
 		return .failure(x.error("error fetching role creds", root: err))
 	}
 
@@ -83,11 +84,11 @@ public func generateAWSConsoleURLUsingSSO(
 		return constructSimpleConsoleURL(region: region, service: service)
 	}
 
-	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).to(&err) else {
+	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).get() else {
 		if retryNumber < 5 {
 			XDK.Log(.debug).err(err).add("count", any: retryNumber).send("retrying generateAWSConsoleURL")
 
-			guard let _ = invalidateRoleCredentials(storageAPI, role: role).to(&err) else {
+			guard let _ = invalidateRoleCredentials(storageAPI, role: role).get() else {
 				return .failure(x.error("error invalidating role creds", root: err))
 			}
 
@@ -106,14 +107,14 @@ public func generateAWSConsoleURLUsingSSO(
 		return .failure(XDK.Err("error fetching signInToken", root: err))
 	}
 
-	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).to(&err) else {
+	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).get() else {
 		return .failure(XDK.Err("error constructing console url", root: err))
 	}
 
 	return .success(consoleHomeURL)
 }
 
-public func generateAWSConsoleURLWithExpiry(
+@err  public func generateAWSConsoleURLWithExpiry(
 	client: AWSSSOSDKProtocolWrapped,
 	account: AccountInfo,
 	role: RoleInfo,
@@ -123,29 +124,29 @@ public func generateAWSConsoleURLWithExpiry(
 	isSignedIn: Bool,
 	retryNumber: Int = 0
 ) async -> Result<(URL, Date), Error> {
-	var err: Error? = nil
+
 
 	let region = managedRegion.region ?? client.ssoRegion
 	let service = managedRegion.service ?? ""
 
-	guard let creds = await getRoleCredentialsUsing(sso: client, storage: storageAPI, accessToken: accessToken, role: role).to(&err) else {
+	guard let creds = await getRoleCredentialsUsing(sso: client, storage: storageAPI, accessToken: accessToken, role: role).get() else {
 		return .failure(x.error("error fetching role creds", root: err))
 	}
 
 	// if creds were updated, we need a new signintoken
 	if creds.pulledFromCache, isSignedIn {
-		guard let simp = constructSimpleConsoleURL(region: region, service: service).to(&err) else {
+		guard let simp = constructSimpleConsoleURL(region: region, service: service).get() else {
 			return .failure(x.error("constructing url", root: err))
 		}
 
 		return .success((simp, creds.data.expiresAt))
 	}
 
-	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).to(&err) else {
+	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).get() else {
 		if retryNumber < 5 {
 			XDK.Log(.debug).err(err).add("count", any: retryNumber).send("retrying generateAWSConsoleURL")
 
-			guard let _ = invalidateRoleCredentials(storageAPI, role: role).to(&err) else {
+			guard let _ = invalidateRoleCredentials(storageAPI, role: role).get() else {
 				return .failure(x.error("error invalidating role creds", root: err))
 			}
 
@@ -164,7 +165,7 @@ public func generateAWSConsoleURLWithExpiry(
 		return .failure(XDK.Err("error fetching signInToken", root: err))
 	}
 
-	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).to(&err) else {
+	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).get() else {
 		return .failure(XDK.Err("error constructing console url", root: err))
 	}
 
@@ -221,14 +222,14 @@ func constructSimpleConsoleURL(region: String, service: String? = nil) -> Result
 	return .success(url)
 }
 
-func constructLoginURL(with signInToken: String, credentials: RoleCredentials, region: String, service: String?) -> Result<URL, Error> {
-	var err: Error? = nil
+@err func constructLoginURL(with signInToken: String, credentials: RoleCredentials, region: String, service: String?) -> Result<URL, Error> {
 
-	guard let request = constructFederationURLRequest(with: credentials).to(&err) else {
+
+	guard let request = constructFederationURLRequest(with: credentials).get() else {
 		return .failure(x.error("error constructing federation url", root: err))
 	}
 
-	guard let consoleHomeURL = constructSimpleConsoleURL(region: region, service: service).to(&err) else {
+	guard let consoleHomeURL = constructSimpleConsoleURL(region: region, service: service).get() else {
 		return .failure(x.error("error constructing console url", root: err))
 	}
 
