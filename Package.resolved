@@ -1,13 +1,13 @@
 {
-  "originHash" : "31e8331fb0aa337fd8efa9e92ce7f3bfdc10b4274b1d2cecd16145a64c516ec4",
+  "originHash" : "8cfd5f5bee66f2aadf0b731a9b3d492d3ea2388b2a48064a2cc27f3b30e4959e",
   "pins" : [
     {
       "identity" : "aws-crt-swift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/awslabs/aws-crt-swift",
       "state" : {
-        "revision" : "7b42e0343f28b3451aab20840dc670abd12790bd",
-        "version" : "0.36.0"
+        "revision" : "3f844bef042cc0a4c3381f7090414ce3f9a7e935",
+        "version" : "0.37.0"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/awslabs/aws-sdk-swift.git",
       "state" : {
-        "revision" : "4c084c0e616a660014479ea2e60e7a9533a52a05",
-        "version" : "1.0.17"
+        "revision" : "b354dc898e9f14c5439b154e4161dcb4b7e72f29",
+        "version" : "1.0.32"
       }
     },
     {
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/walteh/micro-deterministic-ecdsa.git",
       "state" : {
-        "revision" : "53a1d3a9588cb008de7472f64fd8b7b244645286",
-        "version" : "0.8.0"
+        "revision" : "391b36d7a24320b277e4f262928dab0724cc0e6b",
+        "version" : "0.9.0"
       }
     },
     {
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/smithy-lang/smithy-swift",
       "state" : {
-        "revision" : "274b526e1b329469043a950888ecbd44ed25dfc5",
-        "version" : "0.78.0"
+        "revision" : "0d4d3eae8cfb04f3e0cbc4e7740e7344cc9fac55",
+        "version" : "0.87.0"
       }
     },
     {
