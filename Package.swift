@@ -40,7 +40,7 @@ let god = God()
 
 let swiftLogs = Git(module: "Logging", version: "1.6.1", url: "https://github.com/apple/swift-log.git").apply(god)
 let awssdk = Git(module: "AWS", version: "1.0.32", url: "https://github.com/awslabs/aws-sdk-swift.git").apply(god)
-let swiftErr = Git(module: "Err", version: "0.5.0", url: "https://github.com/walteh/swift-err.git").apply(god)
+let swiftErr = Git(module: "Err", version: "0.6.0", url: "https://github.com/walteh/swift-err.git").apply(god)
 // let swiftErr = TmpLocal(module: "Err", url: "../../swift-err").apply(god)
 let swiftXid = Git(module: "xid", version: "0.2.1", url: "https://github.com/uatuko/swift-xid.git").apply(god)
 let ecdsa = Git(module: "MicroDeterministicECDSA", version: "0.9.0", url: "https://github.com/walteh/micro-deterministic-ecdsa.git").apply(god)
