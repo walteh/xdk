@@ -2,16 +2,29 @@
 	"folders": [
 		{
 			"path": "../"
+		},
+		{
+			"path": "../ErrMacro",
 		}
 	],
-
-	"settings": {
-		"swiftlint.enable": false,
-		"swiftformat.enable": false,
-	"[swift]": {
-		"editor.formatOnSave": true,
-		"editor.defaultFormatter": "vknabel.vscode-swiftformat"
+	"extensions": {
+		"recommendations": [
+			"sswg.swift-lang",
+			"editorconfig.editorconfig",
+			"pkief.material-icon-theme",
+			"mhutchie.git-graph",
+		]
 	},
-	"cmake.options.statusBarVisibility": "visible",
+	"settings": {
+		"swift.sourcekit-lsp.disable": false,
+		"swiftformat.enable": true,
+		// "swift"
+		"[swift]": {
+			"editor.formatOnSave": true,
+			"editor.defaultFormatter": "sswg.swift-lang"
+			// "editor.defaultFormatter": "vknabel.vscode-swiftformat"
+		},
+		"editor.formatOnSave": true,
+		"cmake.options.statusBarVisibility": "visible"
 	}
 }

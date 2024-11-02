@@ -1,10 +1,10 @@
 import AWSSSO
 import AWSSSOOIDC
 import Combine
-import Foundation
-import XDK
 import Err
+import Foundation
 import LogEvent
+import XDK
 
 @err public func generateAWSConsoleURLWithDefaultClient(
 	account: AccountInfo,
@@ -15,8 +15,10 @@ import LogEvent
 	isSignedIn: Bool
 ) async -> Result<URL, Error> {
 
-
-	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion()).get() else {
+	guard
+		let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion())
+			.get()
+	else {
 		return .failure(error("creating aws client", root: err))
 	}
 
@@ -31,7 +33,7 @@ import LogEvent
 	)
 }
 
-@err  public func generateAWSConsoleURLWithExpiryWithDefaultClient(
+@err public func generateAWSConsoleURLWithExpiryWithDefaultClient(
 	account: AccountInfo,
 	role: RoleInfo,
 	managedRegion: ManagedRegionService,
@@ -40,8 +42,10 @@ import LogEvent
 	isSignedIn: Bool
 ) async -> Result<(URL, Date), Error> {
 
-
-	guard let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion()).get() else {
+	guard
+		let awsClient = XDKAWSSSO.buildAWSSSOSDKProtocolWrapped(ssoRegion: accessToken.stsRegion())
+			.get()
+	else {
 		return .failure(error("creating aws client", root: err))
 	}
 
@@ -67,7 +71,6 @@ import LogEvent
 	retryNumber: Int = 0
 ) async -> Result<URL, Error> {
 
-
 	//	guard let role = account.role else {
 	//		return .failure(error("role not set"))
 	//	}
@@ -75,19 +78,31 @@ import LogEvent
 	let region = managedRegion.region ?? client.ssoRegion
 	let service = managedRegion.service ?? ""
 
-	guard let creds = await getRoleCredentialsUsing(sso: client, storage: storageAPI, accessToken: accessToken, role: role).get() else {
+	guard
+		let creds = await getRoleCredentialsUsing(
+			sso: client,
+			storage: storageAPI,
+			accessToken: accessToken,
+			role: role
+		).get()
+	else {
 		return .failure(error("error fetching role creds", root: err))
 	}
 
 	// if creds were updated, we need a new signintoken
 	if creds.pulledFromCache, isSignedIn {
-		log(.debug).meta(["role": .string(role.roleName)]).send("role creds were pulled from cache, but user is signed in")
+		log(.debug).meta(["role": .string(role.roleName)]).send(
+			"role creds were pulled from cache, but user is signed in"
+		)
 		return constructSimpleConsoleURL(region: region, service: service)
 	}
 
-	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).get() else {
+	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).get()
+	else {
 		if retryNumber < 5 {
-			log(.debug).err(err).info("count", any: retryNumber).send("retrying generateAWSConsoleURL")
+			log(.debug).err(err).info("count", any: retryNumber).send(
+				"retrying generateAWSConsoleURL"
+			)
 
 			guard let _ = invalidateRoleCredentials(storageAPI, role: role).get() else {
 				return .failure(error("error invalidating role creds", root: err))
@@ -100,7 +115,7 @@ import LogEvent
 				managedRegion: managedRegion,
 				storageAPI: storageAPI,
 				accessToken: accessToken,
-				isSignedIn: false, // regardless of what our caller thinks we need to log in again
+				isSignedIn: false,  // regardless of what our caller thinks we need to log in again
 				retryNumber: retryNumber + 1
 			)
 		}
@@ -108,14 +123,21 @@ import LogEvent
 		return .failure(error("error fetching signInToken", root: err))
 	}
 
-	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).get() else {
+	guard
+		let consoleHomeURL = constructLoginURL(
+			with: signInTokenResult,
+			credentials: creds.data,
+			region: region,
+			service: service
+		).get()
+	else {
 		return .failure(error("error constructing console url", root: err))
 	}
 
 	return .success(consoleHomeURL)
 }
 
-@err  public func generateAWSConsoleURLWithExpiry(
+@err public func generateAWSConsoleURLWithExpiry(
 	client: AWSSSOSDKProtocolWrapped,
 	account: AccountInfo,
 	role: RoleInfo,
@@ -126,11 +148,17 @@ import LogEvent
 	retryNumber: Int = 0
 ) async -> Result<(URL, Date), Error> {
 
-
 	let region = managedRegion.region ?? client.ssoRegion
 	let service = managedRegion.service ?? ""
 
-	guard let creds = await getRoleCredentialsUsing(sso: client, storage: storageAPI, accessToken: accessToken, role: role).get() else {
+	guard
+		let creds = await getRoleCredentialsUsing(
+			sso: client,
+			storage: storageAPI,
+			accessToken: accessToken,
+			role: role
+		).get()
+	else {
 		return .failure(error("error fetching role creds", root: err))
 	}
 
@@ -143,9 +171,12 @@ import LogEvent
 		return .success((simp, creds.data.expiresAt))
 	}
 
-	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).get() else {
+	guard let signInTokenResult = await fetchSignInToken(with: creds.data, retryNumber: -1).get()
+	else {
 		if retryNumber < 5 {
-			log(.debug).err(err).info("count", any: retryNumber).send("retrying generateAWSConsoleURL")
+			log(.debug).err(err).info("count", any: retryNumber).send(
+				"retrying generateAWSConsoleURL"
+			)
 
 			guard let _ = invalidateRoleCredentials(storageAPI, role: role).get() else {
 				return .failure(error("error invalidating role creds", root: err))
@@ -158,7 +189,7 @@ import LogEvent
 				managedRegion: managedRegion,
 				storageAPI: storageAPI,
 				accessToken: accessToken,
-				isSignedIn: false, // regardless of what our caller thinks we need to log in again
+				isSignedIn: false,  // regardless of what our caller thinks we need to log in again
 				retryNumber: retryNumber + 1
 			)
 		}
@@ -166,7 +197,14 @@ import LogEvent
 		return .failure(error("error fetching signInToken", root: err))
 	}
 
-	guard let consoleHomeURL = constructLoginURL(with: signInTokenResult, credentials: creds.data, region: region, service: service).get() else {
+	guard
+		let consoleHomeURL = constructLoginURL(
+			with: signInTokenResult,
+			credentials: creds.data,
+			region: region,
+			service: service
+		).get()
+	else {
 		return .failure(error("error constructing console url", root: err))
 	}
 
@@ -174,23 +212,30 @@ import LogEvent
 }
 
 func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<URLRequest, Error> {
-	let federationBaseURL = credentials.stsRegion.starts(with: "us-gov-") ?
-		"https://signin.amazonaws-us-gov.com/federation" :
-		"https://\(credentials.stsRegion).signin.aws.amazon.com/federation"
+	let federationBaseURL =
+		credentials.stsRegion.starts(with: "us-gov-")
+		? "https://signin.amazonaws-us-gov.com/federation"
+		: "https://\(credentials.stsRegion).signin.aws.amazon.com/federation"
 
 	// log out secretAccessKey and sessionToken
-	log(.debug).info("accessKeyID", credentials.accessKeyID).info("secretAccessKey", credentials.secretAccessKey).info("sessionToken", credentials.sessionToken).send("constructing federation request")
+	log(.debug).info("accessKeyID", credentials.accessKeyID).info(
+		"secretAccessKey",
+		credentials.secretAccessKey
+	).info("sessionToken", credentials.sessionToken).send("constructing federation request")
 
 	// https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html#STSConsoleLink_manual
 	let sessionStringJSON = """
-	{
-		"sessionId": "\(credentials.accessKeyID)",
-		"sessionKey": "\(credentials.secretAccessKey.toggleBase64URLSafe(on: false))",
-		"sessionToken": "\(credentials.sessionToken.toggleBase64URLSafe(on: true))"
-	}
-	"""
+		{
+			"sessionId": "\(credentials.accessKeyID)",
+			"sessionKey": "\(credentials.secretAccessKey.toggleBase64URLSafe(on: false))",
+			"sessionToken": "\(credentials.sessionToken.toggleBase64URLSafe(on: true))"
+		}
+		"""
 
-	var components = URLComponents(url: URL(string: federationBaseURL)!, resolvingAgainstBaseURL: false)!
+	var components = URLComponents(
+		url: URL(string: federationBaseURL)!,
+		resolvingAgainstBaseURL: false
+	)!
 
 	// the default encoding does not encode the potential "+" inside the sessionKey form above, so we need to do it manually
 	components.percentEncodedQueryItems = [
@@ -206,9 +251,9 @@ func constructFederationURLRequest(with credentials: RoleCredentials) -> Result<
 }
 
 func constructSimpleConsoleURL(region: String, service: String? = nil) -> Result<URL, Error> {
-	var consoleHomeURL = region.starts(with: "us-gov-") ?
-		"https://console.amazonaws-us-gov.com" :
-		"https://\(region).console.aws.amazon.com"
+	var consoleHomeURL =
+		region.starts(with: "us-gov-")
+		? "https://console.amazonaws-us-gov.com" : "https://\(region).console.aws.amazon.com"
 
 	if service == nil || service == "" {
 		consoleHomeURL = consoleHomeURL + "/console/home?region=\(region)"
@@ -223,14 +268,19 @@ func constructSimpleConsoleURL(region: String, service: String? = nil) -> Result
 	return .success(url)
 }
 
-@err func constructLoginURL(with signInToken: String, credentials: RoleCredentials, region: String, service: String?) -> Result<URL, Error> {
-
+@err func constructLoginURL(
+	with signInToken: String,
+	credentials: RoleCredentials,
+	region: String,
+	service: String?
+) -> Result<URL, Error> {
 
 	guard let request = constructFederationURLRequest(with: credentials).get() else {
 		return .failure(error("error constructing federation url", root: err))
 	}
 
-	guard let consoleHomeURL = constructSimpleConsoleURL(region: region, service: service).get() else {
+	guard let consoleHomeURL = constructSimpleConsoleURL(region: region, service: service).get()
+	else {
 		return .failure(error("error constructing console url", root: err))
 	}
 

@@ -5,18 +5,14 @@
 //  Created by walter on 3/3/23.
 //
 
+import Err
+import Foundation
+import LogEvent
 import Logging
 import Testing
-import Foundation
 import XDK
-import XDKLogging
-import Err
-import LogEvent
 
 @testable import XDKAWSSSO
-
-
-
 
 @Test
 func testGetServices() throws {
@@ -26,7 +22,7 @@ func testGetServices() throws {
 }
 
 // @Test
-@err  func dontTestExample() async throws {
+@err func dontTestExample() async throws {
 	let storageAPI = XDK.InMemoryStorage() as StorageAPI
 	let selectedRegion = "us-east-1"
 
@@ -35,31 +31,42 @@ func testGetServices() throws {
 		throw error("invalid url").info("url", val)
 	}
 
-
 	let client = try! AWSSSOSDKProtocolWrappedImpl(ssoRegion: selectedRegion)
 
 	// var promptURL: XDKAWSSSO.AWSSSOSignInCodeData?
-	guard let resp = await XDKAWSSSO.generateSSOAccessTokenUsingBrowserIfNeeded(
-		client: client,
-		storage: storageAPI,
-		session: XDK.NoopAppSession(),
-		ssoRegion: selectedRegion,
-		startURL: startURI,
-		callback: { @Sendable url in
-			#expect(url != nil)
-			print("====================================")
-			// open the browser with the url
-			log(.info).info("url", url.activationURLWithCode).send("okay")
-			print("====================================")
-		}
-	).get() else {
-		#expect(false, .init(rawValue: "failed to generate token" + (err.localizedDescription ?? "unknown error")))
+	guard
+		let resp = await XDKAWSSSO.generateSSOAccessTokenUsingBrowserIfNeeded(
+			client: client,
+			storage: storageAPI,
+			session: XDK.NoopAppSession(),
+			ssoRegion: selectedRegion,
+			startURL: startURI,
+			callback: { @Sendable url in
+				#expect(url != nil)
+				print("====================================")
+				// open the browser with the url
+				log(.info).info("url", url.activationURLWithCode).send("okay")
+				print("====================================")
+			}
+		).get()
+	else {
+		#expect(
+			false,
+			.init(
+				rawValue: "failed to generate token" + (err.localizedDescription ?? "unknown error")
+			)
+		)
 		return
 	}
 
 	let role = RoleInfo(roleName: "admin", accountID: "324802912585")
 
-	let account = AccountInfo(accountID: "324802912585", accountName: "hi", roles: [role], accountEmail: "xyz@xyz.com")
+	let account = AccountInfo(
+		accountID: "324802912585",
+		accountName: "hi",
+		roles: [role],
+		accountEmail: "xyz@xyz.com"
+	)
 
 	let sess = SimpleManagedRegionService(
 		region: selectedRegion,
@@ -71,18 +78,23 @@ func testGetServices() throws {
 	// 	return
 	// }
 
-
-	guard let url = await XDKAWSSSO.generateAWSConsoleURLUsingSSO(
-		client: client,
-		account: account,
-		role: role,
-		managedRegion: sess,
-		storageAPI: storageAPI,
-		accessToken: resp,
-		isSignedIn: true
-	).get() else {
-		#expect(false, .init(rawValue: "failed to generate url" + (err.localizedDescription ?? "unknown error")))
+	guard
+		let url = await XDKAWSSSO.generateAWSConsoleURLUsingSSO(
+			client: client,
+			account: account,
+			role: role,
+			managedRegion: sess,
+			storageAPI: storageAPI,
+			accessToken: resp,
+			isSignedIn: true
+		).get()
+	else {
+		#expect(
+			false,
+			.init(
+				rawValue: "failed to generate url" + (err.localizedDescription ?? "unknown error")
+			)
+		)
 		return
 	}
 }
-

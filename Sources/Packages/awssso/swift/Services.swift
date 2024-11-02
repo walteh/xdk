@@ -6,16 +6,18 @@ public func loadTheServices() -> [String] {
 
 	context?.evaluateScript(jsSource)
 
-	context?.evaluateScript("""
-	function getAvailableServices() {
-	    // Create an instance of the ARN class to access the _linkTemplates method
-	    const arnInstance = new ARN('arn:aws:service:region:account:resource');
-	    const linkTemplates = arnInstance._getLinkTemplates();
-	    // Extract the keys from the linkTemplates object
-	    const services = Object.keys(linkTemplates);
-	    return services;
-	}
-	""")
+	context?.evaluateScript(
+		"""
+		function getAvailableServices() {
+		    // Create an instance of the ARN class to access the _linkTemplates method
+		    const arnInstance = new ARN('arn:aws:service:region:account:resource');
+		    const linkTemplates = arnInstance._getLinkTemplates();
+		    // Extract the keys from the linkTemplates object
+		    const services = Object.keys(linkTemplates);
+		    return services;
+		}
+		"""
+	)
 
 	let dat = context?.objectForKeyedSubscript("getAvailableServices")
 

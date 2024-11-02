@@ -7,10 +7,10 @@
 import AWSSSO
 import AWSSSOOIDC
 import Combine
+import Err
 import Foundation
 import WebKit
 import XDK
-import Err
 
 public protocol ManagedRegionService: Sendable {
 	var region: String? { get set }
@@ -108,7 +108,8 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 	let myid = accessToken.source() + XDKAWSSSO_KEYCHAIN_VERSION
 
 	// check storage
-	guard let cached = XDK.Read(using: storage, AccountInfoList.self, differentiator: myid).get() else {
+	guard let cached = XDK.Read(using: storage, AccountInfoList.self, differentiator: myid).get()
+	else {
 		return .failure(x.error("error loading accounts from storage", root: err))
 	}
 
@@ -116,7 +117,10 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 		return .success(cached)
 	}
 
-	guard let response = await client.listAccounts(input: .init(accessToken: accessToken.token())).get() else {
+	guard
+		let response = await client.listAccounts(input: .init(accessToken: accessToken.token()))
+			.get()
+	else {
 		return .failure(x.error("error fetching accounts", root: err))
 	}
 
@@ -128,9 +132,20 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 
 	// Iterate over accounts and fetch roles for each
 	for account in accountList {
-		guard let roles = try await listRolesForAccount(client: client, accessToken: accessToken, account: account).get() else {
-			return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!)
-				.info("accountName", account.accountName!))
+		guard
+			let roles = try await listRolesForAccount(
+				client: client,
+				accessToken: accessToken,
+				account: account
+			).get()
+		else {
+			return .failure(
+				x.error("error fetching roles for account", root: err).info(
+					"accountID",
+					account.accountId!
+				)
+				.info("accountName", account.accountName!)
+			)
 		}
 		for role in roles {
 			list.accounts.append(role)
@@ -150,17 +165,28 @@ func invalidateAccountsRoleList(storage: XDK.StorageAPI) -> Result<Void, Error> 
 	accessToken: AccessToken,
 	account: AWSSSO.SSOClientTypes.AccountInfo
 ) async -> Result<[AccountInfo], Error> {
-	guard let rolesResponse = await client.listAccountRoles(input: .init(accessToken: accessToken.token(), accountId: account.accountId!)).get()	else {
-		return .failure(x.error("error fetching roles for account", root: err).info("accountID", account.accountId!)
-			.info("accountName", account.accountName!))
+	guard
+		let rolesResponse = await client.listAccountRoles(
+			input: .init(accessToken: accessToken.token(), accountId: account.accountId!)
+		).get()
+	else {
+		return .failure(
+			x.error("error fetching roles for account", root: err).info(
+				"accountID",
+				account.accountId!
+			)
+			.info("accountName", account.accountName!)
+		)
 	}
 
 	var list = [AccountInfo]()
 	if let roleList = rolesResponse.roleList {
 		list.append(AccountInfo(role: roleList, account: account))
 	} else {
-		return .failure(x.error("No roles found for account").info("accountID", account.accountId ?? "nil")
-			.info("accountName", account.accountName ?? "nil"))
+		return .failure(
+			x.error("No roles found for account").info("accountID", account.accountId ?? "nil")
+				.info("accountName", account.accountName ?? "nil")
+		)
 	}
 
 	return .success(list)
