@@ -1,5 +1,5 @@
 {
-  "originHash" : "8459e0f0eec8da50feae83b0d8bfcc1897fa7218448270d25dfbe94e41235889",
+  "originHash" : "168b9ee2754988ec8d013f1c6d4db67c2f2f8b6e3132996fe76320ac62846265",
   "pins" : [
     {
       "identity" : "aws-crt-swift",
@@ -53,15 +53,6 @@
       "state" : {
         "revision" : "cd142fd2f64be2100422d658e7411e39489da985",
         "version" : "1.2.0"
-      }
-    },
-    {
-      "identity" : "swift-err",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/walteh/swift-err.git",
-      "state" : {
-        "revision" : "2af7e3749bc167289aacd56b8b3559a68a24c87c",
-        "version" : "0.6.0"
       }
     },
     {

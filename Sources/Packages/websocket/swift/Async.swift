@@ -100,7 +100,7 @@ extension WSAsyncProvider: WSDelegate {
 		case let .reconnectSuggested(suggestion):
 			x.log(.debug).send("[ws] reconnectSuggested: \(suggestion)")
 		case let .disconnected(reason, code):
-			self.websocketDidDisconnect(socket: client, error: x.error("websocket disconnected").event { $0.add("reason", reason).add("code", "\(code)") })
+			self.websocketDidDisconnect(socket: client, error: x.error("websocket disconnected").info( "reason", reason).info("code", code))
 		case .cancelled:
 			self.websocketDidDisconnect(socket: client, error: x.error("websocket cancelled"))
 		case let .error(error):

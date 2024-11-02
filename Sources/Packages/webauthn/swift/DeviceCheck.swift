@@ -13,6 +13,7 @@ import Foundation
 import os
 
 import Err
+import LogEvent
 
 import XDK
 
@@ -58,13 +59,12 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 
 	@err public func assert(request: URLRequest , dataToSign: Data? = nil) async -> Result<[String: String], Error> {
 
-
 		guard let key = XDK.Read(using: self.keychainAPI, AppAttestKeyID.self).get() else {
-			return .failure(x.error("failed to read key from keychain", root: err, alias: DeviceCheckError.unexpectedNil))
+			return .failure(x.error("failed to read key from keychain", root: err))
 		}
 
 		guard let key else {
-			return .failure(x.error("failed to read key from keychain", alias: DeviceCheckError.unexpectedNil))
+			return .failure(x.error("failed to read key from keychain", root: DeviceCheckError.unexpectedNil))
 		}
 
 		guard let challenge = await self.remote(init: .Get, credentialID: key.keyID).get() else {
@@ -73,7 +73,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 
 		// read they body of the request as bytes
 		if dataToSign == nil && nil == request.httpBody {
-			return .failure(x.error("failed to get body of request", alias: DeviceCheckError.unexpectedNil))
+			return .failure(x.error("failed to get body of request", root: DeviceCheckError.unexpectedNil))
 		}
 
 		var combo = Data(dataToSign ?? request.httpBody!)
@@ -104,9 +104,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnDeviceCheckAPI {
 		}
 
 		guard let datakey = key.base64Decoded else {
-			return .failure(x.error("DCAppAttestSerivice.shared.generateKey() returned a non base64 value").event {
-				$0.add("value", key)
-			})
+			return .failure(x.error("DCAppAttestSerivice.shared.generateKey() returned a non base64 value").info("value", key))
 		}
 
 		let clientDataJSON = #"{"challenge":""# + challenge.utf8().base64URLEncodedString() + #"","origin":"https://nugg.xyz","type":""# + ceremony.rawValue + #""}"#

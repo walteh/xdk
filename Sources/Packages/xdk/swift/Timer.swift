@@ -7,6 +7,8 @@
 //
 
 import Foundation
+import Err
+import LogEvent
 
 public class Timer {
 	let start: Date
@@ -19,6 +21,6 @@ public class Timer {
 
 	public func end() {
 		let timeElapsed = DateInterval(start: start, end: Date()).duration
-		x.log(.info).add("time_elapsed", string: "\(timeElapsed) s.").send("end timer \(self.name)")
+		log(.info).info("time_elapsed", string: "\(timeElapsed) s.").send("end timer \(self.name)")
 	}
 }

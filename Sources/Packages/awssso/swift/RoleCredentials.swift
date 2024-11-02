@@ -10,6 +10,7 @@ import Combine
 import Foundation
 import XDK
 import Err
+import LogEvent
 
 struct RoleCredentialsSignInToken: Codable, Sendable {
 	public let token: String
@@ -117,11 +118,11 @@ public struct RoleCredentialsStatus: Sendable {
 
 	if let curr {
 		if curr.expiresIn() > 60 * 5, curr.expiresIn() < 60 * 60 * 24 * 7 {
-			XDK.Log(.debug).info("creds", curr.accessKeyID).info("account", role.accountID).info("role", role.roleName)
+			log(.debug).info("creds", curr.accessKeyID).info("account", role.accountID).info("role", role.roleName)
 				.info("expiresIn", curr.expiresIn()).send("using cached creds")
 			return .success(RoleCredentialsStatus(data: curr, pulledFromCache: true))
 		} else {
-			XDK.Log(.debug).add("expires_in", any: curr.expiresIn().seconds()).add("expires_at", curr.expiresAt)
+			log(.debug).info("expires_in", any: curr.expiresIn().seconds()).info("expires_at", curr.expiresAt)
 				.send("creds are expired, creating new ones")
 		}
 	}
@@ -145,7 +146,7 @@ public struct RoleCredentialsStatus: Sendable {
 		return .failure(x.error("error writing role creds to keychain", root: err))
 	}
 
-	XDK.Log(.debug).info("creds", rcreds.accessKeyID).info("account", role.accountID).info("uniqueID", role.uniqueID).info("role", role.roleName).info("expiresAt", rcreds.expiresAt).send("writing creds to cache")
+	log(.debug).info("creds", rcreds.accessKeyID).info("account", role.accountID).info("uniqueID", role.uniqueID).info("role", role.roleName).info("expiresAt", rcreds.expiresAt).send("writing creds to cache")
 
 	return .success(RoleCredentialsStatus(data: rcreds, pulledFromCache: false))
 }
@@ -198,7 +199,7 @@ public struct RoleCredentialsStatus: Sendable {
 
 	if httpResponse.statusCode == 400 {
 		if retryNumber < 5, retryNumber >= 0 {
-			XDK.Log(.debug).add("account", credentials.role.accountID).add("count", any: retryNumber).send("retrying fetchSignInToken")
+			log(.debug).info("account", credentials.role.accountID).info("count", any: retryNumber).send("retrying fetchSignInToken")
 			return await fetchSignInToken(with: credentials, retryNumber: retryNumber + 1)
 		}
 	}
@@ -209,7 +210,7 @@ public struct RoleCredentialsStatus: Sendable {
 
 		return .failure(x.error("unexpected error code: \(httpResponse.statusCode)").info("body", lastfirst).info("url", request.url?.absoluteString ?? "none"))
 	} else {
-		XDK.Log(.debug).add("request_url", request.url?.absoluteString ?? "none").send("success on fetchSignInToken")
+		log(.debug).info("request_url", request.url?.absoluteString ?? "none").send("success on fetchSignInToken")
 	}
 
 	guard let jsonResultz = try JSONSerialization.jsonObject(with: data) else {
@@ -222,7 +223,7 @@ public struct RoleCredentialsStatus: Sendable {
 
 
 
-	XDK.Log(.debug).info("jsonResult", jsonResult).send("fetchSignInToken")
+	log(.debug).info("jsonResult", jsonResult).send("fetchSignInToken")
 
 	if let signInToken = jsonResult["SigninToken"] as? String {
 		return .success(signInToken)

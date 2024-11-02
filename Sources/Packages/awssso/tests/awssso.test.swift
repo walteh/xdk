@@ -7,36 +7,24 @@
 
 import Logging
 import Testing
-import XCTest
+import Foundation
 import XDK
 import XDKLogging
 import Err
+import LogEvent
 
 @testable import XDKAWSSSO
 
-// override func setUpWithError() throws {
-// 	LoggingSystem.bootstrap { label in
-// 		var level: Logger.Level = .trace
-// 		switch label {
-// 		case "URLSessionHTTPClient", "SSOClient", "SSOOIDCClient":
-// 			level = .error
-// 		default:
-// 			level = .trace
-// 		}
-// 		return XDKLogging.ConsoleLogger(label: label, level: level, metadata: .init())
-// 	}
-// 	// Put setup code here. This method is called before the invocation of each test method in the class.
-// }
 
-// override func tearDownWithError() throws {
-// 	// Put teardown code here. This method is called after the invocation of each test method in the class.
-// }
+
+
 @Test
 func testGetServices() throws {
 	let res = XDKAWSSSO.loadTheServices()
-	XDK.Log(.info).info("data", res).send("okay")
-	XCTAssertNotNil(res)
+	log(.info).info("data", res).send("okay")
+	#expect(res.count > 0)
 }
+
 // @Test
 @err  func dontTestExample() async throws {
 	let storageAPI = XDK.InMemoryStorage() as StorageAPI
@@ -44,7 +32,7 @@ func testGetServices() throws {
 
 	let val = "https://nuggxyz.awsapps.com/start#/"
 	guard let startURI = URL(string: val) else {
-		throw URLError(.init(rawValue: 0), userInfo: ["uri": val])
+		throw error("invalid url").info("url", val)
 	}
 
 
@@ -61,11 +49,11 @@ func testGetServices() throws {
 			#expect(url != nil)
 			print("====================================")
 			// open the browser with the url
-			XDK.Log(.info).info("url", url.activationURLWithCode).send("okay")
+			log(.info).info("url", url.activationURLWithCode).send("okay")
 			print("====================================")
 		}
 	).get() else {
-		XCTFail("failed to sign in" + (err?.localizedDescription ?? "unknown error"))
+		#expect(false, .init(rawValue: "failed to generate token" + (err.localizedDescription ?? "unknown error")))
 		return
 	}
 
@@ -84,7 +72,7 @@ func testGetServices() throws {
 	// }
 
 
-	let url = await XDKAWSSSO.generateAWSConsoleURLUsingSSO(
+	guard let url = await XDKAWSSSO.generateAWSConsoleURLUsingSSO(
 		client: client,
 		account: account,
 		role: role,
@@ -92,16 +80,9 @@ func testGetServices() throws {
 		storageAPI: storageAPI,
 		accessToken: resp,
 		isSignedIn: true
-	).get()
-
-	#expect(err == nil)
-
-	#expect(url != nil)
+	).get() else {
+		#expect(false, .init(rawValue: "failed to generate url" + (err.localizedDescription ?? "unknown error")))
+		return
+	}
 }
 
-// func testPerformanceExample() throws {
-// 	// This is an example of a performance test case.
-// 	measure {
-// 		// Put the code you want to measure the time of here.
-// 	}
-// }

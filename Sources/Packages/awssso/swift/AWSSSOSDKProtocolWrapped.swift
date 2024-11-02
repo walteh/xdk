@@ -5,6 +5,7 @@ import AWSSSOOIDC
 import Combine
 import Foundation
 import XDK
+import Err
 
 public protocol AWSSSOSDKProtocolWrapped: Sendable {
 	var ssoRegion: String { get }
@@ -77,6 +78,6 @@ public struct SecureAWSSSOClientRegistrationInfo: Codable, Sendable {
 		if let clientID = input.clientId, let clientSecret = input.clientSecret {
 			return .success(SecureAWSSSOClientRegistrationInfo(clientID: clientID, clientSecret: clientSecret))
 		}
-		return .failure(x.error("missing values"))
+		return .failure(error("missing values"))
 	}
 }

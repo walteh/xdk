@@ -8,6 +8,7 @@
 import Foundation
 import Logging
 import Err
+import LogEvent
 
 public protocol AppSessionAPI: Sendable {
 	func ID() -> XID
@@ -58,7 +59,7 @@ public final class StoredAppSession: NSObject, Sendable {
 		let id = idres.value!
 
 		if id != nil {
-			Log(.info).info("sessionID", id).send("idk")
+			log(.info).info("sessionID", id).send("idk")
 			self.appSessionID = id!
 			super.init()
 			return

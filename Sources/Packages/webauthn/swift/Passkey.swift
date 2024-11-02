@@ -10,6 +10,7 @@ import AuthenticationServices
 import Foundation
 import os
 import Err
+import LogEvent
 
 import XDK
 import XDKKeychain
@@ -113,11 +114,11 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 		Task(priority: .high) {
 
 			guard let res = await self.remote(authorization: authorization).get() else {
-				XDK.Log(.critical).err(err).send("failed to successfully handle auth")
+				log(.critical).err(err).send("failed to successfully handle auth")
 				return
 			}
 			guard let _ = XDK.Write(using: self.keychainAPI, PasskeyCredentialID(credentialID: res.credentialID)).get() else {
-				XDK.Log(.critical).err(err).send("failed to write credential id")
+				log(.critical).err(err).send("failed to write credential id")
 				return
 			}
 		}
@@ -137,7 +138,7 @@ extension WebauthnAuthenticationServicesClient: WebauthnPasskeyAPI {
 //					self.credentialID = nil
 
 				guard let _ = XDK.Write(using: self.keychainAPI, PasskeyCredentialID(credentialID: Data())).get() else {
-					XDK.Log(.critical).err(err).send("failed to write credential id")
+					log(.critical).err(err).send("failed to write credential id")
 					return
 				}
 			}
